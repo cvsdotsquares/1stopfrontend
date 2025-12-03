@@ -4,8 +4,7 @@ name: Build & Deploy to Staging
 on:
   push:
     branches:
-      - main
-      - staging
+      - dev
 
 jobs:
   build-and-deploy:
