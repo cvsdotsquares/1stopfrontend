@@ -1,0 +1,66 @@
+name: Build & Deploy to Staging
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+
+      # ------------ FRONTEND BUILD ------------
+      - name: Install Frontend Dependencies
+        run: npm install
+        working-directory: frontend
+
+      - name: Build Frontend
+        run: npm run build
+        working-directory: frontend
+
+      # ------------ BACKEND INSTALL ------------
+      - name: Install Backend Dependencies
+        run: npm install
+        working-directory: backend
+
+      # ------------ DEPLOY FRONTEND TO SERVER ------------
+      - name: Deploy Frontend to Staging Server
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "1stopfrontend/.next/**"
+          target: "/var/www/html/1stop/1stopfrontend/.next/"
+
+      # ------------ DEPLOY BACKEND ------------
+      - name: Deploy Backend to Staging Server
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "1stopbackend/**"
+          target: "/var/www/html/1stop/1stopbackend/"
+
+      # ------------ RESTART BACKEND SERVICE ------------
+      - name: Restart Node Server
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /var/www/html/1stop/backend
+            npm install --production
+            pm2 restart all || pm2 start server.js
