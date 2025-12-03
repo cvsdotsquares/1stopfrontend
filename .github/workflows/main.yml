@@ -26,7 +26,6 @@ jobs:
             git pull origin main
 
             echo "Installing dependencies..."
-            cd 1stop
             npm install
 
             echo "Building Next.js project..."
