@@ -23,12 +23,12 @@ jobs:
       # Step 3: Install frontend dependencies
       - name: Install Frontend Dependencies
         run: npm install
-        working-directory: ./1stop
+        working-directory: 1stop
 
       # Step 4: Build frontend
       - name: Build Frontend
         run: npm run build
-        working-directory: ./1stop
+        working-directory: 1stop
 
       # Step 5: Deploy build files to staging server
       - name: Deploy Frontend to Staging Server
@@ -37,5 +37,5 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "1stopfrontend/.next/**,1stopfrontend/public/**,1stopfrontend/package.json,1stopfrontend/next.config.js"
+          source: "1stop/.next/**,1stop/public/**,1stop/package.json,1stop/next.config.js"
           target: "/var/www/html/1stop/1stopfrontend/"
