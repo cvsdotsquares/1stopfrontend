@@ -177,6 +177,22 @@ export const bookingsApi = {
 
 // CMS API
 export const cmsApi = {
+  getHomepage: async () => {
+    const response = await api.get<ApiResponse<{
+      homepage: Page;
+      featuredCourses: Course[];
+      testimonials: Testimonial[];
+      locations: Location[];
+      stats: {
+        studentsTrained: number;
+        passRate: number;
+        experienceYears: number;
+        instructors: number;
+      };
+    }>>('/cms/homepage');
+    return response.data.data;
+  },
+
   getPages: async (params?: {
     page?: number;
     limit?: number;
