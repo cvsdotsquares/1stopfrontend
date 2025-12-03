@@ -1,0 +1,68 @@
+name: Build & Deploy to Staging
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repo
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 2: Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22  # match your Node version
+
+      # Step 3: Install frontend dependencies
+      - name: Install Frontend Dependencies
+        run: npm install
+        working-directory: frontend
+
+      # Step 4: Build frontend
+      - name: Build Frontend
+        run: npm run build
+        working-directory: frontend
+
+      # Step 5: Install backend dependencies
+      - name: Install Backend Dependencies
+        run: npm install
+        working-directory: backend
+
+      # Step 6: Deploy frontend to server
+      - name: Deploy Frontend to Staging Server
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "frontend/.next/**,frontend/public/**,frontend/package.json,frontend/next.config.js"
+          target: "/var/www/html/1stop/1stopfrontend/"
+
+      # Step 7: Deploy backend to server
+      - name: Deploy Backend to Staging Server
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "backend/**"
+          target: "/var/www/html/1stop/1stopbackend/"
+
+      # Step 8: Restart backend on server
+      - name: Restart Node Server
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /var/www/html/1stop/1stopbackend
+            npm install --production
+            pm2 restart all || pm2 start server.js
