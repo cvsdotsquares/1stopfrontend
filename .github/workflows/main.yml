@@ -15,7 +15,7 @@ jobs:
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}          
+          password: ${{ secrets.SEVER_PASSWORD }}
           script: |
             echo "Navigating to repo folder..."
             cd /var/www/html/1stop/1stopfrontend || exit 1
