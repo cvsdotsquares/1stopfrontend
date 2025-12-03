@@ -1,6 +1,6 @@
 name: Build & Deploy to Staging
 
-# Trigger on push to main or staging branch
+# Trigger on push to main or staging branch on stagin server
 on:
   push:
     branches:
