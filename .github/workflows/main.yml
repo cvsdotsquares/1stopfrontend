@@ -18,24 +18,19 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 22  # match your Node version
+          node-version: 22
 
       # Step 3: Install frontend dependencies
       - name: Install Frontend Dependencies
         run: npm install
-        working-directory: 1stopfrontend
+        working-directory: ./1stop
 
       # Step 4: Build frontend
       - name: Build Frontend
         run: npm run build
-        working-directory: 1stopfrontend
+        working-directory: ./1stop
 
-      # Step 5: Install backend dependencies
-      - name: Install Backend Dependencies
-        run: npm install
-        working-directory: 1stopbackend
-
-      # Step 6: Deploy frontend to server
+      # Step 5: Deploy build files to staging server
       - name: Deploy Frontend to Staging Server
         uses: appleboy/scp-action@v0.1.4
         with:
@@ -44,25 +39,3 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "1stopfrontend/.next/**,1stopfrontend/public/**,1stopfrontend/package.json,1stopfrontend/next.config.js"
           target: "/var/www/html/1stop/1stopfrontend/"
-
-      # Step 7: Deploy backend to server
-      - name: Deploy Backend to Staging Server
-        uses: appleboy/scp-action@v0.1.4
-        with:
-          host: ${{ secrets.SERVER_IP }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "backend/**"
-          target: "/var/www/html/1stop/1stopbackend/"
-
-      # Step 8: Restart backend on server
-      - name: Restart Node Server
-        uses: appleboy/ssh-action@v0.1.8
-        with:
-          host: ${{ secrets.SERVER_IP }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          script: |
-            cd /var/www/html/1stop/1stopbackend
-            npm install --production
-            pm2 restart all || pm2 start server.js
