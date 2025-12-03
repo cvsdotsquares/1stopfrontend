@@ -45,7 +45,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "frontend/.next/**"
-          target: "/var/www/html/1stop/frontend/.next/"
+          target: "/var/www/html/1stop/1stopfrontend/.next/"
 
       # Step 7: Deploy backend to server
       - name: Deploy Backend to Staging Server
@@ -55,7 +55,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "backend/**"
-          target: "/var/www/html/1stop/backend/"
+          target: "//var/www/html/1stop/1stopbackend/"
 
       # Step 8: Restart backend on server
       - name: Restart Node Server
