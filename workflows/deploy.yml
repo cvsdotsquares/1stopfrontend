@@ -1,5 +1,6 @@
 name: Build & Deploy to Staging
 
+# Trigger on push to main or staging branch
 on:
   push:
     branches:
@@ -11,49 +12,52 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the repo
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      # Step 2: Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 22
+          node-version: 22  # match your Node version
 
-      # ------------ FRONTEND BUILD ------------
+      # Step 3: Install frontend dependencies
       - name: Install Frontend Dependencies
         run: npm install
         working-directory: frontend
 
+      # Step 4: Build frontend
       - name: Build Frontend
         run: npm run build
         working-directory: frontend
 
-      # ------------ BACKEND INSTALL ------------
+      # Step 5: Install backend dependencies
       - name: Install Backend Dependencies
         run: npm install
         working-directory: backend
 
-      # ------------ DEPLOY FRONTEND TO SERVER ------------
+      # Step 6: Deploy frontend to server
       - name: Deploy Frontend to Staging Server
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "1stopfrontend/.next/**"
-          target: "/var/www/html/1stop/1stopfrontend/.next/"
+          source: "frontend/.next/**"
+          target: "/var/www/html/1stop/frontend/.next/"
 
-      # ------------ DEPLOY BACKEND ------------
+      # Step 7: Deploy backend to server
       - name: Deploy Backend to Staging Server
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "1stopbackend/**"
-          target: "/var/www/html/1stop/1stopbackend/"
+          source: "backend/**"
+          target: "/var/www/html/1stop/backend/"
 
-      # ------------ RESTART BACKEND SERVICE ------------
+      # Step 8: Restart backend on server
       - name: Restart Node Server
         uses: appleboy/ssh-action@v0.1.8
         with:
