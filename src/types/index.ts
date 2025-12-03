@@ -31,6 +31,11 @@ export interface Course {
   updated: string;
   booking_count?: number;
   available_events?: number;
+  // Extended properties for homepage display
+  course_description?: string;
+  duration?: string;
+  price?: number;
+  features?: string[];
 }
 
 export interface Location {
@@ -111,6 +116,19 @@ export interface Page {
   accreditation_display: number;
   created: string;
   updated: string;
+}
+
+export interface HomepageApiResponse {
+  homepage: Page;
+  featuredCourses: Course[];
+  testimonials: Testimonial[];
+  locations: Location[];
+  stats: {
+    studentsTrained: number;
+    passRate: number;
+    experienceYears: number;
+    instructors: number;
+  };
 }
 
 export interface Testimonial {
