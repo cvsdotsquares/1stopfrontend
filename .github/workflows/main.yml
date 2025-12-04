@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # 4️.Build Next.js with Webpack
+      # 4️.Build Next.js with Webpack 
       - name: Build Next.js
         run: npx next build --webpack
 
