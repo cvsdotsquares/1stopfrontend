@@ -37,11 +37,9 @@ jobs:
               echo ".env file generated successfully from env.yml"
             else
               echo "env.yml not found, creating default .env file..."
-              cat > .env << 'EOF'
-# Auto-generated .env file for production
-NEXT_PUBLIC_API_URL=http://your-api-url:3000/api
-NODE_ENV=production
-EOF
+              echo "# Auto-generated .env file for production" > .env
+              echo "NEXT_PUBLIC_API_URL=http://your-api-url:3000/api" >> .env
+              echo "NODE_ENV=production" >> .env
               echo "Default .env file created"
             fi
 
