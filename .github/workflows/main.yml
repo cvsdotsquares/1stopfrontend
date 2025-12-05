@@ -17,29 +17,35 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SEVER_PASSWORD }}
           script: |
+            set -e
             echo "Navigating to repo folder..."
             cd /var/www/html/1stop/1stopfrontend || exit 1
 
-            echo "Pulling latest code from main branch..."
+            echo "Pulling latest code from dev branch..."
             git reset --hard
             git clean -fd
             git pull origin dev
             
             echo "Generating .env file from env.yml..."
-            # Install yq if not installed
-            if ! command -v yq &> /dev/null
-            then
-              echo "Installing yq..."
-              sudo apt-get update && sudo apt-get install -y yq
+            if [ -f env.yml ]; then
+              if ! command -v yq &> /dev/null; then
+                echo "Installing yq..."
+                sudo apt-get update && sudo apt-get install -y yq
+              fi
+              echo "# Auto-generated .env file from env.yml" > .env
+              yq eval '. | to_entries | .[] | "\(.key)=\(.value)"' env.yml >> .env
+              echo ".env file generated successfully"
+            else
+              echo "Warning: env.yml not found, skipping .env generation"
             fi
-            # Convert env.yml to .env
-            echo "# Auto-generated .env file" > .env
-            yq eval '. | to_entries | .[] | "\(.key)=\(.value)"' env.yml >> .env
 
             echo "Installing dependencies..."
-            npm install
+            npm ci
 
-            echo "Building Next.js project..."
+            echo "Building Next.js project with Webpack..."
             npx next build --webpack
 
-            echo "Deployment finished!"
+            echo "Restarting application with PM2..."
+            pm2 restart 1stop-frontend || pm2 start npm --name "1stop-frontend" -- start
+
+            echo "Deployment finished successfully!"
