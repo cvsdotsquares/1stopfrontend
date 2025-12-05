@@ -40,6 +40,6 @@ jobs:
             npm install
 
             echo "Building Next.js project..."
-            npm run build
+            npx next build --webpack
 
             echo "Deployment finished!"
