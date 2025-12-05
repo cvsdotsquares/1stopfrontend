@@ -38,7 +38,7 @@ jobs:
             else
               echo "env.yml not found, creating default .env file..."
               echo "# Auto-generated .env file for production" > .env
-              echo "NEXT_PUBLIC_API_URL=http://your-api-url:3000/api" >> .env
+              echo "NEXT_PUBLIC_API_URL=http://${{ secrets.SERVER_IP }}:5000/api" >> .env
               echo "NODE_ENV=production" >> .env
               echo "Default .env file created"
             fi
@@ -57,5 +57,21 @@ jobs:
 
             echo "Restarting application with PM2..."
             pm2 restart 1stopfrontend || pm2 start npm --name "1stopfrontend" -- start
+
+            echo "Waiting for application to start..."
+            sleep 10
+
+            echo "Checking application health..."
+            if curl -f http://${{ secrets.SERVER_IP }}:3001 > /dev/null 2>&1; then
+              echo "✅ Application is responding on port 3001"
+              echo "🚀 Deployment successful!"
+            else
+              echo "❌ Application health check failed"
+              echo "📋 PM2 status:"
+              pm2 list
+              echo "📋 Recent logs:"
+              pm2 logs 1stopfrontend --lines 10
+              exit 1
+            fi
 
             echo "Deployment finished successfully!"
