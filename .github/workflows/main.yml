@@ -46,6 +46,6 @@ jobs:
             npx next build --webpack
 
             echo "Restarting application with PM2..."
-            pm2 restart 1stop-frontend || pm2 start npm --name "1stop-frontend" -- start
+            pm2 restart 1stopfrontend || pm2 start npm --name "1stopfrontend" -- start
 
             echo "Deployment finished successfully!"
