@@ -38,7 +38,7 @@ jobs:
             else
               echo "env.yml not found, creating default .env file..."
               echo "# Auto-generated .env file for production" > .env
-              echo "NEXT_PUBLIC_API_URL=http://${{ secrets.SERVER_IP }}:5000/api" >> .env
+              echo "NEXT_PUBLIC_API_URL=http://${{ secrets.SERVER_IP }}:3000/api" >> .env
               echo "NODE_ENV=production" >> .env
               echo "Default .env file created"
             fi
