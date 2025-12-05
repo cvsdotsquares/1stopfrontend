@@ -22,11 +22,9 @@ export default function LoginPage() {
   const loginMutation = useMutation({
     mutationFn: () => authApi.login(email, password),
     onSuccess: (data) => {
-      if (data.success) {
-        login(data.data.token, data.data.user);
-        toast.success('Login successful!');
-        router.push('/dashboard');
-      }
+      login(data.token, data.user);
+      toast.success('Login successful!');
+      router.push('/dashboard');
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Login failed');

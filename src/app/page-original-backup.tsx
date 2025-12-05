@@ -1,14 +1,14 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { cmsApi } from '@/services/api';
+import { cmsApi, coursesApi } from '@/services/api';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import TestimonialsCarousel from '@/components/testimonials';
 import Link from 'next/link';
 import { MapPin, Clock, Users, Star } from 'lucide-react';
-import { HomepageApiResponse } from '@/types';
+import { HomepageApiResponse, Course } from '@/types';
 
 export default function Home() {
   // Fetch homepage content from backend using slug "home"
@@ -19,8 +19,17 @@ export default function Home() {
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
+  // Fetch featured courses
+  const { data: coursesData } = useQuery({
+    queryKey: ['courses', 'featured'],
+    queryFn: () => coursesApi.getFeaturedCourses(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+
   // Extract page data
   const pageContent = pageData?.data;
+  const featuredCourses = coursesData;
 
   // Update document title and meta when page data loads
   useEffect(() => {
@@ -144,14 +153,14 @@ export default function Home() {
         <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-white py-6">
           <div className="container mx-auto px-4 text-center">
             <h1 className="text-3xl md:text-4xl font-bold">
-              {homepageData?.homepage?.page_title || (
+              {pageContent?.page_title || (
                 <>
                   <span className="text-red-500">CBT Test</span> Training In London & All Other <span className="text-red-500">Motorbike</span> Training In London
                 </>
               )}
             </h1>
-            {homepageData?.homepage?.page_content && (
-              <p className="text-xl text-gray-300 mt-2" dangerouslySetInnerHTML={{ __html: homepageData.homepage.page_content }}></p>
+            {pageContent?.page_content && (
+              <p className="text-xl text-gray-300 mt-2" dangerouslySetInnerHTML={{ __html: pageContent.page_content }}></p>
             )}
           </div>
         </div>
@@ -210,19 +219,19 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
               <div>
-                <div className="text-3xl font-bold text-blue-600 mb-2">{stats.studentsTrained.toLocaleString()}+</div>
+                <div className="text-3xl font-bold text-blue-600 mb-2">5000+</div>
                 <div className="text-sm text-gray-600">Students Trained</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-green-600 mb-2">{stats.passRate}%</div>
+                <div className="text-3xl font-bold text-green-600 mb-2">95%</div>
                 <div className="text-sm text-gray-600">Pass Rate</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-orange-600 mb-2">{stats.experienceYears}+</div>
+                <div className="text-3xl font-bold text-orange-600 mb-2">15+</div>
                 <div className="text-sm text-gray-600">Years Experience</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-purple-600 mb-2">{stats.instructors}+</div>
+                <div className="text-3xl font-bold text-purple-600 mb-2">50+</div>
                 <div className="text-sm text-gray-600">Instructors</div>
               </div>
             </div>
@@ -267,7 +276,7 @@ export default function Home() {
                 duration: '2 days',
                 features: ['Off-road maneuvers', 'Test preparation', 'Practice sessions']
               }
-            ]).map((course: Course, index: number) => (
+            ] as Course[]).map((course: Course, index: number) => (
               <Card key={course.id} className="group hover:shadow-2xl transition-all duration-300 border-0 shadow-lg hover:transform hover:scale-105 bg-white">
                 {/* Course Badge */}
                 <div className="absolute top-4 left-4 z-10">

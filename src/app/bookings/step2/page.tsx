@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -140,7 +140,7 @@ const timeSlots: TimeSlot[] = [
   { time: '2:00 PM', available: true, instructorId: 3 }
 ];
 
-export default function BookingStep2() {
+function BookingStep2Content() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
@@ -456,5 +456,20 @@ export default function BookingStep2() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function BookingStep2() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading booking details...</p>
+        </div>
+      </div>
+    }>
+      <BookingStep2Content />
+    </Suspense>
   );
 }
