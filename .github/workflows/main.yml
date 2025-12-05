@@ -55,11 +55,18 @@ jobs:
             echo "Building Next.js project with explicit Turbopack..."
             npm run build -- --turbopack
 
-            echo "Restarting application with PM2..."
-            pm2 restart 1stopfrontend || pm2 start npm --name "1stopfrontend" -- start
+            echo "Stopping any existing processes on port 3001..."
+            sudo fuser -k 3001/tcp || true
+
+            echo "Stopping existing PM2 process..."
+            pm2 stop 1stopfrontend || true
+            pm2 delete 1stopfrontend || true
+
+            echo "Starting application with PM2..."
+            pm2 start npm --name "1stopfrontend" -- start
 
             echo "Waiting for application to start..."
-            sleep 10
+            sleep 15
 
             echo "Checking application health..."
             if curl -f http://${{ secrets.SERVER_IP }}:3001 > /dev/null 2>&1; then
