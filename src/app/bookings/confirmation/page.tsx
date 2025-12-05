@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -39,7 +39,7 @@ const courses: Record<string, { name: string; price: number; duration: string }>
   'enhanced-rider': { name: 'Enhanced Rider Course', price: 149, duration: '1 day' }
 };
 
-export default function BookingConfirmation() {
+function BookingConfirmationContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [bookingData, setBookingData] = useState<ConfirmedBooking | null>(null);
@@ -388,5 +388,20 @@ export default function BookingConfirmation() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function BookingConfirmation() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading confirmation...</p>
+        </div>
+      </div>
+    }>
+      <BookingConfirmationContent />
+    </Suspense>
   );
 }
