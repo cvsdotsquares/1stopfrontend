@@ -17,6 +17,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
+            set -e
             echo "Navigating to repo folder..."
             cd /var/www/html/1stop/1stopfrontend || exit 1
 
@@ -25,13 +26,24 @@ jobs:
             git clean -fd
             git pull origin dev
 
-            echo "Creating .env file..."
-            # Create a basic .env file with production settings
-            cat > .env << 'EOF'
-            # Auto-generated .env file for production
-            NEXT_PUBLIC_API_URL=http://your-api-url:3000/api
-            NODE_ENV=production
-            EOF
+            echo "Generating .env file..."
+            if [ -f env.yml ]; then
+              if ! command -v yq &> /dev/null; then
+                echo "Installing yq..."
+                sudo apt-get update && sudo apt-get install -y yq
+              fi
+              echo "# Auto-generated .env file from env.yml" > .env
+              yq eval '. | to_entries | .[] | "\(.key)=\(.value)"' env.yml >> .env
+              echo ".env file generated successfully from env.yml"
+            else
+              echo "env.yml not found, creating default .env file..."
+              cat > .env << 'EOF'
+# Auto-generated .env file for production
+NEXT_PUBLIC_API_URL=http://your-api-url:3000/api
+NODE_ENV=production
+EOF
+              echo "Default .env file created"
+            fi
 
             echo "Installing dependencies..."
             npm ci --production=false
@@ -39,19 +51,7 @@ jobs:
             echo "Building Next.js project..."
             npm run build
 
-            echo "Restarting application..."
-            # Kill any existing process on port 3001
-            sudo fuser -k 3001/tcp || true
+            echo "Restarting application with PM2..."
+            pm2 restart 1stop-frontend || pm2 start npm --name "1stop-frontend" -- start
 
-            # Start the application in background
-            nohup npm start > /var/log/1stopfrontend.log 2>&1 &
-
-            # Wait a moment and check if the process started
-            sleep 5
-            if pgrep -f "node.*next.*start" > /dev/null; then
-              echo "Application started successfully!"
-            else
-              echo "Warning: Application may not have started properly. Check logs at /var/log/1stopfrontend.log"
-            fi
-
-            echo "Deployment finished!"
+            echo "Deployment finished successfully!"
