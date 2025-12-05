@@ -3,7 +3,7 @@ name: Build and Deploy Next.js
 on:
   push:
     branches:
-      - main   # Change to dev if needed
+      - dev   # Change to dev if needed
 
 jobs:
   build-and-deploy:
@@ -40,7 +40,7 @@ jobs:
             cd /var/www/html/1stop/1stopfrontend
             git reset --hard
             git clean -fd
-            git pull origin main
+            git pull origin dev
             npm ci
             npx next build --webpack
             pm2 restart 1stop-frontend || pm2 start npm --name "1stop-frontend" -- start
