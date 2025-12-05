@@ -43,11 +43,17 @@ jobs:
               echo "Default .env file created"
             fi
 
+            echo "Updating baseline-browser-mapping..."
+            npm install baseline-browser-mapping@latest --save-dev || true
+
             echo "Installing dependencies..."
             npm ci --production=false
 
-            echo "Building Next.js project..."
-            npm run build
+            echo "Cleaning up conflicting lockfiles..."
+            [ -f /var/www/package-lock.json ] && sudo rm -f /var/www/package-lock.json || true
+
+            echo "Building Next.js project with explicit Turbopack..."
+            npm run build -- --turbopack
 
             echo "Restarting application with PM2..."
             pm2 restart 1stopfrontend || pm2 start npm --name "1stopfrontend" -- start

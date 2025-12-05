@@ -33,7 +33,12 @@ const nextConfig = {
       },
     ],
   },
-  // Webpack configuration for better performance
+  // Turbopack configuration for Next.js 16
+  turbopack: {
+    // Empty config to silence the warning and use default Turbopack settings
+  },
+  
+  // Webpack configuration for better performance (fallback when not using Turbopack)
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
     // Optimize memory usage
     if (dev) {
