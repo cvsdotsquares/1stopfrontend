@@ -17,7 +17,6 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SEVER_PASSWORD }}
           script: |
-            set -e
             echo "Navigating to repo folder..."
             cd /var/www/html/1stop/1stopfrontend || exit 1
 
@@ -29,34 +28,27 @@ jobs:
             echo "Generating .env file..."
             if [ -f env.yml ]; then
               if ! command -v yq &> /dev/null; then
-                echo "Installing yq..."
-                sudo apt-get update && sudo apt-get install -y yq
+                echo "yq not found. Please install yq on the server once."
+                exit 1
               fi
               echo "# Auto-generated .env file from env.yml" > .env
               yq eval '. | to_entries | .[] | "\(.key)=\(.value)"' env.yml >> .env
-              echo ".env file generated successfully from env.yml"
             else
-              echo "env.yml not found, creating default .env file..."
               echo "# Auto-generated .env file for production" > .env
               echo "NEXT_PUBLIC_API_URL=https://1stopbackend.24livehost.com/api" >> .env
               echo "NODE_ENV=production" >> .env
-              echo "Default .env file created"
             fi
 
-            echo "Updating baseline-browser-mapping..."
-            npm install baseline-browser-mapping@latest --save-dev || true
-
             echo "Installing dependencies..."
-            npm ci --production=false
+            npm install
 
-            echo "Cleaning up conflicting lockfiles..."
-            [ -f /var/www/package-lock.json ] && sudo rm -f /var/www/package-lock.json || true
+            echo "Building Next.js project..."
+            npm run build
 
-            echo "Building Next.js project with explicit Turbopack..."
-            npm run build -- --turbopack
-
-            echo "Stopping any existing processes on port 3001..."
-            sudo fuser -k 3001/tcp || true
+            echo "Ensuring PM2 is installed..."
+            if ! command -v pm2 &> /dev/null; then
+              npm install -g pm2
+            fi
 
             echo "Stopping existing PM2 process..."
             pm2 stop 1stopfrontend || true
@@ -66,19 +58,16 @@ jobs:
             pm2 start npm --name "1stopfrontend" -- start
 
             echo "Waiting for application to start..."
-            sleep 15
+            sleep 20
 
             echo "Checking application health..."
-            if curl -f http://${{ secrets.SERVER_IP }}:3001 > /dev/null 2>&1; then
-              echo "✅ Application is responding on port 3001"
-              echo "🚀 Deployment successful!"
+            if curl -f http://127.0.0.1:3001 > /dev/null 2>&1; then
+              echo "✅ Application is responding"
             else
               echo "❌ Application health check failed"
-              echo "📋 PM2 status:"
               pm2 list
-              echo "📋 Recent logs:"
-              pm2 logs 1stopfrontend --lines 10
+              pm2 logs 1stopfrontend --lines 20
               exit 1
             fi
 
-            echo "Deployment finished successfully!"
+            echo "🚀 Deployment finished successfully!"
