@@ -45,17 +45,12 @@ jobs:
             echo "Building Next.js project..."
             npm run build
 
-            echo "Ensuring PM2 is installed..."
-            if ! command -v pm2 &> /dev/null; then
-              npm install -g pm2
-            fi
-
             echo "Stopping existing PM2 process..."
-            pm2 stop 1stopfrontend || true
-            pm2 delete 1stopfrontend || true
+            npx pm2 stop 1stopfrontend || true
+            npx pm2 delete 1stopfrontend || true
 
             echo "Starting application with PM2..."
-            pm2 start npm --name "1stopfrontend" -- start
+            npx pm2 start npm --name "1stopfrontend" -- start
 
             echo "Waiting for application to start..."
             sleep 20
@@ -65,8 +60,8 @@ jobs:
               echo "✅ Application is responding"
             else
               echo "❌ Application health check failed"
-              pm2 list
-              pm2 logs 1stopfrontend --lines 20
+              npx pm2 list
+              npx pm2 logs 1stopfrontend --lines 20
               exit 1
             fi
 
