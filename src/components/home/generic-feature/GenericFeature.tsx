@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 interface ContentItem {
-  type: "text" | "heading" | "list" | "callout";
+  type: string;
   text?: string;
   items?: string[];
 }
@@ -20,7 +20,7 @@ interface Feature {
   };
   image: string;
   bgColor: string;
-  imagePosition?: "left" | "right";
+  imagePosition?: string;
 }
 
 interface GenericFeatureProps {

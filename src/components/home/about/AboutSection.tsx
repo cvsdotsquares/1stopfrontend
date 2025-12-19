@@ -29,7 +29,7 @@ export default function AboutSection({ data }: { data: AboutData }) {
             {data.paragraphs.map((paragraph, index) => (
               <p key={index} className="leading-relaxed">
                 {paragraph.text}
-                {paragraph.links?.map((link, linkIndex) => (
+                {paragraph.links && paragraph.links.map((link, linkIndex) => (
                   <span key={linkIndex}>
                     <Link
                       href={link.url}
@@ -37,7 +37,7 @@ export default function AboutSection({ data }: { data: AboutData }) {
                     >
                       {link.text}
                     </Link>
-                    {linkIndex < paragraph.links.length - 1 && " and "}
+                    {linkIndex < paragraph.links!.length - 1 && " and "}
                   </span>
                 ))}
                 {paragraph.afterText}
