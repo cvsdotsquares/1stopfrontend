@@ -8,7 +8,7 @@ interface ContentItem {
 }
 
 interface Feature {
-  id: number;
+  id: string;
   title?: string;
   titleHighlight?: string;
   subtitle?: string;
