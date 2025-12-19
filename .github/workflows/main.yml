@@ -45,15 +45,24 @@ jobs:
             echo "Building Next.js project..."
             npm run build
 
-            echo "Stopping existing PM2 process..."
+            echo "Stopping existing PM2 process (if any)..."
             npx pm2 stop 1stopfrontend || true
             npx pm2 delete 1stopfrontend || true
+
+            echo "Checking if port 3001 is still in use..."
+            if lsof -i :3001 > /dev/null 2>&1; then
+              echo "⚠️ Port 3001 is in use, killing process..."
+              fuser -k 3001/tcp || true
+              sleep 3
+            else
+              echo "✅ Port 3001 is free"
+            fi
 
             echo "Starting application with PM2..."
             npx pm2 start npm --name "1stopfrontend" -- start
 
             echo "Waiting for application to start..."
-            sleep 20
+            sleep 30
 
             echo "Checking application health..."
             if curl -f http://127.0.0.1:3001 > /dev/null 2>&1; then
