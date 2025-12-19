@@ -31,7 +31,7 @@ jobs:
             echo "📝 Generating .env file..."
             if [ -f env.yml ]; then
               if ! command -v yq &> /dev/null; then
-                echo "❌ yq is required but not installed. Install it once on the server."
+                echo "❌ yq is required but not installed."
                 exit 1
               fi
               echo "# Auto-generated from env.yml" > .env
@@ -48,25 +48,17 @@ jobs:
             echo "🏗️ Building Next.js app..."
             npm run build
 
-            echo "🚀 Starting frontend with PM2 (clean, single instance)..."
-            npx pm2 start "npx next start -H 0.0.0.0 -p 3001" \
-              --name "1stopfrontend" \
-              --time \
-              --max-restarts 3 \
-              --restart-delay 5000
+            echo "🛑 Restarting frontend with PM2 (npm start)..."
+            npx pm2 stop 1stopfrontend || true
+            npx pm2 delete 1stopfrontend || true
 
+            npx pm2 start npm --name "1stopfrontend" -- start
             npx pm2 save
 
-            echo "⏳ Waiting for port 3001 to become available..."
-            for i in {1..15}; do
-              if nc -z 127.0.0.1 3001; then
-                echo "✅ Frontend is running on port 3001"
-                exit 0
-              fi
-              echo "⏳ Still starting... ($i/15)"
-              sleep 4
-            done
+            echo "✅ PM2 process list:" && npx pm2 list
 
-            echo "❌ Frontend failed to start"
+            echo "⏳ Waiting for application to start..."
+            sleep 15
+
+            echo "✅ PM2 status:"
             npx pm2 list
-            exit 1
