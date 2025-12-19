@@ -45,33 +45,28 @@ jobs:
             echo "Building Next.js project..."
             npm run build
 
-            echo "Stopping existing PM2 process (if any)..."
-            npx pm2 stop 1stopfrontend || true
-            npx pm2 delete 1stopfrontend || true
+            echo "Starting or reloading application with PM2..."
 
-            echo "Checking if port 3001 is still in use..."
-            if lsof -i :3001 > /dev/null 2>&1; then
-              echo "⚠️ Port 3001 is in use, killing process..."
-              fuser -k 3001/tcp || true
-              sleep 3
-            else
-              echo "✅ Port 3001 is free"
-            fi
+            npx pm2 start npm \
+              --name "1stopfrontend" \
+              -- start \
+              --update-env \
+              || npx pm2 reload 1stopfrontend --update-env
 
-            echo "Starting application with PM2..."
-            npx pm2 start npm --name "1stopfrontend" -- start
+            npx pm2 save
 
-            echo "Waiting for application to start..."
-            sleep 30
+            echo "Waiting for application to become healthy..."
+            for i in {1..12}; do
+              if curl -f http://127.0.0.1:3001 > /dev/null 2>&1; then
+                echo "✅ Application is responding"
+                exit 0
+              fi
+              echo "⏳ Still starting... retry $i"
+              sleep 5
+            done
 
-            echo "Checking application health..."
-            if curl -f http://127.0.0.1:3001 > /dev/null 2>&1; then
-              echo "✅ Application is responding"
-            else
-              echo "❌ Application health check failed"
-              npx pm2 list
-              npx pm2 logs 1stopfrontend --lines 20
-              exit 1
-            fi
+            echo "❌ Application failed to become healthy"
+            npx pm2 list
+            exit 1
 
             echo "🚀 Deployment finished successfully!"
