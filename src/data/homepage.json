@@ -1,0 +1,506 @@
+{
+  "about": {
+    "title": "Direct Access, A2 Restricted Licence, Enhanced Rider Scheme & Driving Lessons In East London & North London",
+    "subtitle": "CBT Training in Tottenham, Barnet, Beckton & Ilford",
+    "paragraphs": [
+      {
+        "text": "We provide motorcycle training in London and Essex, with a number of motorcycle training centres across North London and East London for your convenience. Our motorcycle training courses in London include CBT Tests/",
+        "links": [
+          {
+            "text": "CBT Training (Compulsory Basic Training)",
+            "url": "/cbt-training"
+          },
+          {
+            "text": "A2 Restricted Licence",
+            "url": "/a2-licence"
+          },
+          {
+            "text": "DAS Training (Direct Access Scheme)",
+            "url": "/das-training"
+          }
+        ],
+        "afterText": "."
+      },
+      {
+        "text": "As well as motorcycle tuition, 1 Stop Instruction are also in the unique position to be able to offer our pupils with driving instruction, LGV training & PCV Training in London, enabling you to get the best possible training, whether you want to know how to get your motorcycle licence, drive an LGV, become a bus driver or just simply pass your driving test and become a car driver. Dedicated to providing you the best quality and cheapest training in London, 1 Stop Instruction are confident that our excellent DVSA Approved instructors can help teach you the important skills required to get your full licence and pass your test, whether that be your full motorcycle licence, full driving licence, HGV Licence (Class 1 or Class 2), PCV licence, Minibus Licence or just to be able to tow a trailer."
+      },
+      {
+        "text": "We are also further proud to be the only London motorbike training school offering you the ability to book any motorcycle course online, including the CBT test and full motorbike licence courses. Book your CBT Online, check our availability online, and finally, make a secure payment, all with our ",
+        "links": [
+          {
+            "text": "online booking facility",
+            "url": "/bookings"
+          }
+        ],
+        "afterText": "."
+      }
+    ],
+    "images": [
+      {
+        "src": "/home/about-bike-img-1.png",
+        "alt": "Motorcycle training session with instructor"
+      },
+      {
+        "src": "/home/about-bike-img-2.png",
+        "alt": "Student practicing on motorcycle course"
+      }
+    ]
+  },
+  "services": {
+    "heading": "Our Services",
+    "title": "We offer a",
+    "titleHighlight": "wide range of services",
+    "services": [
+      {
+        "id": 1,
+        "title": "Motorcycle Training",
+        "description": "Scooter/moped or motorbike",
+        "image": "/home/rider.png",
+        "link": "/motorcycle-training"
+      },
+      {
+        "id": 2,
+        "title": "Driver Training",
+        "description": "DVSA Fleet approved Trainers",
+        "image": "/home/driving-lession.png",
+        "link": "/driver-training"
+      }
+    ]
+  },
+  "trainingSlider": {
+    "title": "Expert Training for",
+    "titleHighlight": "Every Rider",
+    "subtitle": "Professional motorcycle courses helping every rider gain confidence and control on the road.",
+    "slides": [
+      {
+        "id": 1,
+        "title": "CBT",
+        "image": "/home/slider-img-1.png",
+        "link": "/cbt-training"
+      },
+      {
+        "id": 2,
+        "title": "Driving Lessons",
+        "image": "/home/slider-img-2.png",
+        "link": "/driving-lessons"
+      },
+      {
+        "id": 3,
+        "title": "LGV Training",
+        "image": "/home/slider-img-3.png",
+        "link": "/lgv-training"
+      },
+      {
+        "id": 4,
+        "title": "PCV Training",
+        "image": "/home/slider-img-4.png",
+        "link": "/pcv-training"
+      }
+    ]
+  },
+  "whyUs": {
+    "title": "Why 1 Stop",
+    "titleHighlight": "Instruction?",
+    "description": "1 Stop Instruction are extremely proud and privileged to be able to class ourselves as true Roadcraft Professionals, by being one of the very few training schools with the recognised skills and qualifications to provide motorbike training, driving lessons, LGV & PCV training at the very highest standard. We are confident that we can use our extensive teaching skills as a unique advantage to ensure that you receive the best instruction, equipment and guidance throughout your training, to make sure that you are well and truly prepared for the final practical test.",
+    "subtitle": "As Roadcraft Professionals, we cover a range of",
+    "subtitleLink": {
+      "text": "training courses",
+      "url": "/courses"
+    },
+    "subtitleEnd": "to suit all abilities:",
+    "courses": [
+      {
+        "id": 1,
+        "title": "CBT",
+        "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been",
+        "icon": "🏍️"
+      },
+      {
+        "id": 2,
+        "title": "A2 Restricted Licence",
+        "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been",
+        "icon": "🆔"
+      },
+      {
+        "id": 3,
+        "title": "DAS (Direct Access Scheme)",
+        "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been",
+        "icon": "⏱️"
+      },
+      {
+        "id": 4,
+        "title": "ERS (Enhanced Rider Scheme)",
+        "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been",
+        "icon": "🏍️"
+      },
+      {
+        "id": 5,
+        "title": "1-2-1 Tuition",
+        "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been",
+        "icon": "👨🏫"
+      },
+      {
+        "id": 6,
+        "title": "LGV (Class 1 & Class 2)",
+        "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been",
+        "icon": "🚛"
+      },
+      {
+        "id": 7,
+        "title": "PCV (Bus & Minibus Training)",
+        "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been",
+        "icon": "🚌"
+      },
+      {
+        "id": 8,
+        "title": "Category B+E (Trailer training)",
+        "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been",
+        "icon": "🚚"
+      }
+    ],
+    "footerText": "As well as catering for those people looking to pass their test, we also cater for the more experienced motorbike riders, offering knee down school & wheelie school. These fantastic courses will not only improve your riding confidence, but are a great day out, and make a great motorbike gift idea.",
+    "bottomText": "We are extremely proud to offer what is probably the cheapest CBT in London, yet at the same time, providing the highest quality tuition, which is a very rare combination, but nonetheless backed up by our pupils",
+    "bottomLink": {
+      "text": "testimonials and video feedback sessions",
+      "url": "/testimonials"
+    }
+  },
+  "reviews": {
+    "title": "What Our",
+    "titleHighlight": "Students Say",
+    "subtitle": "Don't take our word for it - hear from our successful students",
+    "reviews": [
+      {
+        "id": 1,
+        "rating": 5,
+        "text": "Having never ridden a bike before, these guys have turned me into a fully fledged biker. Thank you so much!",
+        "author": "J Mitchell"
+      },
+      {
+        "id": 2,
+        "rating": 5,
+        "text": "The only place to get professional training!",
+        "author": "Tyrone J"
+      },
+      {
+        "id": 3,
+        "rating": 5,
+        "text": "Did my bike and LGV training here...superb!",
+        "author": "Alison Williams"
+      },
+      {
+        "id": 4,
+        "rating": 5,
+        "text": "Don't hesitate...let these guys educate.",
+        "author": "6west"
+      },
+      {
+        "id": 5,
+        "rating": 5,
+        "text": "Excellent instructors and great facilities. Highly recommended!",
+        "author": "Sarah Johnson"
+      },
+      {
+        "id": 6,
+        "rating": 5,
+        "text": "Professional service from start to finish. Passed first time!",
+        "author": "Mike Davis"
+      }
+    ]
+  },
+  "accreditations": {
+    "title": "Our Accreditations",
+    "logos": [
+      {
+        "id": 1,
+        "name": "Pizza Hut",
+        "image": "/home/pizza-hut-logo.png",
+        "alt": "Pizza Hut Partner"
+      },
+      {
+        "id": 2,
+        "name": "London 2012 Olympics",
+        "image": "/home/london-2012-logo.png",
+        "alt": "Selected Motorcycle Trainers for London 2012 Olympic Games"
+      },
+      {
+        "id": 3,
+        "name": "Enhanced Rider Scheme",
+        "image": "/home/enhanced-rider-scheme.png",
+        "alt": "Enhanced Rider Scheme"
+      },
+      {
+        "id": 4,
+        "name": "Motorcycle Instructor Vacancy",
+        "image": "/home/instructor-vacancy.png",
+        "alt": "Join The Team - Motorcycle Instructor Vacancy - Enquire Here"
+      },
+      {
+        "id": 5,
+        "name": "NHS",
+        "image": "/home/nhs-logo.png",
+        "alt": "NHS Partner"
+      },
+      {
+        "id": 6,
+        "name": "DVSA Approved",
+        "image": "/home/dvsa-approved.png",
+        "alt": "DVSA Approved Training Body"
+      }
+    ],
+    "cards": [
+      {
+        "id": 1,
+        "title": "Local Area's To Us",
+        "subtitle": "CBT Training and Motorcycle Courses across London",
+        "type": "locations",
+        "locations": [
+          "High Barnet CBT",
+          "Friern Barnet CBT",
+          "Finchley CBT",
+          "Southgate CBT",
+          "Arnos Grove CBT",
+          "Muswell Hill CBT",
+          "Hornsey CBT",
+          "Wood Green CBT",
+          "Highgate CBT"
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Gift Vouchers Available",
+        "subtitle": "Give the gift of two wheels — CBT Training and Motorcycle Course Gift Vouchers available now!",
+        "type": "gift",
+        "image": "/home/gift-bow.png"
+      }
+    ]
+  },
+  "faqs": {
+    "title": "FAQS",
+    "subtitle": "The world of driving can be a very confusing place. So, to help out, we have compiled a list of the most frequently asked questions for you to have a browse through.",
+    "faqs": [
+      {
+        "id": 1,
+        "question": "How do I get a CBT Licence?",
+        "answer": [
+          "You must be at least 16 year of age (to ride a 50cc moped) or 17 years or above to ride up to 125cc).",
+          "You must have either a UK Provisional, UK Full, or EU Driving Licence (with supporting D91 Form).",
+          "Be able to demonstrate basic balance and co-ordination (usually, but not always, this is means being able to ride a bicycle to a competent standard).",
+          "Make sure you have read, and understand the <a href='/highway-code' class='text-indigo-600 hover:underline'>Highway Code</a>, and UK road traffic procedure.",
+          "Choose a date and book a CBT course <a href='/book' class='text-indigo-600 hover:underline'>online</a>, or over the phone by calling our offices on <span class='text-red-600'>020 8597 7333</span> or <span class='text-red-600'>0800 848 8418</span>."
+        ]
+      },
+      {
+        "id": 2,
+        "question": "Can I fail my CBT Test?",
+        "answer": [
+          "Technically, you cannot 'fail' a CBT as it is not a test but a training course. However, if you do not demonstrate the required competency levels, you will not receive your CBT certificate on the day.",
+          "In such cases, additional training may be required before you can complete your CBT successfully."
+        ]
+      },
+      {
+        "id": 3,
+        "question": "I cannot speak English very well, can I still do a CBT?",
+        "answer": [
+          "Yes, you can still complete a CBT even if your English is limited. However, you must be able to understand basic safety instructions and road signs.",
+          "Our instructors are experienced in working with students who have varying levels of English proficiency."
+        ]
+      },
+      {
+        "id": 4,
+        "question": "What is the biggest bike I can ride with a CBT?",
+        "answer": [
+          "With a CBT certificate, you can ride motorcycles up to 125cc with a maximum power output of 11kW (14.6bhp).",
+          "You must display L-plates and cannot carry passengers or ride on motorways."
+        ]
+      },
+      {
+        "id": 5,
+        "question": "Do I get my CBT Certificate on the same day?",
+        "answer": [
+          "Yes, if you successfully complete all elements of the CBT course, you will receive your CBT certificate (DL196) on the same day.",
+          "The certificate is valid for 2 years from the date of issue."
+        ]
+      },
+      {
+        "id": 6,
+        "question": "Do I still need to do the whole CBT if I've done it before?",
+        "answer": [
+          "If your previous CBT certificate has expired (after 2 years), you will need to complete the full CBT course again.",
+          "There are no exemptions or shortened courses for expired CBT certificates."
+        ]
+      },
+      {
+        "id": 7,
+        "question": "Do I still need to do a CBT if I want to do the full motorcycle licence?",
+        "answer": [
+          "If you already have a valid CBT certificate, you do not need to repeat the CBT to take your full motorcycle licence tests.",
+          "However, if your CBT has expired, you will need to complete a new CBT before taking your motorcycle theory and practical tests."
+        ]
+      },
+      {
+        "id": 8,
+        "question": "I've lost my CBT. Can I get a replacement CBT Certificate?",
+        "answer": [
+          "Yes, you can obtain a replacement CBT certificate. Contact the training school where you completed your CBT.",
+          "There may be a small administrative fee for issuing a replacement certificate.",
+          "You will need to provide proof of identity and the approximate date you completed your CBT."
+        ]
+      }
+    ]
+  },
+  "hero": {
+    "backgroundImage": "/home/hero-motorbike.jpg",
+    "nextCourse": {
+      "label": "Our Next Available CBT Course Is",
+      "dateText": "TOMORROW",
+      "ctaText": "Book Now!",
+      "ctaLink": "/book"
+    },
+    "search": {
+      "title": "Find your training",
+      "placeholder": "Enter a postcode"
+    },
+    "promotion": {
+      "title": "Summer Special",
+      "subtitle": "Get Your CBT For Only £189",
+      "promoCode": "SUMMER10",
+      "primaryCta": {
+        "text": "Book Online Now",
+        "link": "/book"
+      },
+      "secondaryCta": {
+        "text": "Find a CBT Training",
+        "link": "/training-locations"
+      }
+    },
+    "footerText": "CBT Test Training In London & All Other Motorbike Training In London"
+  },
+  "ctas": [
+    {
+      "id": "banner",
+      "title": "Book Your CBT OR Full Licence Course ONLINE NOW!!!",
+      "backgroundImage": "/home/cta-banner-bg.png",
+      "textColor": "text-white",
+      "containerized": false,
+      "cta": {
+        "text": "Book Your Training",
+        "link": "/bookings"
+      }
+    },
+    {
+      "id": "course",
+      "title": "Book Your DAS or A2 Course Online Now",
+      "backgroundColor": "bg-gray-50",
+      "containerized": true,
+      "cta": {
+        "text": "Book Now",
+        "link": "/bookings"
+      }
+    },
+    {
+      "id": "availability",
+      "title": "You Can Check Our",
+      "titleHighlight": "Availability",
+      "titleEnd": "And Book Online",
+      "backgroundColor": "bg-pink-100",
+      "textColor": "text-gray-900",
+      "containerized": false,
+      "cta": {
+        "text": "Click Here",
+        "link": "/availability"
+      }
+    }
+  ],
+  "features": [
+    {
+      "id": "cbt-london",
+      "badge": "NOW OPEN IN NORTH LONDON",
+      "title": "CBT Tests Available",
+      "titleHighlight": "Across London",
+      "subtitle": "CBT TRAINING IN TOTTENHAM NOW AVAILABLE",
+      "content": [
+        {
+          "type": "text",
+          "text": "We're excited to announce that our motorbike training is now available in <strong>Barnet and Tottenham, North London</strong>."
+        },
+        {
+          "type": "text",
+          "text": "We are providing <strong>Cheap CBT Test in Barnet, and Cheap CBT Test in Tottenham</strong> at a CBT training venue close to all North London transport links."
+        },
+        {
+          "type": "text",
+          "text": "Our North London Motorbike training and CBT Training centre in Tottenham will match the prices of our existing CBT training centre in East London, which means:"
+        },
+        {
+          "type": "heading",
+          "text": "Our North London CBT Pricing:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Weekday CBT from only <strong>£99*</strong>",
+            "Weekend CBT from only <strong>£199</strong>"
+          ]
+        },
+        {
+          "type": "text",
+          "text": "<em>*Weekday offer on first Wednesday of the month. Currently suspended.</em>"
+        }
+      ],
+      "image": "/home/feature-cbt-london.png",
+      "bgColor": "white",
+      "imagePosition": "right"
+    },
+    {
+      "id": "no-hidden",
+      "title": "Cheap CBT Test in London with",
+      "titleHighlight": "NO HIDDEN EXTRA'S",
+      "content": [
+        {
+          "type": "text",
+          "text": "All prices for our North London Motorbike Training include use of our bike, helmet hire & gloves. No hidden extra's.... the cheap price you see for our North London CBT Training is the price you pay. The cheap CBT Training in Tottenham (North London) & and our cheap CBT training in East London, probably makes us the best value and cheapest CBT training in London."
+        }
+      ],
+      "image": "/home/feature-no-hidden.png",
+      "bgColor": "gray",
+      "imagePosition": "left"
+    },
+    {
+      "id": "training-site",
+      "title": "Our Exceptional",
+      "titleHighlight": "Training Site",
+      "subtitle": "1 Stop Instruction's Exceptional High Pass Rate Continues Thanks To Our Training Site",
+      "content": [
+        {
+          "type": "heading",
+          "text": "Exact Module 1 Replication"
+        },
+        {
+          "type": "text",
+          "text": "We are in the unique position to able to offer our pupils the opportunity to train for the <strong>Module 1 circuit</strong> at our extensive training site which is large enough to allow us to replicate the exact circuit that you will face on your test!"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Full-size Module 1 test circuit",
+            "Professional training equipment",
+            "Realistic test conditions",
+            "Expert guidance from DVSA instructors"
+          ]
+        },
+        {
+          "type": "callout",
+          "text": "Please make sure you view our fantastic training site and see benefits 1 Stop Instruction can offer its pupils to help ensure that all important first time pass, which other schools simply can't!"
+        }
+      ],
+      "cta": {
+        "text": "Find Out More",
+        "link": "/training-site"
+      },
+      "image": "/home/bike-in-circle.png",
+      "bgColor": "white",
+      "imagePosition": "left"
+    }
+  ]
+}
