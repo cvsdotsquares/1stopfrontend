@@ -16,57 +16,57 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SEVER_PASSWORD }}
+          command_timeout: 20m
           script: |
-            echo "Navigating to repo folder..."
-            cd /var/www/html/1stop/1stopfrontend || exit 1
+            set -e
 
-            echo "Pulling latest code from dev branch..."
+            echo "📁 Navigating to project directory..."
+            cd /var/www/html/1stop/1stopfrontend
+
+            echo "🔄 Resetting and pulling latest code..."
             git reset --hard
             git clean -fd
             git pull origin dev
 
-            echo "Generating .env file..."
+            echo "📝 Generating .env file..."
             if [ -f env.yml ]; then
               if ! command -v yq &> /dev/null; then
-                echo "yq not found. Please install yq on the server once."
+                echo "❌ yq is required but not installed. Install it once on the server."
                 exit 1
               fi
-              echo "# Auto-generated .env file from env.yml" > .env
+              echo "# Auto-generated from env.yml" > .env
               yq eval '. | to_entries | .[] | "\(.key)=\(.value)"' env.yml >> .env
             else
-              echo "# Auto-generated .env file for production" > .env
+              echo "# Fallback production env" > .env
               echo "NEXT_PUBLIC_API_URL=https://1stopbackend.24livehost.com/api" >> .env
               echo "NODE_ENV=production" >> .env
             fi
 
-            echo "Installing dependencies..."
+            echo "📦 Installing dependencies..."
             npm install
 
-            echo "Building Next.js project..."
+            echo "🏗️ Building Next.js app..."
             npm run build
 
-            echo "Starting or reloading application with PM2..."
-
-            npx pm2 start npm \
+            echo "🚀 Starting frontend with PM2 (clean, single instance)..."
+            npx pm2 start "npx next start -H 0.0.0.0 -p 3001" \
               --name "1stopfrontend" \
-              -- start \
-              --update-env \
-              || npx pm2 reload 1stopfrontend --update-env
+              --time \
+              --max-restarts 3 \
+              --restart-delay 5000
 
             npx pm2 save
 
-            echo "Waiting for application to become healthy..."
-            for i in {1..12}; do
-              if curl -f http://127.0.0.1:3001 > /dev/null 2>&1; then
-                echo "✅ Application is responding"
+            echo "⏳ Waiting for port 3001 to become available..."
+            for i in {1..15}; do
+              if nc -z 127.0.0.1 3001; then
+                echo "✅ Frontend is running on port 3001"
                 exit 0
               fi
-              echo "⏳ Still starting... retry $i"
-              sleep 5
+              echo "⏳ Still starting... ($i/15)"
+              sleep 4
             done
 
-            echo "❌ Application failed to become healthy"
+            echo "❌ Frontend failed to start"
             npx pm2 list
             exit 1
-
-            echo "🚀 Deployment finished successfully!"
