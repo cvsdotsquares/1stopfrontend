@@ -10,8 +10,8 @@ interface AccreditationsData {
   }>;
   cards: Array<{
     id: number;
-    title: string;
-    subtitle: string;
+    title?: string;
+    subtitle?: string;
     type: string;
     locations?: string[];
     image?: string;
@@ -53,10 +53,10 @@ export default function AccreditationsSection({ data }: { data: AccreditationsDa
               className="rounded-lg bg-gray-100 p-8 relative"
             >
               <h3 className="mb-2 text-2xl font-bold text-gray-900">
-                {card.title}
+                {card.title || ""}
               </h3>
               <p className="mb-6 text-gray-600">
-                {card.subtitle}
+                {card.subtitle || ""}
               </p>
 
               {card.type === "locations" && card.locations && (
