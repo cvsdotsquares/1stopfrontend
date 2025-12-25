@@ -1,5 +1,13 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+
 interface HeroData {
-  backgroundImage: string;
+  backgroundImages: {
+    src: string;
+    alt: string;
+    title: string;
+  }[];
   nextCourse: {
     label: string;
     dateText: string;
@@ -21,11 +29,54 @@ interface HeroData {
 }
 
 export default function Hero({ data }: { data: HeroData }) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const hasMultipleImages = data.backgroundImages && data.backgroundImages.length > 1;
+
+  // Auto-slide for multiple images
+  useEffect(() => {
+    if (!hasMultipleImages) return;
+    
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => 
+        prev === data.backgroundImages.length - 1 ? 0 : prev + 1
+      );
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [hasMultipleImages, data.backgroundImages?.length]);
+
+  // Get current background image
+  const getCurrentBackground = () => {
+    if (!data.backgroundImages || data.backgroundImages.length === 0) {
+      return '/home/hero-motorbike.jpg';
+    }
+    const currentImage = data.backgroundImages[currentImageIndex];
+    return `${process.env.NEXT_PUBLIC_FILES_URL || ''}${currentImage.src}`;
+  };
+
   return (
-    <section
-      className="relative h-[740px] w-full bg-cover bg-center"
-      style={{ backgroundImage: `url(${data.backgroundImage})` }}
-    >
+    <section className="relative h-[740px] w-full overflow-hidden">
+      {/* Background Images */}
+      {hasMultipleImages ? (
+        <div className="absolute inset-0">
+          {data.backgroundImages.map((image, index) => (
+            <div
+              key={index}
+              className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ${
+                index === currentImageIndex ? 'opacity-100' : 'opacity-0'
+              }`}
+              style={{
+                backgroundImage: `url(${process.env.NEXT_PUBLIC_FILES_URL || ''}${image.src})`
+              }}
+            />
+          ))}
+        </div>
+      ) : (
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${getCurrentBackground()})` }}
+        />
+      )}
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-black/40" />
 

@@ -6,7 +6,6 @@ import Link from "next/link";
 
 interface TrainingSliderData {
   title: string;
-  titleHighlight: string;
   subtitle: string;
   slides: Array<{
     id: number;
@@ -58,11 +57,11 @@ export default function TrainingSlider({ data }: { data: TrainingSliderData }) {
     <section className="bg-white py-16">
       {/* Heading */}
       <div className="mb-12 text-center">
-        <h2 className="text-4xl font-bold text-gray-900">
-          {data.title}{" "}
-          <span className="text-indigo-700">{data.titleHighlight}</span>
-        </h2>
-        <p className="mt-3 text-gray-600">{data.subtitle}</p>
+        <div 
+          className="[&_h2]:text-4xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mb-3"
+          dangerouslySetInnerHTML={{ __html: data.title }}
+        />
+        <p className="text-gray-600">{data.subtitle}</p>
       </div>
 
       {/* Slider - Full Width */}
@@ -104,11 +103,10 @@ export default function TrainingSlider({ data }: { data: TrainingSliderData }) {
                 className="group w-1/4 flex-shrink-0"
               >
                 <div className="relative h-80">
-                  <Image
-                    src={slide.image}
+                  <img
+                    src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}${slide.image}`}
                     alt={slide.title}
-                    fill
-                    className="object-cover transition-transform duration-300 group-hover:scale-110"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                   <h3 className="absolute bottom-6 left-6 text-2xl font-bold text-white">

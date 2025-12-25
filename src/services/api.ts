@@ -251,4 +251,9 @@ export const cmsApi = {
       allPages: pagesResponse.data.data
     };
   },
+
+  getHomepageData: async () => {
+    const response = await api.get<ApiResponse<any>>('/homepage');
+    return response.data;
+  },
 };

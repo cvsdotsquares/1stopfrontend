@@ -2,9 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 interface ServicesData {
-  heading: string;
-  title: string;
-  titleHighlight: string;
+  header: string;
   services: Array<{
     id: number;
     title: string;
@@ -18,16 +16,11 @@ export default function ServicesSection({ data }: { data: ServicesData }) {
   return (
     <section className="bg-gray-50 py-16">
       <div className="mx-auto max-w-7xl px-6">
-        {/* Heading */}
-        <div className="mb-12 text-center">
-          <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-600">
-            {data.heading}
-          </p>
-          <h2 className="text-4xl font-bold text-gray-900">
-            {data.title}{" "}
-            <span className="text-indigo-700">{data.titleHighlight}</span>
-          </h2>
-        </div>
+        {/* Header */}
+        <div 
+          className="mb-12 text-center [&_h2]:text-4xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_p]:text-sm [&_p]:font-semibold [&_p]:uppercase [&_p]:tracking-wide [&_p]:text-gray-600 [&_p]:mb-2"
+          dangerouslySetInnerHTML={{ __html: data.header }}
+        />
 
         {/* Services Grid */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-2">
@@ -39,11 +32,10 @@ export default function ServicesSection({ data }: { data: ServicesData }) {
             >
               {/* Image */}
               <div className="relative h-80 w-full">
-                <Image
-                  src={service.image}
+                <img
+                  src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}${service.image}`}
                   alt={service.title}
-                  fill
-                  className="object-cover"
+                  className="w-full h-full object-cover"
                 />
               </div>
 
