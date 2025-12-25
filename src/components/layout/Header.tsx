@@ -5,7 +5,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { 
+import {
   NavigationMenu,
   NavigationMenuContent,
   NavigationMenuItem,
@@ -17,6 +17,7 @@ import { useAuthStore } from '@/store/auth';
 import { cmsApi } from '@/services/api';
 import { MenuPage, Page } from '@/types';
 import { Menu, X, Phone, Mail, MapPin } from 'lucide-react';
+import Search from '../ui/search';
 
 // Helper function to convert slug to proper URL
 const getPageUrl = (slug: string) => {
@@ -29,7 +30,7 @@ const getPageUrl = (slug: string) => {
     // For other PHP files, use the slug as-is for now
     return `/${slug}`;
   }
-  
+
   // Handle modern slugs
   return `/${slug}`;
 };
@@ -51,11 +52,11 @@ const pageToMenuPage = (page: Page): MenuPage => ({
 // Helper function to build comprehensive hierarchical menu structure
 const buildCompleteMenuHierarchy = (menuPages: MenuPage[], footerPages: MenuPage[], featuredServices: MenuPage[], allPages: Page[]) => {
   if (!menuPages) return [];
-  
+
   // Convert all CMS pages to MenuPage format and combine all sources
   const cmsMenuPages = allPages.map(pageToMenuPage);
   const allMenuSources = [...menuPages, ...footerPages, ...featuredServices, ...cmsMenuPages];
-  
+
   // Deduplicate pages by ID to avoid duplicates
   const uniquePages = allMenuSources.reduce((acc, page) => {
     if (!acc.has(page.id)) {
@@ -63,50 +64,50 @@ const buildCompleteMenuHierarchy = (menuPages: MenuPage[], footerPages: MenuPage
     }
     return acc;
   }, new Map<number, MenuPage>());
-  
+
   const deduplicatedPages = Array.from(uniquePages.values());
-  
+
   // Create maps for different types of relationships
   const parentMap = new Map<number, MenuPage[]>();
-  
+
   // Group children by their parent ID with support for multiple nesting levels
   deduplicatedPages.forEach(page => {
     const parentId = page.is_parent;
-    
+
     // Skip items that don't have a parent or are special categories we don't want in main nav
     if (!parentId || parentId === 0 || parentId === 854698) {
       return;
     }
-    
+
     // Include items at any reasonable parent level (supports unlimited nesting)
     if (page.parent_level > 0 && page.parent_level < 10000) {
       if (!parentMap.has(parentId)) {
         parentMap.set(parentId, []);
       }
-      
+
       // Check if this child is already in the array to avoid duplicates
       const existingChildren = parentMap.get(parentId)!;
       const alreadyExists = existingChildren.some(existing => existing.id === page.id);
-      
+
       if (!alreadyExists) {
         parentMap.get(parentId)!.push(page);
       }
     }
   });
-  
+
   // Recursive function to build nested menu structure with unlimited depth
   const buildNestedStructure = (pageItem: MenuPage, level: number = 0): MenuPage => {
     const children = parentMap.get(pageItem.id) || [];
-    
+
     // Recursively build children (supports unlimited nesting depth)
     const nestedChildren = children.map(child => buildNestedStructure(child, level + 1));
-    
+
     return {
       ...pageItem,
       children: nestedChildren.sort((a, b) => a.weight - b.weight)
     };
   };
-  
+
   // Build the final menu structure with complete nested hierarchy
   return menuPages.map(page => buildNestedStructure(page));
 };
@@ -115,14 +116,14 @@ const buildCompleteMenuHierarchy = (menuPages: MenuPage[], footerPages: MenuPage
 function MobileMenuItem({ item, level, onClose }: { item: MenuPage; level: number; onClose: () => void }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const hasChildren = item.children && item.children.length > 0;
-  
+
   const levelStyles = {
     0: "font-medium text-gray-900",
     1: "text-sm text-gray-700 ml-4",
-    2: "text-xs text-gray-600 ml-8", 
+    2: "text-xs text-gray-600 ml-8",
     3: "text-xs text-gray-500 ml-12"
   };
-  
+
   const borderStyles = {
     0: "",
     1: "border-l-2 border-gray-200 pl-3",
@@ -133,14 +134,14 @@ function MobileMenuItem({ item, level, onClose }: { item: MenuPage; level: numbe
   return (
     <div>
       <div className="flex items-center justify-between">
-        <Link 
-          href={getPageUrl(item.slug)} 
+        <Link
+          href={getPageUrl(item.slug)}
           className={`py-2 hover:text-blue-600 block flex-1 ${levelStyles[level as keyof typeof levelStyles] || levelStyles[3]} ${borderStyles[level as keyof typeof borderStyles] || borderStyles[3]}`}
           onClick={onClose}
         >
           {item.link_title}
         </Link>
-        
+
         {/* Expand/Collapse button for items with children */}
         {hasChildren && (
           <button
@@ -148,10 +149,10 @@ function MobileMenuItem({ item, level, onClose }: { item: MenuPage; level: numbe
             className="p-2 text-gray-400 hover:text-gray-600"
             aria-label={isExpanded ? 'Collapse menu' : 'Expand menu'}
           >
-            <svg 
-              className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} 
-              fill="none" 
-              stroke="currentColor" 
+            <svg
+              className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -159,16 +160,16 @@ function MobileMenuItem({ item, level, onClose }: { item: MenuPage; level: numbe
           </button>
         )}
       </div>
-      
+
       {/* Collapsible children */}
       {hasChildren && isExpanded && (
         <div className="mt-1 space-y-1">
           {item.children?.map((child) => (
-            <MobileMenuItem 
-              key={child.id} 
-              item={child} 
-              level={level + 1} 
-              onClose={onClose} 
+            <MobileMenuItem
+              key={child.id}
+              item={child}
+              level={level + 1}
+              onClose={onClose}
             />
           ))}
         </div>
@@ -189,21 +190,14 @@ export default function Header() {
   });
 
   // Build comprehensive hierarchical menu structure
-  const hierarchicalMenu = completeMenuData ? 
+  const hierarchicalMenu = completeMenuData ?
     buildCompleteMenuHierarchy(
-      completeMenuData.menuData.pages, 
-      completeMenuData.menuData.footer_pages, 
+      completeMenuData.menuData.pages,
+      completeMenuData.menuData.footer_pages,
       completeMenuData.menuData.featured_services,
       completeMenuData.allPages
     ) : [];
 
-  // Debug log (remove in production)
-  if (typeof window !== 'undefined' && hierarchicalMenu.length > 0) {
-    console.log('📋 Menu loaded:', hierarchicalMenu.length, 'main items');
-    hierarchicalMenu.slice(0, 2).forEach(item => {
-      console.log(`- ${item.link_title}: ${item.children?.length || 0} children`);
-    });
-  }
 
   return (
     <header className="bg-white shadow-sm relative z-40">
@@ -268,8 +262,8 @@ export default function Header() {
                               {page.children?.slice(0, 8).map((child) => (
                                 <div key={child.id} className="group relative overflow-visible">
                                   {/* Level 2: Sub-menu item */}
-                                  <Link 
-                                    href={getPageUrl(child.slug)} 
+                                  <Link
+                                    href={getPageUrl(child.slug)}
                                     className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 transition-colors"
                                     onMouseEnter={(e) => {
                                       // Trigger positioning for level 3 menu
@@ -278,11 +272,11 @@ export default function Header() {
                                         const parentRect = e.currentTarget.getBoundingClientRect();
                                         const viewportWidth = window.innerWidth;
                                         let leftPos = parentRect.right + 4;
-                                        
+
                                         if (leftPos + 320 > viewportWidth - 20) {
                                           leftPos = parentRect.left - 324;
                                         }
-                                        
+
                                         level3Menu.style.left = Math.max(20, leftPos) + 'px';
                                         level3Menu.style.top = parentRect.top + 'px';
                                       }
@@ -294,7 +288,7 @@ export default function Header() {
                                         <div className="text-xs text-gray-500 mt-1">{child.page_title}</div>
                                       )}
                                     </div>
-                                    
+
                                     {/* Indicator for items with children */}
                                     {child.children && child.children.length > 0 && (
                                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -302,12 +296,12 @@ export default function Header() {
                                       </svg>
                                     )}
                                   </Link>
-                                  
+
                                   {/* Level 3: Sub-sub menu (hover overlay) - Fixed positioning to break overflow */}
                                   {child.children && child.children.length > 0 && (
-                                    <div 
-                                      className="level-3-menu fixed w-80 bg-white rounded-lg shadow-2xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-[9999]" 
-                                      style={{ 
+                                    <div
+                                      className="level-3-menu fixed w-80 bg-white rounded-lg shadow-2xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-[9999]"
+                                      style={{
                                         left: '0px',
                                         top: '0px'
                                       }}
@@ -317,12 +311,12 @@ export default function Header() {
                                         const viewportWidth = window.innerWidth;
                                         if (parentRect) {
                                           let leftPos = parentRect.right + 4;
-                                          
+
                                           // Check if menu would overflow right edge
                                           if (leftPos + 320 > viewportWidth - 20) {
                                             leftPos = parentRect.left - 324; // Position to left of parent
                                           }
-                                          
+
                                           e.currentTarget.style.left = Math.max(20, leftPos) + 'px';
                                           e.currentTarget.style.top = parentRect.top + 'px';
                                         }
@@ -331,7 +325,7 @@ export default function Header() {
                                       {/* Hover bridge to maintain connection */}
                                       <div className="absolute right-full top-0 w-2 h-full bg-transparent"></div>
                                       <div className="absolute left-full top-0 w-2 h-full bg-transparent"></div>
-                                      
+
                                       <div className="p-4">
                                         <div className="font-semibold text-sm text-blue-600 border-b border-gray-100 pb-2 mb-3">
                                           {child.link_title}
@@ -349,11 +343,11 @@ export default function Header() {
                                                     const parentRect = e.currentTarget.getBoundingClientRect();
                                                     const viewportWidth = window.innerWidth;
                                                     let leftPos = parentRect.right + 6;
-                                                    
+
                                                     if (leftPos + 288 > viewportWidth - 20) {
                                                       leftPos = parentRect.left - 294;
                                                     }
-                                                    
+
                                                     level4Menu.style.left = Math.max(20, leftPos) + 'px';
                                                     level4Menu.style.top = parentRect.top + 'px';
                                                   }
@@ -366,12 +360,12 @@ export default function Header() {
                                                   </svg>
                                                 )}
                                               </Link>
-                                              
+
                                               {/* Level 4: Triple nested menu - Fixed positioning */}
                                               {grandChild.children && grandChild.children.length > 0 && (
-                                                <div 
-                                                  className="level-4-menu fixed w-72 bg-white rounded-lg shadow-2xl border border-gray-200 opacity-0 invisible group-hover/nested:opacity-100 group-hover/nested:visible transition-all duration-300 z-[9998]" 
-                                                  style={{ 
+                                                <div
+                                                  className="level-4-menu fixed w-72 bg-white rounded-lg shadow-2xl border border-gray-200 opacity-0 invisible group-hover/nested:opacity-100 group-hover/nested:visible transition-all duration-300 z-[9998]"
+                                                  style={{
                                                     left: '0px',
                                                     top: '0px'
                                                   }}
@@ -381,12 +375,12 @@ export default function Header() {
                                                     const viewportWidth = window.innerWidth;
                                                     if (parentRect) {
                                                       let leftPos = parentRect.right + 6;
-                                                      
+
                                                       // Check if menu would overflow right edge
                                                       if (leftPos + 288 > viewportWidth - 20) {
                                                         leftPos = parentRect.left - 294; // Position to left of parent
                                                       }
-                                                      
+
                                                       e.currentTarget.style.left = Math.max(20, leftPos) + 'px';
                                                       e.currentTarget.style.top = parentRect.top + 'px';
                                                     }
@@ -418,7 +412,7 @@ export default function Header() {
                                             </div>
                                           ))}
                                         </div>
-                                        
+
                                         {/* "View All" link if there are more items */}
                                         {child.children.length > 15 && (
                                           <Link
@@ -433,7 +427,7 @@ export default function Header() {
                                   )}
                                 </div>
                               ))}
-                              
+
                               {/* "View All" link for main category if there are more items */}
                               {page.children && page.children.length > 8 && (
                                 <Link
@@ -449,8 +443,8 @@ export default function Header() {
                       </>
                     ) : (
                       <NavigationMenuLink asChild>
-                        <Link 
-                          href={getPageUrl(page.slug)} 
+                        <Link
+                          href={getPageUrl(page.slug)}
                           className="px-4 py-2 hover:text-blue-600"
                         >
                           {page.link_title}
@@ -495,23 +489,10 @@ export default function Header() {
             </NavigationMenu>
           </div>
 
-          {/* CTA Button */}
-          <div className="hidden lg:block flex-shrink-0">
-            <Button asChild>
-              <Link 
-                href={
-                  completeMenuData?.menuData?.pages?.find(page => 
-                    page.slug.includes('booking') || page.link_title.toLowerCase().includes('book')
-                  )?.slug ? 
-                  getPageUrl(completeMenuData.menuData.pages.find(page => 
-                    page.slug.includes('booking') || page.link_title.toLowerCase().includes('book')
-                  )!.slug) : 
-                  '/booking'
-                }
-              >
-                Book Your Course
-              </Link>
-            </Button>
+          {/* Search Button */}
+          <div className="hidden lg:block flex-shrink-0 ml-2">
+            {/* Render Search directly (avoid nesting a <button> inside the Button component) */}
+            <Search />
           </div>
 
           {/* Mobile menu button */}
@@ -531,11 +512,11 @@ export default function Header() {
               {hierarchicalMenu
                 ?.sort((a, b) => a.weight - b.weight)
                 ?.map((page) => (
-                  <MobileMenuItem 
-                    key={page.id} 
-                    item={page} 
-                    level={0} 
-                    onClose={() => setIsMenuOpen(false)} 
+                  <MobileMenuItem
+                    key={page.id}
+                    item={page}
+                    level={0}
+                    onClose={() => setIsMenuOpen(false)}
                   />
                 )) || (
                   // Fallback static menu
@@ -546,13 +527,13 @@ export default function Header() {
                     <Link href="/contact" className="py-2 hover:text-blue-600">Contact</Link>
                   </>
                 )}
-              
+
               {/* Find a "Book" or "Booking" page for the CTA button */}
               {completeMenuData?.menuData?.pages?.find(page => page.slug.includes('booking') || page.link_title.toLowerCase().includes('book')) && (
                 <Button asChild className="w-fit">
-                  <Link 
+                  <Link
                     href={getPageUrl(
-                      completeMenuData?.menuData.pages.find(page => 
+                      completeMenuData?.menuData.pages.find(page =>
                         page.slug.includes('booking') || page.link_title.toLowerCase().includes('book')
                       )?.slug || 'booking'
                     )}

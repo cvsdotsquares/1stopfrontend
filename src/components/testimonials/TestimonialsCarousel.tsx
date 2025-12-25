@@ -105,14 +105,6 @@ export default function TestimonialsCarousel({ limit = 13, className = '' }: Tes
   // For sliding carousel: total possible positions is (total items - visible items + 1)
   const maxSlideIndex = Math.max(0, testimonialsData.length - 4);
 
-  // Debug logging (can be removed in production)
-  console.log('Testimonials Debug:', {
-    testimonialsCount: testimonialsData?.length,
-    maxSlideIndex,
-    currentSlide,
-    visibleTestimonials: testimonialsData?.slice(currentSlide, currentSlide + 4).map((t: Testimonial) => t.review_name)
-  });
-
   // Carousel navigation functions - slide 1 testimonial at a time
   const nextSlide = () => {
     setCurrentSlide((prev) => Math.min(prev + 1, maxSlideIndex));

@@ -46,8 +46,7 @@ export default function HomeNewPage() {
   const faqsData = apiData?.success ? apiData.data.faqs : null;
   const ctasData = apiData?.success ? apiData.data.ctas : [];
   const showTestimonials = pageData?.data?.testimonial_display === 1;
-  const staticData = homepageData.data;
-  console.log(showServices);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
