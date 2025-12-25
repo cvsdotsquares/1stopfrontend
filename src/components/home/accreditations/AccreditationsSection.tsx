@@ -23,9 +23,10 @@ export default function AccreditationsSection({ data }: { data: AccreditationsDa
     <section className="bg-white py-16">
       <div className="mx-auto max-w-7xl px-6">
         {/* Title */}
-        <h2 className="mb-12 text-center text-4xl font-bold text-indigo-700">
-          {data.title}
-        </h2>
+        <div 
+          className="mb-12 text-center text-4xl font-bold text-indigo-700"
+          dangerouslySetInnerHTML={{ __html: data.title }}
+        />
 
         {/* Logos Grid */}
         <div className="mb-16 grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-6">
@@ -35,8 +36,8 @@ export default function AccreditationsSection({ data }: { data: AccreditationsDa
               className="flex items-center justify-center rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
             >
               <Image
-                src={logo.image}
-                alt={logo.alt}
+                src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}${logo.image}`}
+                alt={logo.alt || logo.name || 'Accreditation logo'}
                 width={120}
                 height={80}
                 className="max-h-20 w-auto object-contain"
@@ -78,17 +79,6 @@ export default function AccreditationsSection({ data }: { data: AccreditationsDa
                   <p className="text-gray-700 mb-4">
                     Give the gift of two wheels — CBT<br />Training and Motorcycle Course<br />Gift Vouchers available now!
                   </p>
-                  {card.image && (
-                    <div className="absolute bottom-4 right-4">
-                      <Image
-                        src={card.image}
-                        alt="Gift voucher"
-                        width={100}
-                        height={100}
-                        className="object-contain"
-                      />
-                    </div>
-                  )}
                 </>
               )}
             </div>

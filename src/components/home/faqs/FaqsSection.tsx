@@ -7,16 +7,31 @@ interface FaqsData {
   subtitle: string;
   faqs: Array<{
     id: number;
-    question: string;
-    answer: string[];
+    category: string;
+    questions: Array<{
+      id: number;
+      question: string;
+      answer: string;
+    }>;
   }>;
 }
 
 export default function FaqsSection({ data }: { data: FaqsData }) {
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [openCategory, setOpenCategory] = useState<number | null>(null);
+  const [openQuestion, setOpenQuestion] = useState<number | null>(null);
 
-  const toggleFaq = (id: number) => {
-    setOpenFaq(openFaq === id ? null : id);
+  const toggleCategory = (categoryId: number) => {
+    if (openCategory === categoryId) {
+      setOpenCategory(null);
+      setOpenQuestion(null);
+    } else {
+      setOpenCategory(categoryId);
+      setOpenQuestion(null);
+    }
+  };
+
+  const toggleQuestion = (questionId: number) => {
+    setOpenQuestion(openQuestion === questionId ? null : questionId);
   };
 
   return (
@@ -32,38 +47,55 @@ export default function FaqsSection({ data }: { data: FaqsData }) {
           {data.subtitle}
         </p>
 
-        {/* FAQ Items */}
-        <div className="faq-wrapper">
-          {data.faqs.map((faq) => (
+        {/* FAQ Categories */}
+        <div className="space-y-4">
+          {data.faqs.map((category) => (
             <div
-              key={faq.id}
-              className="border-t border-b border-gray-200 bg-white"
+              key={category.id}
+              className="border border-gray-200 rounded-lg bg-white shadow-sm"
             >
-              {/* Question */}
+              {/* Category Header */}
               <button
-                onClick={() => toggleFaq(faq.id)}
-                className="flex w-full items-center justify-between p-6 text-left hover:bg-gray-50"
+                onClick={() => toggleCategory(category.id)}
+                className="flex w-full items-center justify-between p-6 text-left hover:bg-gray-50 rounded-lg"
               >
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {faq.question}
+                <h3 className="text-xl font-bold text-gray-900">
+                  {category.category}
                 </h3>
                 <span className="ml-4 flex-shrink-0 text-2xl text-gray-500">
-                  {openFaq === faq.id ? "−" : "+"}
+                  {openCategory === category.id ? "−" : "+"}
                 </span>
               </button>
 
-              {/* Answer */}
-              {openFaq === faq.id && (
-                <div className="border-t border-gray-200 px-6 pb-6">
-                  <div className="pt-4 space-y-3">
-                    {faq.answer.map((paragraph, index) => (
-                      <p
-                        key={index}
-                        className="text-gray-700 leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: paragraph }}
-                      />
-                    ))}
-                  </div>
+              {/* Questions */}
+              {openCategory === category.id && (
+                <div className="border-t border-gray-200">
+                  {category.questions.map((question) => (
+                    <div key={question.id} className="border-b border-gray-100 last:border-b-0">
+                      {/* Question */}
+                      <button
+                        onClick={() => toggleQuestion(question.id)}
+                        className="flex w-full items-center justify-between p-4 pl-8 text-left hover:bg-gray-50"
+                      >
+                        <h4 className="text-lg font-medium text-gray-800">
+                          {question.question}
+                        </h4>
+                        <span className="ml-4 flex-shrink-0 text-xl text-gray-400">
+                          {openQuestion === question.id ? "−" : "+"}
+                        </span>
+                      </button>
+
+                      {/* Answer */}
+                      {openQuestion === question.id && (
+                        <div className="px-8 pb-4">
+                          <div 
+                            className="text-gray-700 leading-relaxed prose prose-sm max-w-none [&_a]:text-blue-600 hover:[&_a]:text-blue-800"
+                            dangerouslySetInnerHTML={{ __html: question.answer }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

@@ -31,7 +31,7 @@ export default function HomeNewPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Use API data for hero, about, services, cbtAcrossLondon, cbtTestLondon, trainingSlider, whyUs, features, and ctas sections, fallback to static data for other sections
+  // Use API data for hero, about, services, cbtAcrossLondon, cbtTestLondon, trainingSlider, whyUs, features, accreditations, faqs, and ctas sections, fallback to static data for other sections
   const heroData = apiData?.success ? apiData.data.hero : homepageData.data.hero;
   const aboutData = apiData?.success ? apiData.data.about : homepageData.data.about;
   const servicesData = apiData?.success ? apiData.data.services : homepageData.data.services;
@@ -40,6 +40,8 @@ export default function HomeNewPage() {
   const trainingSliderData = apiData?.success ? apiData.data.trainingSlider : homepageData.data.trainingSlider;
   const whyUsData = apiData?.success ? apiData.data.whyUs : homepageData.data.whyUs;
   const featuresData = apiData?.success ? apiData.data.features : [];
+  const accreditationsData = apiData?.success ? apiData.data.accreditations : null;
+  const faqsData = apiData?.success ? apiData.data.faqs : null;
   const ctasData = apiData?.success ? apiData.data.ctas : [];
   const showTestimonials = pageData?.data?.testimonial_display === 1;
   const staticData = homepageData.data;
@@ -67,15 +69,17 @@ export default function HomeNewPage() {
       {heroData && <Hero data={heroData} />}
       {aboutData && <AboutSection data={aboutData} />}
       {servicesData && <ServicesSection data={servicesData} />}
-      {getCTAByPosition(0) && <GenericCta {...getCTAByPosition(0)} />}
       {cbtAcrossLondonData && <FeatureImageLeft data={cbtAcrossLondonData} />}
       {cbtTestLondonData && <FeatureImageRight data={cbtTestLondonData} />}
-      {getCTAByPosition(1) && <GenericCta {...getCTAByPosition(1)} />}
       {trainingSliderData && <TrainingSlider data={trainingSliderData} />}
       {whyUsData && <WhyUsSection data={whyUsData} />}
+      {getCTAByPosition(1) && <GenericCta {...getCTAByPosition(1)} />}
       {featuresData.length > 0 && <FeaturesSection features={featuresData} />}
       {getCTAByPosition(2) && <GenericCta {...getCTAByPosition(2)} />}
       {showTestimonials && <TestimonialsCarousel limit={10} />}
+      {accreditationsData && <AccreditationsSection data={accreditationsData} />}
+      {getCTAByPosition(3) && <GenericCta {...getCTAByPosition(3)} />}
+      {faqsData && <FaqsSection data={faqsData} />}
     </>
   );
 }

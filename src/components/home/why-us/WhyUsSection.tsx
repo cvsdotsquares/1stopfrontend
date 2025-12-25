@@ -17,7 +17,7 @@ export default function WhyUsSection({ data }: { data: WhyUsData }) {
   const decodeHtml = (html: string) => {
     let decoded = html;
     // Decode multiple times for heavily encoded content
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       const txt = document.createElement('textarea');
       txt.innerHTML = decoded;
       decoded = txt.value;
@@ -30,7 +30,7 @@ export default function WhyUsSection({ data }: { data: WhyUsData }) {
       <div className="mx-auto max-w-7xl px-6">
         {/* Title */}
         <div 
-          className="mb-8 text-center [&_h2]:text-4xl [&_h2]:font-bold [&_h2]:text-gray-900"
+          className="mb-8 text-center [&_h2]:text-4xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_h1]:text-4xl [&_h1]:font-bold [&_h1]:text-gray-900"
           dangerouslySetInnerHTML={{ __html: decodeHtml(data.title) }}
         />
 
