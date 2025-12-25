@@ -35,17 +35,19 @@ export default function HomeNewPage() {
   const heroData = apiData?.success ? apiData.data.hero : homepageData.data.hero;
   const aboutData = apiData?.success ? apiData.data.about : homepageData.data.about;
   const servicesData = apiData?.success ? apiData.data.services : homepageData.data.services;
+  const showServices = pageData?.data?.featured_display === 1;
   const cbtAcrossLondonData = apiData?.success ? apiData.data.cbtAcrossLondon : null;
   const cbtTestLondonData = apiData?.success ? apiData.data.cbtTestLondon : null;
   const trainingSliderData = apiData?.success ? apiData.data.trainingSlider : homepageData.data.trainingSlider;
   const whyUsData = apiData?.success ? apiData.data.whyUs : homepageData.data.whyUs;
   const featuresData = apiData?.success ? apiData.data.features : [];
   const accreditationsData = apiData?.success ? apiData.data.accreditations : null;
+  const showAccreditations = pageData?.data?.accreditation_display === 1;
   const faqsData = apiData?.success ? apiData.data.faqs : null;
   const ctasData = apiData?.success ? apiData.data.ctas : [];
   const showTestimonials = pageData?.data?.testimonial_display === 1;
   const staticData = homepageData.data;
-
+  console.log(showServices);
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -68,7 +70,7 @@ export default function HomeNewPage() {
     <>
       {heroData && <Hero data={heroData} />}
       {aboutData && <AboutSection data={aboutData} />}
-      {servicesData && <ServicesSection data={servicesData} />}
+      {showServices && servicesData && <ServicesSection data={servicesData} />}
       {cbtAcrossLondonData && <FeatureImageLeft data={cbtAcrossLondonData} />}
       {cbtTestLondonData && <FeatureImageRight data={cbtTestLondonData} />}
       {trainingSliderData && <TrainingSlider data={trainingSliderData} />}
@@ -77,7 +79,7 @@ export default function HomeNewPage() {
       {featuresData.length > 0 && <FeaturesSection features={featuresData} />}
       {getCTAByPosition(2) && <GenericCta {...getCTAByPosition(2)} />}
       {showTestimonials && <TestimonialsCarousel limit={10} />}
-      {accreditationsData && <AccreditationsSection data={accreditationsData} />}
+      {showAccreditations && accreditationsData && <AccreditationsSection data={accreditationsData} />}
       {getCTAByPosition(3) && <GenericCta {...getCTAByPosition(3)} />}
       {faqsData && <FaqsSection data={faqsData} />}
     </>
