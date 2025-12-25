@@ -9,11 +9,11 @@ import FeatureImageLeft from "@/components/home/generic-feature/FeatureImageLeft
 import FeatureImageRight from "@/components/home/generic-feature/FeatureImageRight";
 import TrainingSlider from "@/components/home/training-slider/TrainingSlider";
 import WhyUsSection from "@/components/home/why-us/WhyUsSection";
-import ReviewsSlider from "@/components/home/reviews-slider/ReviewsSlider";
 import AccreditationsSection from "@/components/home/accreditations/AccreditationsSection";
 import FaqsSection from "@/components/home/faqs/FaqsSection";
 import GenericCta from "@/components/home/generic-cta/GenericCta";
-import GenericFeature from "@/components/home/generic-feature/GenericFeature";
+import TestimonialsCarousel from "@/components/testimonials";
+import FeaturesSection from "@/components/home/features/FeaturesSection";
 import homepageData from "@/data/homepage.json";
 
 export default function HomeNewPage() {
@@ -24,13 +24,24 @@ export default function HomeNewPage() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Use API data for hero, about, services, cbtAcrossLondon, cbtTestLondon, and trainingSlider sections, fallback to static data for other sections
+  // Fetch page settings for testimonial display
+  const { data: pageData } = useQuery({
+    queryKey: ['page', 'home'],
+    queryFn: () => cmsApi.getPage('home'),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Use API data for hero, about, services, cbtAcrossLondon, cbtTestLondon, trainingSlider, whyUs, features, and ctas sections, fallback to static data for other sections
   const heroData = apiData?.success ? apiData.data.hero : homepageData.data.hero;
   const aboutData = apiData?.success ? apiData.data.about : homepageData.data.about;
   const servicesData = apiData?.success ? apiData.data.services : homepageData.data.services;
   const cbtAcrossLondonData = apiData?.success ? apiData.data.cbtAcrossLondon : null;
   const cbtTestLondonData = apiData?.success ? apiData.data.cbtTestLondon : null;
   const trainingSliderData = apiData?.success ? apiData.data.trainingSlider : homepageData.data.trainingSlider;
+  const whyUsData = apiData?.success ? apiData.data.whyUs : homepageData.data.whyUs;
+  const featuresData = apiData?.success ? apiData.data.features : [];
+  const ctasData = apiData?.success ? apiData.data.ctas : [];
+  const showTestimonials = pageData?.data?.testimonial_display === 1;
   const staticData = homepageData.data;
 
   if (isLoading) {
@@ -46,16 +57,25 @@ export default function HomeNewPage() {
     // Fallback to static data on error
   }
 
+  // Get CTAs by position
+  const getCTAByPosition = (position: number) => {
+    return ctasData.find((cta: any) => cta.position === position);
+  };
+
   return(
     <>
       {heroData && <Hero data={heroData} />}
       {aboutData && <AboutSection data={aboutData} />}
       {servicesData && <ServicesSection data={servicesData} />}
+      {getCTAByPosition(0) && <GenericCta {...getCTAByPosition(0)} />}
       {cbtAcrossLondonData && <FeatureImageLeft data={cbtAcrossLondonData} />}
       {cbtTestLondonData && <FeatureImageRight data={cbtTestLondonData} />}
+      {getCTAByPosition(1) && <GenericCta {...getCTAByPosition(1)} />}
       {trainingSliderData && <TrainingSlider data={trainingSliderData} />}
-      {staticData.whyUs && <WhyUsSection data={staticData.whyUs} />}
-      {staticData.reviews && <ReviewsSlider data={staticData.reviews} />}
+      {whyUsData && <WhyUsSection data={whyUsData} />}
+      {featuresData.length > 0 && <FeaturesSection features={featuresData} />}
+      {getCTAByPosition(2) && <GenericCta {...getCTAByPosition(2)} />}
+      {showTestimonials && <TestimonialsCarousel limit={10} />}
     </>
   );
 }
