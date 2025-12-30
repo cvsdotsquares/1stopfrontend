@@ -26,17 +26,18 @@ export default function WhyUsSection({ data }: { data: WhyUsData }) {
   };
 
   return (
-    <section className="bg-white py-16">
-      <div className="mx-auto max-w-7xl px-6">
+    <section className="bg-white py-16 pt-0">
+      <div className="mx-auto max-w-[1400px] px-6">
         {/* Title */}
         <div 
-          className="mb-8 text-center [&_h2]:text-4xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_h1]:text-4xl [&_h1]:font-bold [&_h1]:text-gray-900"
+          className="mb-5 text-center [&_h2]:text-4xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_h1]:text-4xl [&_h1]:font-bold [&_h1]:text-gray-900"
           dangerouslySetInnerHTML={{ __html: decodeHtml(data.title) }}
         />
+        
 
         {/* Description */}
         <div 
-          className="mx-auto mb-12 max-w-5xl text-center text-gray-600 leading-relaxed prose prose-lg max-w-none [&_a]:text-indigo-600 hover:[&_a]:text-indigo-800"
+          className="mx-auto mb-12 max-w-6xl text-center text-gray-500 leading-relaxed prose prose-lg [&_a]:text-blue-600 hover:[&_a]:text-red-800"
           dangerouslySetInnerHTML={{ __html: decodeHtml(data.description) }}
         />
 
@@ -45,24 +46,24 @@ export default function WhyUsSection({ data }: { data: WhyUsData }) {
           {data.courses.map((course) => (
             <div
               key={course.id}
-              className="group rounded-lg bg-gray-50 p-6 text-center transition-all hover:bg-gray-100 hover:shadow-md"
+              className="group rounded-lg bg-white border border-gray-300 p-6 text-center transition-all hover:bg-gray-100 hover:shadow-md"
             >
               {/* Icon */}
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+              <div className="mx-auto mb-4 flex h-[80px] w-[80px] items-center justify-center rounded-xl bg-red-100">
                 <img
                   src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}${course.icon}`}
                   alt={course.title}
-                  className="w-8 h-8 object-contain"
+                  className="w-10 h-10 object-contain"
                 />
               </div>
 
               {/* Title */}
-              <h3 className="mb-3 text-lg font-bold text-gray-900">
+              <h3 className="mb-3 text-lg font-bold text-black">
                 {course.title}
               </h3>
 
               {/* Description */}
-              <p className="text-sm text-gray-600 leading-relaxed">
+              <p className="text-sm text-gray-500 leading-relaxed">
                 {course.description}
               </p>
             </div>
@@ -71,7 +72,7 @@ export default function WhyUsSection({ data }: { data: WhyUsData }) {
 
         {/* Footer Text */}
         <div 
-          className="mx-auto max-w-5xl text-center text-gray-600 leading-relaxed prose prose-lg max-w-none [&_a]:text-indigo-600 hover:[&_a]:text-indigo-800"
+          className="mx-auto max-w-6xl text-center text-gray-500 leading-relaxed prose prose-lg [&_a]:text-blue-600 hover:[&_a]:text-red-600"
           dangerouslySetInnerHTML={{ __html: decodeHtml(data.footerText) }}
         />
       </div>

@@ -11,17 +11,17 @@ interface FeatureData {
 }
 
 export default function FeatureImageRight({ data }: { data: FeatureData }) {
-  const bgClass = data.bgColor === "white" ? "bg-white" : "bg-gray-50";
+  const bgClass = data.bgColor === "white" ? "bg-white" : "bg-blue-50";
 
   return (
     <section className={`${bgClass} py-16`}>
-      <div className="mx-auto max-w-7xl px-6">
+      <div className="mx-auto max-w-[1400px] px-6">
         <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
           {/* Content - Left */}
           <div>
             {/* Title */}
             <div 
-              className="mb-4 [&_h2]:text-3xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mb-2 [&_p]:text-sm [&_p]:font-semibold [&_p]:uppercase [&_p]:tracking-wide [&_strong]:text-red-600"
+              className="mb-4 [&_h2]:mb-2 [&_p]:font-semibold [&_p]:tracking-wide [&_strong]:text-blue-600"
               dangerouslySetInnerHTML={{ __html: data.title }}
             />
             
@@ -33,7 +33,7 @@ export default function FeatureImageRight({ data }: { data: FeatureData }) {
             
             {/* Description */}
             <div 
-              className="prose prose-lg max-w-none text-gray-700 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-gray-900 [&_ul]:space-y-2 [&_li]:flex [&_li]:items-start"
+              className="prose prose-lg max-w-none text-black [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-gray-900 [&_ul]:space-y-2 [&_li]:flex [&_li]:items-start"
               dangerouslySetInnerHTML={{ __html: data.description }}
             />
 
@@ -49,11 +49,11 @@ export default function FeatureImageRight({ data }: { data: FeatureData }) {
 
           {/* Image - Right */}
           <div>
-            <div className="relative h-96 overflow-hidden rounded-2xl shadow-lg">
+            <div className="relative rounded-4xl overflow-hidden">
               <img
                 src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}${data.image}`}
                 alt="CBT Training London"
-                className="w-full h-full object-cover"
+                className="w-full"
               />
             </div>
           </div>

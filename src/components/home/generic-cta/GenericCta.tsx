@@ -32,14 +32,13 @@ export default function GenericCta({
       >
         {backgroundImage && <div className="absolute inset-0 bg-black/40" />}
         
-        <div className="relative z-10 flex items-center justify-between px-6 mx-auto max-w-7xl">
+        <div className="relative z-10 flex items-center justify-between px-5 mx-auto max-w-[1400px]">
           <h2 className="text-2xl font-bold text-white md:text-3xl">
             {title}
-          </h2>
-          
+          </h2>          
           <a
             href={cta.link}
-            className="rounded-lg bg-red-600 px-8 py-3 text-lg font-bold text-white hover:bg-red-700 transition-colors"
+            className="radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-lg text-white hover:bg-red-500 min-w-[180px] text-center"
           >
             {cta.text}
           </a>
@@ -50,7 +49,7 @@ export default function GenericCta({
 
   return (
     <section className="py-16">
-      <div className="mx-auto max-w-7xl px-6">
+      <div className="mx-auto max-w-[1400px] px-6">
         <div 
           className={`rounded-2xl px-8 py-12 flex items-center justify-between ${backgroundImage ? 'bg-cover bg-center relative' : ''}`}
           style={bgStyle}
@@ -63,8 +62,7 @@ export default function GenericCta({
           
           <a
             href={cta.link}
-            className="rounded-lg bg-red-600 px-8 py-3 text-lg font-bold text-white hover:bg-red-700 transition-colors relative z-10"
-          >
+            className="radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-lg text-white hover:bg-red-500 min-w-[180px] text-center">
             {cta.text}
           </a>
         </div>

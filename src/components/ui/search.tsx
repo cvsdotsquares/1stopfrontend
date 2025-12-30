@@ -55,9 +55,9 @@ export default function Search({ placeholder = "Search...", className, onSearch 
         aria-label={open ? "Close search" : "Open search"}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center justify-center p-2 rounded-md hover:bg-gray-100 transition"
+        className="inline-flex items-center justify-center text-blue-600 p-2 rounded-md hover:bg-red-600 hover:text-white transition"
       >
-        {open ? <XIcon className="h-4 w-4" /> : <SearchIcon className="h-4 w-4" />}
+        {open ? <XIcon className="h-5 w-5" /> : <SearchIcon className="h-5 w-5" />}
       </button>
 
       <div

@@ -17,16 +17,12 @@ interface AccreditationsData {
     image?: string;
   }>;
 }
-
 export default function AccreditationsSection({ data }: { data: AccreditationsData }) {
   return (
     <section className="bg-white py-16">
-      <div className="mx-auto max-w-7xl px-6">
+      <div className="mx-auto max-w-[1400px] px-6">
         {/* Title */}
-        <div 
-          className="mb-12 text-center text-4xl font-bold text-indigo-700"
-          dangerouslySetInnerHTML={{ __html: data.title }}
-        />
+        <h2 className="mb-12 text-center" dangerouslySetInnerHTML={{ __html: data.title }}/>
 
         {/* Logos Grid */}
         <div className="mb-16 grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-6">

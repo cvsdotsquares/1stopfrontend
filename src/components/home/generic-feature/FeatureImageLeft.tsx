@@ -13,11 +13,11 @@ interface FeatureData {
 export default function FeatureImageLeft({ data }: { data: FeatureData }) {
   return (
     <section className="py-16">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+      <div className="mx-auto max-w-[1400px] px-6">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 across-london-block">
           {/* Image - Left */}
           <div>
-            <div className="relative h-96 overflow-hidden rounded-2xl shadow-lg">
+            <div className="relative overflow-hidden rounded-2xl">
               <img
                 src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}${data.image}`}
                 alt="CBT Training London"
@@ -27,22 +27,22 @@ export default function FeatureImageLeft({ data }: { data: FeatureData }) {
           </div>
 
           {/* Content - Right */}
-          <div>
+          <div className="list-icon">
             {/* Title */}
             <div 
-              className="mb-4 [&_p]:text-sm [&_p]:font-semibold [&_p]:uppercase [&_p]:tracking-wide [&_strong]:text-red-600"
+              className="mb-2 text-base text-red-600"
               dangerouslySetInnerHTML={{ __html: data.title }}
             />
             
             {/* Subtitle */}
             <div 
-              className="mb-6 [&_h2]:text-3xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mb-2"
+              className="mb-6 text-gray-500 [&_h2]:text-black [&_h2]:mb-3"
               dangerouslySetInnerHTML={{ __html: data.subtitle }}
             />
             
             {/* Description */}
             <div 
-              className="prose prose-lg max-w-none text-gray-700 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-gray-900 [&_ul]:space-y-2 [&_li]:flex [&_li]:items-start"
+              className="prose prose-lg max-w-none text-gray-500 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-gray-900 [&_ul]:space-y-2 [&_li]:flex [&_li]:items-start"
               dangerouslySetInnerHTML={{ __html: data.description }}
             />
 

@@ -2,11 +2,11 @@
 
 .section {
   padding: 4rem 0;
-  background-color: #f3f4f6;
+  background-color: #F1F5F9;
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 1rem;
 }
@@ -28,12 +28,12 @@
 }
 
 .subtitle {
-  color: #6b7280;
+  color: #000;
 }
 
 .debugInfo {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #999;
 }
 
 .carouselWrapper {
@@ -56,16 +56,18 @@
 .card {
   background-color: white;
   border-radius: 0.5rem;
-  padding: 1rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  padding: 1.2rem;
+  border: 1px solid #E1E7EF;
   height: 16rem;
   display: flex;
   flex-direction: column;
 }
 
 .quoteIcon {
-  color: #2563eb;
-  margin-bottom: 1rem;
+  color: #383092;
+  margin-bottom: 0.7rem;
+  font-size: 30px;
+  line-height: 1;
 }
 
 .quoteIcon svg {
@@ -76,18 +78,22 @@
 .starRating {
   display: flex;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.7rem;
+  Color: #F97415;
+}
+.starRating i{
+  margin-right: 2px;
 }
 
 .star {
-  width: 1rem;
-  height: 1rem;
-  color: #fb923c;
+  width: 1.4rem;
+  height: 1.4rem;
+  color: #F97415;
   fill: currentColor;
 }
 
 .testimonialText {
-  color: #374151;
+  color: #000;
   font-size: 0.875rem;
   line-height: 1.625;
   margin-bottom: 1rem;
@@ -95,9 +101,11 @@
 }
 
 .authorName {
-  font-weight: 600;
-  color: #1f2937;
-  font-size: 0.875rem;
+  font-weight: bold;
+  color: #000;
+  font-size: 1rem;
+  border-top: 1px solid #D9D9D9;
+  padding-top: 10px;
 }
 
 .navigation {
@@ -118,6 +126,8 @@
   justify-content: center;
   cursor: pointer;
   transition: opacity 0.2s;
+  font-size: 30px;
+  color: #383092;
 }
 
 .arrowButton:disabled {
@@ -136,10 +146,10 @@
 
 .dividerLine {
   flex: 1;
-  height: 2px;
-  background-color: #383092;
-  opacity: 0.3;
-  margin: 0 2rem;
+  height: 1px;
+  background-color: #CCCCCC;
+  opacity: 1;
+  margin: 0 1rem;
 }
 
 /* Loading state */
@@ -149,7 +159,7 @@
 }
 
 .loadingContainer {
-  max-width: 1200px;
+  max-width: 1400px; 
   margin: 0 auto;
   padding: 0 1rem;
 }

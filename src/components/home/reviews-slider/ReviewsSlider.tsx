@@ -37,7 +37,7 @@ export default function ReviewsSlider({ data }: { data: ReviewsData }) {
 
   return (
     <section className="bg-gray-50 py-16">
-      <div className="mx-auto max-w-7xl px-6">
+      <div className="mx-auto max-w-[1400px] px-6">
         {/* Title */}
         <div className="mb-12 text-center">
           <h2 className="text-4xl font-bold text-gray-900">
