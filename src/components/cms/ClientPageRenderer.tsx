@@ -10,11 +10,11 @@ interface ClientPageProps {
 }
 
 export default function ClientPageRenderer({ slug }: ClientPageProps) {
-  const { 
-    data: pageData, 
-    isLoading, 
+  const {
+    data: pageData,
+    isLoading,
     error,
-    isError 
+    isError
   } = usePageBySlug(slug);
 
   if (isLoading) {
@@ -36,7 +36,7 @@ export default function ClientPageRenderer({ slug }: ClientPageProps) {
             <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
             <div className="h-4 bg-gray-200 rounded w-5/6 mb-6"></div>
           </div>
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             <div className="lg:col-span-3">
               <div className="bg-white rounded-lg shadow-sm p-6 animate-pulse">
@@ -77,7 +77,7 @@ export default function ClientPageRenderer({ slug }: ClientPageProps) {
           <p className="text-gray-600 mb-4">
             {error?.message || 'There was an error loading this page. Please try again.'}
           </p>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
@@ -94,7 +94,7 @@ export default function ClientPageRenderer({ slug }: ClientPageProps) {
       {pageData.banner_type === 1 && (pageData.carousel_static_image || pageData.overlay_caption === 1) && (
         <div className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white">
           {pageData.carousel_static_image && (
-            <div 
+            <div
               className="absolute inset-0 bg-cover bg-center bg-no-repeat"
               style={{
                 backgroundImage: `url(${pageData.carousel_static_image})`,
