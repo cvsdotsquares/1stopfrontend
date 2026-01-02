@@ -61,7 +61,7 @@ export default function AccreditationsSection({ data }: { data: AccreditationsDa
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   {card.locations.map((location, index) => (
                     <div key={index} className="flex items-center">
-                      <span className="mr-3 text-red-500 text-base"><i class="fa-solid fa-location-dot"></i></span>
+                      <span className="mr-3 text-red-500 text-base"><i className="fa-solid fa-location-dot"></i></span>
                       <span className="text-black">{location}</span>
                     </div>
                   ))}
@@ -75,7 +75,7 @@ export default function AccreditationsSection({ data }: { data: AccreditationsDa
                   </h4>
                   <p className="text-2xl">
                     Give the gift of two wheels — CBT<br />Training and Motorcycle Course<br />Gift Vouchers available now!
-                  </p>                  
+                  </p>
                 </>
               )}
             </div>

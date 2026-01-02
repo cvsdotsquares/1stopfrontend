@@ -5,6 +5,7 @@ interface CtaProps {
   backgroundImage?: string;
   backgroundColor?: string;
   containerFullWidth?: boolean;
+  titleColor?: boolean;
   cta: {
     text: string;
     link: string;
@@ -16,14 +17,14 @@ export default function GenericCta({
   backgroundImage,
   backgroundColor = "#f9fafb",
   containerFullWidth = false,
+  titleColor = false,
   cta
 }: CtaProps) {
-  const bgStyle = backgroundImage 
-    ? { 
+  const bgStyle = backgroundImage
+    ? {
         backgroundImage: `url("${process.env.NEXT_PUBLIC_FILES_URL || ''}${backgroundImage}")`
       }
     : { backgroundColor };
-
   if (containerFullWidth) {
     return (
       <section
@@ -31,11 +32,9 @@ export default function GenericCta({
         style={bgStyle}
       >
         {backgroundImage && <div className="absolute inset-0 bg-black/40" />}
-        
+
         <div className="relative z-10 flex items-center justify-between px-5 mx-auto max-w-[1400px]">
-          <h2 className="text-2xl font-bold text-white md:text-3xl">
-            {title}
-          </h2>          
+          <h2 className={`text-2xl font-bold ${titleColor === 1 || titleColor === true || titleColor === "1" || titleColor === "true" ? 'text-white' : 'text-gray-900'} md:text-3xl`} dangerouslySetInnerHTML={{ __html: title }} />
           <a
             href={cta.link}
             className="radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-lg text-white hover:bg-red-500 min-w-[180px] text-center"
@@ -50,16 +49,14 @@ export default function GenericCta({
   return (
     <section className="py-16">
       <div className="mx-auto max-w-[1400px] px-6">
-        <div 
+        <div
           className={`rounded-2xl px-8 py-12 flex items-center justify-between ${backgroundImage ? 'bg-cover bg-center relative' : ''}`}
           style={bgStyle}
         >
           {backgroundImage && <div className="absolute inset-0 bg-black/40 rounded-2xl" />}
-          
-          <h2 className={`text-2xl font-bold md:text-3xl relative z-10 ${backgroundImage ? 'text-white' : 'text-gray-900'}`}>
-            {title}
-          </h2>
-          
+
+          <h2 className={`text-2xl font-bold md:text-3xl relative z-10 ${titleColor === 1 || titleColor === true || titleColor === "1" || titleColor === "true" ? 'text-white' : 'text-gray-900'} md:text-3xl`} dangerouslySetInnerHTML={{ __html: title }} />
+
           <a
             href={cta.link}
             className="radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-lg text-white hover:bg-red-500 min-w-[180px] text-center">

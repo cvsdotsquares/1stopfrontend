@@ -136,7 +136,7 @@ export default function TestimonialsCarousel({ limit = 13, className = '' }: Tes
         {/* 5 Star Rating */}
         <div className={styles.starRating}>
           {[...Array(5)].map((_, starIndex) => (
-           <i className="fa-solid fa-star"></i>
+           <i key={starIndex} className="fa-solid fa-star"></i>
           ))}
         </div>
 
@@ -213,7 +213,7 @@ export default function TestimonialsCarousel({ limit = 13, className = '' }: Tes
             aria-label="Previous testimonial"
             disabled={currentSlide === 0}
           >
-           <i class="fa-solid fa-arrow-left"></i>
+           <i className="fa-solid fa-arrow-left"></i>
           </button>
 
           {/* Straight Line */}
@@ -226,7 +226,7 @@ export default function TestimonialsCarousel({ limit = 13, className = '' }: Tes
             aria-label="Next testimonial"
             disabled={currentSlide >= maxSlideIndex}
           >
-            <i class="fa-solid fa-arrow-right"></i>
+            <i className="fa-solid fa-arrow-right"></i>
           </button>
         </div>
       </div>
