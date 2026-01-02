@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Phone, Mail, MapPin, Facebook, Twitter, Youtube, Linkedin } from 'lucide-react';
 import { cmsApi } from '@/services/api';
+import NewsLetter from '@/components/ui/newsLetter';
 
 
 // Helper function to convert slug to proper URL
@@ -38,7 +39,7 @@ export default function Footer() {
             </p>
             <div className="pb-3 uppercase">Connect with us</div>
             <div className="flex space-x-3">
-              <a className="w-[42px] h-[42px] rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600" href="https://www.facebook.com/1stopinstruction" target="_blank" rel="noopener noreferrer">                
+              <a className="w-[42px] h-[42px] rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600" href="https://www.facebook.com/1stopinstruction" target="_blank" rel="noopener noreferrer">
                 <i className="fa-brands fa-facebook-f"></i>
               </a>
               <a className="w-[42px] h-[42px] rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600" href="https://twitter.com" target="_blank" rel="noopener noreferrer">
@@ -54,7 +55,7 @@ export default function Footer() {
              <div className="pt-8">
                 <a href="tel:0800 848 8418" className="text-lg font-bold text-red-500 hover:text-white">
                   <i className="fa-solid fa-square-phone"></i> 0800 848 8418
-                </a> 
+                </a>
               </div>
           </div>
           {/* Services */}
@@ -66,8 +67,8 @@ export default function Footer() {
                 ?.slice(0, 6) // Limit to 6 items for layout
                 ?.map((service) => (
                   <li key={service.id}>
-                    <Link 
-                      href={getPageUrl(service.slug)} 
+                    <Link
+                      href={getPageUrl(service.slug)}
                       className="text-gray-400 hover:text-white"
                     >
                       {service.link_title}
@@ -96,8 +97,8 @@ export default function Footer() {
                 ?.slice(0, 6) // Limit to 6 items for layout
                 ?.map((page) => (
                   <li key={page.id}>
-                    <Link 
-                      href={getPageUrl(page.slug)} 
+                    <Link
+                      href={getPageUrl(page.slug)}
                       className="text-gray-400 hover:text-white"
                     >
                       {page.link_title}
@@ -112,7 +113,7 @@ export default function Footer() {
                     <li><Link href="/testimonials" className="text-gray-400 hover:text-white">Customer Reviews</Link></li>
                     <li><Link href="/faq" className="text-gray-400 hover:text-white">FAQ</Link></li>
                     <li><Link href="/contact" className="text-gray-400 hover:text-white">Contact</Link></li>
-                    
+
                   </>
                 )}
                 <li><Link href="/privacy" className="text-gray-400 hover:text-white">Privacy Policy</Link></li>
@@ -121,7 +122,7 @@ export default function Footer() {
             </ul>
           </div>
 
-          
+
 
           {/* Contact Info */}
           <div>
@@ -141,7 +142,7 @@ export default function Footer() {
                   <div>
                     <a href="tel:+442085977333" className="text-gray-400 hover:text-white">
                       +44 (0)208 597 7333
-                    </a> 
+                    </a>
                   </div>
                   <div>
                     <a href="tel:+448008488418" className="text-gray-400 hover:text-white">
@@ -151,7 +152,7 @@ export default function Footer() {
                 </div>
 
               </div>
-             
+
               <div className="flex items-center">
                 <i className="fa-solid fa-envelope mr-3"></i>
                 <a href="mailto:info@1stopinstruction.com" className="text-gray-400 hover:text-white">
@@ -162,33 +163,34 @@ export default function Footer() {
 
             </div>
           </div>
-        </div>        
+        </div>
       </div>
       <div className="border-t border-blue-700">
         <div className="max-w-[1400px] mx-auto px-4 py-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
            <div className="">
-            <div className="uppercase">Approved Instructors</div> 
+            <div className="uppercase">Approved Instructors</div>
             <div className="space-x-4">
-                  
-                </div>
+              <img width="280px" height="75px" src="/DVSA-approved-motorcycle-training-body-white.png" alt="Approved Instructor 1" className="inline-block h-10"/>
+              <img width="280px" height="75px" src="/DVSA-ADI-white-no-bg.png" alt="Approved Instructor 2" className="inline-block h-10"/>
+            </div>
            </div>
            <div className="">
                 <div className="uppercase text-xl">Subscribe to Our Newsletter</div>
                 <div className="space-x-4">
-                  Input Form
+                  <NewsLetter />
                 </div>
            </div>
         </div>
-        
+
         <div className=" mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-gray-400 text-sm mb-4 md:mb-0">
               Copyright 2025, All Right Reserved.
             </div>
             <div className="flex space-x-6 text-sm">
-              <div className="ssl"></div>
-              <div className="payment"></div>
+              <div className="ssl"><img src="/ssl.png" alt="SSL Certificate" className="h-10"/></div>
+              <div className="payment"><img src="/paymen.png" alt="Payment Methods" className="h-10"/></div>
             </div>
           </div>
         </div>
