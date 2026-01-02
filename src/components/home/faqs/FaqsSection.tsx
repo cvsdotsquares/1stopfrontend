@@ -38,12 +38,12 @@ export default function FaqsSection({ data }: { data: FaqsData }) {
     <section className="bg-white py-16">
       <div className="mx-auto max-w-4xl px-6">
         {/* Title */}
-        <h2 className="mb-4 text-center text-4xl font-bold text-gray-900">
+        <h2 className="mb-4 text-center text-4xl font-bold text-black">
           {data.title}
         </h2>
 
         {/* Subtitle */}
-        <p className="mb-12 text-center text-gray-600 leading-relaxed">
+        <p className="mb-4 text-center text-gray-500 leading-relaxed">
           {data.subtitle}
         </p>
 

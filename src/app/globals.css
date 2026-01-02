@@ -80,11 +80,16 @@
   --sidebar-ring: oklch(0.708 0 0);
 
   --color-blue-600:#393092;
+  --color-blue-700:#171767;
+  --color-blue-800:#060038;  
   --color-gray-100:#F6F6F6;
   --color-red-600:#E02933;
+  --color-red-500:#EB2D39;
   --color-gray-500:#5B5F63;
   --color-gray-50:#FAFAFA;
   --color-blue-50:#F1F5F9;
+  --color-gray-300:#DEDEDE;
+  --color-gray-400:#DBDBDB;
 }
 
 .dark {
