@@ -130,17 +130,13 @@ export default function TestimonialsCarousel({ limit = 13, className = '' }: Tes
       <div className={styles.card}>
         {/* Quote Icon */}
         <div className={styles.quoteIcon}>
-          <svg className={styles.quoteIcon} fill="currentColor" viewBox="0 0 24 24">
-            <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
-          </svg>
+          <i className="fa-solid fa-quote-right"></i>
         </div>
 
         {/* 5 Star Rating */}
         <div className={styles.starRating}>
           {[...Array(5)].map((_, starIndex) => (
-            <svg key={starIndex} className={styles.star} viewBox="0 0 24 24">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-            </svg>
+           <i className="fa-solid fa-star"></i>
           ))}
         </div>
 
@@ -187,10 +183,10 @@ export default function TestimonialsCarousel({ limit = 13, className = '' }: Tes
           <p className={styles.subtitle}>
             Don't take our word for it - hear from our successful students
             {/* Debug info */}
-            <br />
+            {/* <br />
             <small className={styles.debugInfo}>
               Showing {testimonialsData?.length} testimonials (Position {currentSlide + 1}/{maxSlideIndex + 1})
-            </small>
+            </small> */}
           </p>
         </div>
 
@@ -217,21 +213,7 @@ export default function TestimonialsCarousel({ limit = 13, className = '' }: Tes
             aria-label="Previous testimonial"
             disabled={currentSlide === 0}
           >
-            <svg
-              width="26"
-              height="30"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M15 18L9 12L15 6"
-                stroke="#383092"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+           <i class="fa-solid fa-arrow-left"></i>
           </button>
 
           {/* Straight Line */}
@@ -244,21 +226,7 @@ export default function TestimonialsCarousel({ limit = 13, className = '' }: Tes
             aria-label="Next testimonial"
             disabled={currentSlide >= maxSlideIndex}
           >
-            <svg
-              width="26"
-              height="30"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M9 18L15 12L9 6"
-                stroke="#383092"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <i class="fa-solid fa-arrow-right"></i>
           </button>
         </div>
       </div>

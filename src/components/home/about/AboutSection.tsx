@@ -24,33 +24,34 @@ export default function AboutSection({ data }: { data: AboutData }) {
   };
 
   return (
-    <section className="bg-white py-16">
-      <div className="mx-auto max-w-7xl px-6">
+    <section className="bg-white py-16 about-sec-home">
+      <div className="mx-auto max-w-[1400px] px-6">
         {/* Title */}
-        <h2 className="mb-8 text-center text-3xl font-bold text-gray-900">
+        <h2 className="mb-8 text-center">
           {data.title}{" "}
-          <span className="text-blue-600">{decodeHtml(data.subtitle)}</span>
+          
+          <span className="text-blue-600" dangerouslySetInnerHTML={{ __html: decodeHtml(data. subtitle) }}></span>
         </h2>
 
         {/* Content Grid */}
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           {/* Text Content */}
           <div
-            className="space-y-6 text-gray-700 prose prose-lg max-w-none prose-a:text-blue-600 hover:prose-a:text-blue-800"
+            className="space-y-5 text-gray-500"
             dangerouslySetInnerHTML={{ __html: data.paragraphs }}
           />
 
           {/* Images */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 about-home">
             {data.images.map((image, index) => (
               <div
                 key={index}
-                className="relative h-64 overflow-hidden rounded-lg shadow-lg"
+                className="relative"
               >
                 <img
                   src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}${image.src}`}
                   alt={image.alt}
-                  className="w-full h-full object-cover"
+                  className="w-full "
                 />
               </div>
             ))}

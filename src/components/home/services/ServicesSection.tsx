@@ -15,20 +15,20 @@ interface ServicesData {
 export default function ServicesSection({ data }: { data: ServicesData }) {
   return (
     <section className="bg-gray-50 py-16">
-      <div className="mx-auto max-w-7xl px-6">
+      <div className="mx-auto max-w-[1400px] px-6">
         {/* Header */}
         <div 
-          className="mb-12 text-center [&_h2]:text-4xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_p]:text-sm [&_p]:font-semibold [&_p]:uppercase [&_p]:tracking-wide [&_p]:text-gray-600 [&_p]:mb-2"
+          className="mb-12 text-center  [&_p]:text-xl [&_p]:font-semibold [&_p]:mb-0"
           dangerouslySetInnerHTML={{ __html: data.header }}
         />
 
         {/* Services Grid */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-2">
           {data.services.map((service) => (
             <Link
               key={service.id}
               href={service.link}
-              className="group overflow-hidden rounded-2xl shadow-lg transition-transform hover:scale-[1.02]"
+              className="group overflow-hidden rounded-2xl transition-transform hover:scale-[1.02]"
             >
               {/* Image */}
               <div className="relative h-80 w-full">
@@ -40,9 +40,9 @@ export default function ServicesSection({ data }: { data: ServicesData }) {
               </div>
 
               {/* Content */}
-              <div className="bg-indigo-700 px-8 py-6 text-center text-white">
+              <div className="bg-blue-600 px-4 py-4 text-center text-white">
                 <h3 className="text-2xl font-bold">{service.title}</h3>
-                <p className="mt-2 text-base">{service.description}</p>
+                <p className="mt-1 text-lg">{service.description}</p>
               </div>
             </Link>
           ))}

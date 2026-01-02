@@ -1,5 +1,6 @@
 import Image from "next/image";
 
+
 interface AccreditationsData {
   title: string;
   logos: Array<{
@@ -17,16 +18,12 @@ interface AccreditationsData {
     image?: string;
   }>;
 }
-
 export default function AccreditationsSection({ data }: { data: AccreditationsData }) {
   return (
     <section className="bg-white py-16">
-      <div className="mx-auto max-w-7xl px-6">
+      <div className="mx-auto max-w-[1400px] px-6">
         {/* Title */}
-        <div 
-          className="mb-12 text-center text-4xl font-bold text-indigo-700"
-          dangerouslySetInnerHTML={{ __html: data.title }}
-        />
+        <h2 className="mb-12 text-center" dangerouslySetInnerHTML={{ __html: data.title }}/>
 
         {/* Logos Grid */}
         <div className="mb-16 grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-6">
@@ -51,21 +48,21 @@ export default function AccreditationsSection({ data }: { data: AccreditationsDa
           {data.cards.map((card) => (
             <div
               key={card.id}
-              className="rounded-lg bg-gray-100 p-8 relative"
+              className="rounded-lg bg-blue-50 border border-gray-300 p-8 relative"
             >
-              <h3 className="mb-2 text-2xl font-bold text-gray-900">
+              <h3 className="mb-2 text-3xl font-bold">
                 {card.title || ""}
               </h3>
-              <p className="mb-6 text-gray-600">
+              <p className="mb-6 text-gray-500">
                 {card.subtitle || ""}
               </p>
 
               {card.type === "locations" && card.locations && (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   {card.locations.map((location, index) => (
                     <div key={index} className="flex items-center">
-                      <span className="mr-3 text-red-600 text-lg">📍</span>
-                      <span className="text-gray-700">{location}</span>
+                      <span className="mr-3 text-red-500 text-base"><i class="fa-solid fa-location-dot"></i></span>
+                      <span className="text-black">{location}</span>
                     </div>
                   ))}
                 </div>
@@ -73,12 +70,12 @@ export default function AccreditationsSection({ data }: { data: AccreditationsDa
 
               {card.type === "gift" && (
                 <>
-                  <h4 className="mb-2 text-xl">
-                    Gift <span className="text-red-600 font-bold">Vouchers</span> Available
+                  <h4 className="mb-3 text-3xl font-bold">
+                    Gift <span className="text-red-500">Vouchers</span> Available
                   </h4>
-                  <p className="text-gray-700 mb-4">
+                  <p className="text-2xl">
                     Give the gift of two wheels — CBT<br />Training and Motorcycle Course<br />Gift Vouchers available now!
-                  </p>
+                  </p>                  
                 </>
               )}
             </div>

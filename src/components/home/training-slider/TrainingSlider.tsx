@@ -56,7 +56,7 @@ export default function TrainingSlider({ data }: { data: TrainingSliderData }) {
   return (
     <section className="bg-white py-16">
       {/* Heading */}
-      <div className="mb-12 text-center">
+      <div className="mb-8 text-center">
         <div 
           className="[&_h2]:text-4xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mb-3"
           dangerouslySetInnerHTML={{ __html: data.title }}
@@ -69,7 +69,7 @@ export default function TrainingSlider({ data }: { data: TrainingSliderData }) {
         {/* Navigation Buttons */}
         <button
           onClick={handlePrev}
-          className="absolute left-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white"
+          className="absolute left-0 top-1/2 z-10 -translate-y-1/2 bg-black text-white p-2 shadow-lg hover:bg-white hover:text-black"
           aria-label="Previous"
         >
           <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,7 +79,7 @@ export default function TrainingSlider({ data }: { data: TrainingSliderData }) {
 
         <button
           onClick={handleNext}
-          className="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white"
+          className="absolute right-0 top-1/2 z-10 -translate-y-1/2 bg-black text-white p-2 shadow-lg hover:bg-white hover:text-black"
           aria-label="Next"
         >
           <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,14 +102,14 @@ export default function TrainingSlider({ data }: { data: TrainingSliderData }) {
                 href={slide.link}
                 className="group w-1/4 flex-shrink-0"
               >
-                <div className="relative h-80">
+                <div className="relative h-80 overflow-hidden">
                   <img
                     src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}${slide.image}`}
                     alt={slide.title}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                  <h3 className="absolute bottom-6 left-6 text-2xl font-bold text-white">
+                  <h3 className="absolute bg-black/70 bottom-0 left-0 right-0 text-2xl text-center px-3 p-3 font-bold text-white">
                     {slide.title}
                   </h3>
                 </div>
