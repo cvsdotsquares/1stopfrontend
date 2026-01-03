@@ -76,6 +76,7 @@ export default function AccreditationsSection({ data }: { data: AccreditationsDa
                   <p className="text-base md:text-2xl">
                     Give the gift of two wheels — CBT<br />Training and Motorcycle Course<br />Gift Vouchers available now!
                   </p>
+                  <img src='/gift.png' alt="Gift Vouchers" className="absolute bottom-0 top-0 right-4 object-contain h-full"/>
                 </>
               )}
             </div>

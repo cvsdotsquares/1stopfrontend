@@ -35,9 +35,9 @@ export default function Hero({ data }: { data: HeroData }) {
   // Auto-slide for multiple images
   useEffect(() => {
     if (!hasMultipleImages) return;
-    
+
     const interval = setInterval(() => {
-      setCurrentImageIndex((prev) => 
+      setCurrentImageIndex((prev) =>
         prev === data.backgroundImages.length - 1 ? 0 : prev + 1
       );
     }, 5000);
@@ -89,7 +89,7 @@ export default function Hero({ data }: { data: HeroData }) {
           <div className="mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center radius20-left radius20-left-bottom">
             <div className="text26 text-xl font-semibold text-red-600">
               {data.nextCourse.label} {data.nextCourse.dateText}
-            </div>          
+            </div>
 
             <a
               href={data.nextCourse.ctaLink}
@@ -116,7 +116,7 @@ export default function Hero({ data }: { data: HeroData }) {
                 />
 
                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-indigo-600">
-                  S
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search h-5 w-5" aria-hidden="true"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
                 </span>
               </div>
             </div>
