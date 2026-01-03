@@ -37,7 +37,7 @@ function NavigationMenuList({
     <NavigationMenuPrimitive.List
       data-slot="navigation-menu-list"
       className={cn(
-        "group flex flex-1 list-none items-center justify-center gap-6",
+        "group flex flex-1 list-none items-center justify-center lg:gap-3 xl:gap-6",
         className
       )}
       {...props}
@@ -59,7 +59,7 @@ function NavigationMenuItem({
 }
 
 const navigationMenuTriggerStyle = cva(
-  "group inline-flex items-center justify-center text-md text-black hover:text-red-600"
+  "group inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-red-600"
 )
 
 function NavigationMenuTrigger({
@@ -129,7 +129,7 @@ function NavigationMenuLink({
     <NavigationMenuPrimitive.Link
       data-slot="navigation-menu-link"
       className={cn(
-        "text-black text-md hover:text-red-600",
+        "text-black text-sm xl:text-base hover:text-red-600",
         className
       )}
       {...props}

@@ -28,12 +28,12 @@ export default function GenericCta({
   if (containerFullWidth) {
     return (
       <section
-        className="relative py-16 bg-cover bg-center"
+        className="relative py-8 md:py-16 bg-cover bg-center"
         style={bgStyle}
       >
         {backgroundImage && <div className="absolute inset-0 bg-black/40" />}
 
-        <div className="relative z-10 flex items-center justify-between px-5 mx-auto max-w-[1400px]">
+        <div className="relative z-10 flex gap-5 flex-wrap md:flex-nowrap justify-center text-center md:text-left items-center md:justify-between px-5 mx-auto max-w-[1400px]">
           <h2 className={`text-2xl font-bold ${titleColor === 1 || titleColor === true || titleColor === "1" || titleColor === "true" ? 'text-white' : 'text-gray-900'} md:text-3xl`} dangerouslySetInnerHTML={{ __html: title }} />
           <a
             href={cta.link}
@@ -50,7 +50,7 @@ export default function GenericCta({
     <section className="py-16">
       <div className="mx-auto max-w-[1400px] px-6">
         <div
-          className={`rounded-2xl px-8 py-12 flex items-center justify-between ${backgroundImage ? 'bg-cover bg-center relative' : ''}`}
+          className={`rounded-2xl px-8 py-12 flex gap-5 flex-wrap md:flex-nowrap justify-center text-center md:text-left items-center md:justify-between ${backgroundImage ? 'bg-cover bg-center relative' : ''}`}
           style={bgStyle}
         >
           {backgroundImage && <div className="absolute inset-0 bg-black/40 rounded-2xl" />}

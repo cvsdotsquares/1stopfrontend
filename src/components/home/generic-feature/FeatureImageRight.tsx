@@ -14,9 +14,9 @@ export default function FeatureImageRight({ data }: { data: FeatureData }) {
   const bgClass = data.bgColor === "white" ? "bg-white" : "bg-blue-50";
 
   return (
-    <section className={`${bgClass} py-16`}>
+    <section className={`${bgClass} py-10 md:py-16`}>
       <div className="mx-auto max-w-[1400px] px-6">
-        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+        <div className="grid grid-cols-1 items-center gap-6 md:gap-12 lg:grid-cols-2">
           {/* Content - Left */}
           <div>
             {/* Title */}

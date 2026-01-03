@@ -16,13 +16,13 @@ interface FeaturesSectionProps {
 
 export default function FeaturesSection({ features }: FeaturesSectionProps) {
   return (
-    <section className="bg-white py-16">
+    <section className="bg-white py-8 md:py-16">
       {features.map((feature) => (
         <div key={feature.id} className="mx-auto max-w-[1400px] px-6">
           {/* Title and Subtitle - Centered */}
-          <div className="mb-12 text-center">
+          <div className="mb-6 md:mb-12  text-center">
             <div 
-              className="[&_h2]:text-4xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mb-4"
+              className="[&_h2]:mb-4"
               dangerouslySetInnerHTML={{ __html: feature.title }}
             />
             <p className="text-gray-600">{feature.subtitle}</p>
@@ -30,7 +30,7 @@ export default function FeaturesSection({ features }: FeaturesSectionProps) {
           </div>
 
           {/* Content Grid */}
-          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+          <div className="grid grid-cols-1 items-center gap-6 md:gap-12 lg:grid-cols-2">
             {/* Image - Left */}
             <div>
               <div className="relative overflow-hidden rounded-2xl">

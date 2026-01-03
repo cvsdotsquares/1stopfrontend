@@ -58,7 +58,7 @@ export default function Hero({ data }: { data: HeroData }) {
     <section className="relative w-full overflow-hidden">
       {/* Background Images */}
       {hasMultipleImages ? (
-        <div className="h-[700px] relative inset-0">
+        <div className="h-[600px] md:h-[700px] relative inset-0">
           {data.backgroundImages.map((image, index) => (
             <div
               key={index}
@@ -78,32 +78,32 @@ export default function Hero({ data }: { data: HeroData }) {
         />
       )}
       {/* Dark overlay */}
-      <div className="absolute top-1 right-1 py-2">
+      <div className="absolute top-1 right-0 py-2">
       <div className=" inset-0 bg-black/50" />
 
       {/* Right-side content */}
-      <div className="relative z-10 flex h-full items-start justify-end">
-        <div className="w-full max-w-[562px]">
+      <div className="relative z-10 flex h-full items-start justify-end ">
+        <div className="w-11/12 md:w-full sm:max-w-[562px]">
 
           {/* CBT floating card */}
-          <div className="mb-2 bg-white/70 px-10 py-7 text-center radius20-left radius20-left-bottom">
-            <div className="text26 font-semibold text-red-600">
+          <div className="mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center radius20-left radius20-left-bottom">
+            <div className="text26 text-xl font-semibold text-red-600">
               {data.nextCourse.label} {data.nextCourse.dateText}
             </div>          
 
             <a
               href={data.nextCourse.ctaLink}
-              className="mt-3 radius20-left radius20-right-bottom inline-block bg-red-600 px-10 py-3 text-2xl text-white hover:bg-red-700"
+              className="mt-3 radius20-left radius20-right-bottom inline-block bg-red-600 px-10 py-3 text-base md:text-2xl text-white hover:bg-red-700"
             >
               {data.nextCourse.ctaText}
             </a>
           </div>
 
           {/* Purple panel */}
-          <div className="bg-blue-600/50 px-10 py-10 text-white radius20-left radius20-left-bottom">
+          <div className="bg-blue-600/50 py-6 px-4 md:px-10 md:py-10 text-white radius20-left radius20-left-bottom">
 
             {/* Search */}
-            <div className="mb-12">
+            <div className="mb-6 md:mb-12">
               <p className="mb-3">
                 {data.search.title}
               </p>
@@ -126,28 +126,28 @@ export default function Hero({ data }: { data: HeroData }) {
               {data.promotion.title}
             </h2>
 
-            <p className="mt-4 text-3xl font-normal">
+            <p className="mt-4 text-xl md:text-3xl">
               {data.promotion.subtitle}
             </p>
 
-            <p className="mt-5 text-xl font-normal">
+            <p className="mt-5 md:text-xl">
               Use Promo Code{" "}
-              <span className="text-2xl font-bold">
+              <span className="text-xl md:text-2xl font-bold">
                 {data.promotion.promoCode}
               </span>
             </p>
 
-            <div className="mt-10 flex gap-4">
+            <div className="mt-4 md:mt-10 flex gap-3 md:gap-4 flex-wrap md:flex-nowrap">
               <a
                 href={data.promotion.primaryCta.link}
-                className="radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-lg text-white hover:bg-red-500"
+                className="min-w-[210px] radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-base md:text-lg text-center text-white hover:bg-red-500"
               >
                 {data.promotion.primaryCta.text}
               </a>
 
               <a
                 href={data.promotion.secondaryCta.link}
-                className="radius20-left radius20-right-bottom text-lg bg-white px-6 py-3 text-black hover:bg-red-600 hover:text-white"
+                className="min-w-[210px] radius20-left radius20-right-bottom text-base md:text-lg bg-white px-6 py-3 text-black text-center hover:bg-red-600 hover:text-white"
               >
                 {data.promotion.secondaryCta.text}
               </a>
@@ -158,9 +158,9 @@ export default function Hero({ data }: { data: HeroData }) {
       </div>
       </div>
       {/* Bottom banner */}
-      <div className="w-full bg-black py-6 text-center">        
+      <div className="w-full bg-black py-6 text-center px-3">        
           <p
-          className="text-4xl text-white"
+          className="text-2xl md:text-4xl text-white"
           dangerouslySetInnerHTML={{ __html: data.footerText }}
         />
       </div>

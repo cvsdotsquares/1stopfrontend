@@ -24,8 +24,8 @@ export default function AboutSection({ data }: { data: AboutData }) {
   };
 
   return (
-    <section className="bg-white py-16 about-sec-home">
-      <div className="mx-auto max-w-[1400px] px-6">
+    <section className="bg-white py-8 md:py-16 about-sec-home">
+      <div className="mx-auto max-w-[1400px] px-6 [&_h2]:text-3xl">
         {/* Title */}
         <h2 className="mb-8 text-center">
           {data.title}{" "}

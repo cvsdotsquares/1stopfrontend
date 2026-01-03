@@ -29,7 +29,7 @@ export default function Footer() {
   return (
     <footer className="bg-blue-800 text-white">
       <div className="max-w-[1400px] mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-8">
           {/* Company Info */}
           <div>
             <h3 className="text-xl font-bold mb-5">1Stop Instruction</h3>

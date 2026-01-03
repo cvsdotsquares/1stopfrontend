@@ -26,27 +26,27 @@ export default function WhyUsSection({ data }: { data: WhyUsData }) {
   };
 
   return (
-    <section className="bg-white py-16 pt-0">
+    <section className="bg-white pt-6 pb-8 md:py-16 md:pt-0">
       <div className="mx-auto max-w-[1400px] px-6">
         {/* Title */}
         <div 
-          className="mb-5 text-center [&_h2]:text-4xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_h1]:text-4xl [&_h1]:font-bold [&_h1]:text-gray-900"
+          className="mb-5 text-center"
           dangerouslySetInnerHTML={{ __html: decodeHtml(data.title) }}
         />
         
 
         {/* Description */}
         <div 
-          className="mx-auto mb-12 max-w-6xl text-center text-gray-500 leading-relaxed prose prose-lg [&_a]:text-blue-600 hover:[&_a]:text-red-800"
+          className="mx-auto mb-6 md:mb-12 max-w-6xl text-center text-gray-500 leading-relaxed prose prose-lg [&_a]:text-blue-600 hover:[&_a]:text-red-800"
           dangerouslySetInnerHTML={{ __html: decodeHtml(data.description) }}
         />
 
         {/* Courses Grid */}
-        <div className="mb-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-6 md:mb-12 grid grid-cols-2 gap-3 md:gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {data.courses.map((course) => (
             <div
               key={course.id}
-              className="group rounded-lg bg-white border border-gray-300 p-6 text-center transition-all hover:bg-gray-100 hover:shadow-md"
+              className="group rounded-lg bg-white border border-gray-300 p-2 md:p-6 py-4 text-center transition-all hover:bg-gray-100 hover:shadow-md"
             >
               {/* Icon */}
               <div className="mx-auto mb-4 flex h-[80px] w-[80px] items-center justify-center rounded-xl bg-red-100">

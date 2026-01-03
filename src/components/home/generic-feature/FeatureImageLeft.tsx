@@ -12,9 +12,9 @@ interface FeatureData {
 
 export default function FeatureImageLeft({ data }: { data: FeatureData }) {
   return (
-    <section className="py-16">
+    <section className="py-10 md:py-16">
       <div className="mx-auto max-w-[1400px] px-6">
-        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 across-london-block">
+        <div className="grid grid-cols-1 items-center gap-5 md:gap-12 lg:grid-cols-2 across-london-block">
           {/* Image - Left */}
           <div>
             <div className="relative overflow-hidden rounded-2xl">

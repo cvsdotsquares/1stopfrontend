@@ -14,11 +14,11 @@ interface ServicesData {
 
 export default function ServicesSection({ data }: { data: ServicesData }) {
   return (
-    <section className="bg-gray-50 py-16">
+    <section className="bg-gray-50 py-8 md:py-16">
       <div className="mx-auto max-w-[1400px] px-6">
         {/* Header */}
         <div 
-          className="mb-12 text-center  [&_p]:text-xl [&_p]:font-semibold [&_p]:mb-0"
+          className="mb-7 md:mb-12 text-center  [&_p]:text-xl [&_p]:font-semibold [&_p]:mb-0"
           dangerouslySetInnerHTML={{ __html: data.header }}
         />
 
@@ -41,8 +41,8 @@ export default function ServicesSection({ data }: { data: ServicesData }) {
 
               {/* Content */}
               <div className="bg-blue-600 px-4 py-4 text-center text-white">
-                <h3 className="text-2xl font-bold">{service.title}</h3>
-                <p className="mt-1 text-lg">{service.description}</p>
+                <h3 className="text-xl md:text-2xl font-bold">{service.title}</h3>
+                <p className="mt-1 md:text-lg">{service.description}</p>
               </div>
             </Link>
           ))}

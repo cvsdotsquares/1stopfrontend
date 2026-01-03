@@ -5,6 +5,7 @@
   background-color: #F1F5F9;
 }
 
+
 .container {
   max-width: 1400px;
   margin: 0 auto;
@@ -188,6 +189,12 @@
 }
 
 @media (max-width: 768px) {
+  .section {
+    padding: 2rem 0;
+  }
+  .header {
+    margin-bottom: 1rem;
+  }
   .testimonialCard {
     width: 100%;
   }

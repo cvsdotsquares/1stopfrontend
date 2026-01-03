@@ -208,13 +208,13 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-white shadow-sm relative z-40 min-h-[145px]">
+    <header className="bg-white shadow-sm relative z-40 min-h-[160px] md:min-h-[145px]">
       {/* Top bar */}
-      
-        <div className="w-full px-2 flex  justify-end">
-          <div className="flex md:w-4/5 lg:w-3/4 bg-gray-100 text-black p-3 flex items-center justify-between">
+        <div className="flex italic bg-gray-100 justify-center text-center text-sm px-2 py-3 md:hidden">“Roadcraft Professionals For All Categories Of Driving”</div>  
+        <div className="w-full flex justify-end pl-[130px] md:pl-[0px]">
+          <div className="flex md:w-4/5 lg:w-3/4 md:bg-gray-100 text-black p-3 flex items-center justify-between gap-3">
           
-            <div className="flex italic">“Roadcraft Professionals For All Categories Of Driving”</div>           
+            <div className="flex italic hidden md:block">“Roadcraft Professionals For All Categories Of Driving”</div>           
             <div className="flex items-center space-x-4">
               {isAuthenticated ? (
                 <div className="flex items-center space-x-4">
@@ -223,8 +223,10 @@ export default function Header() {
                   <button onClick={logout} className="border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Logout</button>
                 </div>
               ) : (
-                <div className="flex items-center space-x-3 text-blue-600 text-sm">
-                  <Link href="/auth/login" className="px-2 py-1 min-w-[75px] bg-red-600 text-center text-white rounded-tl-lg rounded-br-lg hover:bg-blue-600">Book Online Now</Link>
+                <div className="flex items-center gap-3 text-blue-600 text-sm flex-wrap md:flex-nowrap justify-end">
+                  <div className="inline-block">
+                  <Link href="/auth/login" className="px-2 py-1 min-w-[75px] bg-red-600 text-center text-white rounded-tl-lg rounded-br-lg hover:bg-blue-600 text-nowrap border border-red-600 hover:border-blue-600">Book Online Now</Link>
+                  </div>
                   <Link href="/auth/login" className="border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Enquiry</Link>
                   <Link href="/auth/login" className="border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Login</Link>
                   <Link href="/auth/register" className="border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Sign Up</Link>
@@ -237,9 +239,9 @@ export default function Header() {
 
       {/* Main navigation */}
       <div className="w-full px-3 ">
-        <div className="flex justify-between items-center py-4">
+        <div className="flex justify-end lg:justify-between items-center pt-0 pb-2 md:py-4 pl-[130px]">
           {/* Logo */}
-          <Link href="/" className="flex items-center flex-shrink-0 absolute top-2 left-2">
+          <Link href="/" className="flex items-center flex-shrink-0 absolute max-w-[100px] md:max-w-[125px] top-[50px] md:top-2 left-2">
             <Image
             src="/logo.png"
             alt="Logo"
@@ -496,14 +498,14 @@ export default function Header() {
           </div>
 
           {/* Search Button */}
-          <div className="hidden lg:block flex-shrink-0 ml-2">
+          <div className="inline-block flex-shrink-0 ml-2">
             {/* Render Search directly (avoid nesting a <button> inside the Button component) */}
             <Search />
           </div>
 
           {/* Mobile menu button */}
           <button
-            className="lg:hidden p-2 ml-2 flex-shrink-0"
+            className="lg:hidden p-2 ml-2 flex-shrink-0  cursor-pointer text-red-600"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label="Toggle navigation menu"
           >
