@@ -37,12 +37,12 @@ export default function WhyUsSection({ data }: { data: WhyUsData }) {
 
         {/* Description */}
         <div 
-          className="mx-auto mb-6 md:mb-12 max-w-6xl text-center text-gray-500 leading-relaxed prose prose-lg [&_a]:text-blue-600 hover:[&_a]:text-red-800"
+          className="mx-auto mb-6 md:mb-6 max-w-6xl text-center text-gray-500 leading-relaxed prose prose-lg [&_a]:text-blue-600 [&_a]:hover:text-red-500 [&_p:last-child]:text-xl"
           dangerouslySetInnerHTML={{ __html: decodeHtml(data.description) }}
         />
 
         {/* Courses Grid */}
-        <div className="mb-6 md:mb-12 grid grid-cols-2 gap-3 md:gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-6 md:mb-6 grid grid-cols-2 gap-3 md:gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {data.courses.map((course) => (
             <div
               key={course.id}
@@ -72,7 +72,7 @@ export default function WhyUsSection({ data }: { data: WhyUsData }) {
 
         {/* Footer Text */}
         <div 
-          className="mx-auto max-w-6xl text-center text-gray-500 leading-relaxed prose prose-lg [&_a]:text-blue-600 hover:[&_a]:text-red-600"
+          className="mx-auto max-w-6xl text-center text-gray-500 leading-relaxed prose prose-lg [&_a]:text-blue-600 [&_a]:hover:text-red-500"
           dangerouslySetInnerHTML={{ __html: decodeHtml(data.footerText) }}
         />
       </div>

@@ -112,7 +112,7 @@ export default function Hero({ data }: { data: HeroData }) {
                 <input
                   type="text"
                   placeholder={data.search.placeholder}
-                  className="w-full rounded-lg bg-white px-4 py-3 pr-12 text-gray-800 placeholder:text-gray-400 focus:outline-none"
+                  className="w-full  bg-white px-4 py-3 pr-12 text-gray-800  focus:outline-none"
                 />
 
                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-indigo-600">

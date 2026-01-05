@@ -25,19 +25,17 @@ export default function AboutSection({ data }: { data: AboutData }) {
 
   return (
     <section className="bg-white py-8 md:py-16 about-sec-home">
-      <div className="mx-auto max-w-[1400px] px-6 [&_h2]:text-3xl">
+      <div className="mx-auto max-w-[1400px] px-6 md:[&_h2]:text-3xl [&_h2_p]:leading-[1.3]">
         {/* Title */}
-        <h2 className="mb-8 text-center">
-          {data.title}{" "}
+        <h2 className="mb-8 text-center" dangerouslySetInnerHTML={{ __html: decodeHtml(data.title) }}>         
           
-          <span className="text-blue-600" dangerouslySetInnerHTML={{ __html: decodeHtml(data. subtitle) }}></span>
         </h2>
 
         {/* Content Grid */}
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           {/* Text Content */}
           <div
-            className="space-y-5 text-gray-500"
+            className="space-y-5 text-gray-500 [&_a]:underline [&_a:hover]:text-red-500"
             dangerouslySetInnerHTML={{ __html: data.paragraphs }}
           />
 

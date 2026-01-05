@@ -168,34 +168,34 @@ export default function Footer() {
       <div className="border-t border-blue-700">
         <div className="max-w-[1400px] mx-auto px-4 py-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-           <div className="">
-            <div className="uppercase">Approved Instructors</div>
-            <div className="space-x-4">
-              <img width="280px" height="75px" src="/DVSA-approved-motorcycle-training-body-white.png" alt="Approved Instructor 1" className="inline-block h-10"/>
-              <img width="280px" height="75px" src="/DVSA-ADI-white-no-bg.png" alt="Approved Instructor 2" className="inline-block h-10"/>
+            <div className="">
+              <div className="uppercase pb-2">Approved Instructors</div>
+              <div className="flex flex-wrap gap-4">
+                <img width="280px" height="75px" src="/DVSA-approved-motorcycle-training-body-white.png" alt="Approved Instructor 1" className="inline-block"/>
+                <img width="280px" height="75px" src="/DVSA-ADI-white-no-bg.png" alt="Approved Instructor 2" className="inline-block"/>
+              </div>
             </div>
-           </div>
-           <div className="">
-                <div className="uppercase text-xl">Subscribe to Our Newsletter</div>
-                <div className="space-x-4">
-                  <NewsLetter />
-                </div>
-           </div>
-        </div>
-
-        <div className=" mt-8 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-gray-400 text-sm mb-4 md:mb-0">
-              Copyright 2025, All Right Reserved.
-            </div>
-            <div className="flex space-x-6 text-sm">
-              <div className="ssl"><img src="/ssl.png" alt="SSL Certificate" className="h-10"/></div>
-              <div className="payment"><img src="/paymen.png" alt="Payment Methods" className="h-10"/></div>
+            <div className="lg:pl-24">
+                  <div className="uppercase text-xl  pb-2">Subscribe to Our Newsletter</div>
+                  <div className="flex gap-4">
+                    <NewsLetter />
+                  </div>
             </div>
           </div>
         </div>
+        <div className="py-2 bg-blue-900">
+          <div className="max-w-[1400px] mx-auto px-4">
+            <div className="flex flex-col md:flex-row justify-between items-center">
+              <div className="text-gray-400 text-sm mb-4 md:mb-0">
+                Copyright 2025, All Right Reserved.
+              </div>
+              <div className="flex gap-4 text-sm items-center">
+                <div className="ssl"><img src="/ssl.png" alt="SSL Certificate" className=""/></div>
+                <div className="payment"><img src="/paymen.png" alt="Payment Methods" className=""/></div>
+              </div>
+            </div>
+          </div>
         </div>
-
       </div>
 
 

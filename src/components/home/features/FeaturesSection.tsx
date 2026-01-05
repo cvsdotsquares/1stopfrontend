@@ -16,13 +16,13 @@ interface FeaturesSectionProps {
 
 export default function FeaturesSection({ features }: FeaturesSectionProps) {
   return (
-    <section className="bg-white py-8 md:py-16">
+    <section className="bg-white py-8 md:py-16 md:pb-1">
       {features.map((feature) => (
         <div key={feature.id} className="mx-auto max-w-[1400px] px-6">
           {/* Title and Subtitle - Centered */}
           <div className="mb-6 md:mb-12  text-center">
             <div 
-              className="[&_h2]:mb-4"
+              className="[&_h2]:mb-3"
               dangerouslySetInnerHTML={{ __html: feature.title }}
             />
             <p className="text-gray-600">{feature.subtitle}</p>
@@ -45,14 +45,14 @@ export default function FeaturesSection({ features }: FeaturesSectionProps) {
             {/* Content - Right */}
             <div>
               <div 
-                className="list-icon prose prose-lg max-w-none text-gray-700 [&_h3]:text-2xl [&_h3]:font-bold [&_h3]:text-gray-900 [&_h3]:mb-4 [&_a]:text-blue-600 hover:[&_a]:text-blue-800 [&_span[style*='background-color']]:px-5 [&_span[style*='background-color']]:text-sm [&_span[style*='background-color']]:py-5 [&_span[style*='background-color']]:rounded-2xl [&_span[style*='background-color']]:bg-red-50 [&_span[style*='background-color']]:text-black [&_span[style*='background-color']]:block [&_span[style*='background-color']]:mt-4"
+                className="list-icon prose prose-lg max-w-none text-gray-700 [&_h3]:text-2xl [&_h3]:font-bold [&_h3]:text-gray-900 [&_h3]:mb-4 [&_a]:text-blue-600 [&_a]:underline [&_a]:hover:text-red-500 [&_span[style*='background-color']]:px-5 [&_span[style*='background-color']]:text-sm [&_span[style*='background-color']]:py-5 [&_span[style*='background-color']]:rounded-2xl [&_span[style*='background-color']]:bg-red-50 [&_span[style*='background-color']]:text-black [&_span[style*='background-color']]:block [&_span[style*='background-color']]:mt-4 [&_span[style*='background-color']]:leading-normal"
                 dangerouslySetInnerHTML={{ __html: feature.content }}
               />
 
               {feature.cta && (
                 <a
                   href={feature.cta.link}
-                  className="mt-6 inline-block radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-lg text-white hover:bg-red-500"
+                  className="min-w-[210px] mt-6 inline-block radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-center text-lg text-white hover:bg-red-500"
                 >
                   {feature.cta.text}
                 </a>

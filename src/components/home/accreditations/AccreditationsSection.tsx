@@ -70,13 +70,15 @@ export default function AccreditationsSection({ data }: { data: AccreditationsDa
 
               {card.type === "gift" && (
                 <>
+                  <div className="xl:pt-4 xl:pr-[210px]">
                   <h4 className="mb-3 text-2xl md:text-3xl font-bold">
                     Gift <span className="text-red-500">Vouchers</span> Available
                   </h4>
                   <p className="text-base md:text-2xl">
-                    Give the gift of two wheels — CBT<br />Training and Motorcycle Course<br />Gift Vouchers available now!
+                    Give the gift of two wheels — CBT Training and Motorcycle Course Gift Vouchers available now!
                   </p>
-                  <img src='/gift.png' alt="Gift Vouchers" className="absolute bottom-0 top-0 right-4 object-contain h-full"/>
+                  <img src='/gift.png' alt="Gift Vouchers" className="hidden xl:block absolute bottom-0 top-0 right-2 object-contain h-full"/>
+                  </div>
                 </>
               )}
             </div>

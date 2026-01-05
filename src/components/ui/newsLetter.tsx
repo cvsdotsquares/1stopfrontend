@@ -36,7 +36,7 @@ export default function NewsLetter() {
   };
 
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full">
       <form onSubmit={handleSubmit} className="flex gap-0">
         <input
           type="email"
@@ -44,12 +44,12 @@ export default function NewsLetter() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="flex-1 px-4 py-3 text-gray-700 placeholder-gray-400 focus:outline-none bg-white border border-gray-300 focus:border-red-500"
+          className="flex-1 px-4 py-3 text-gray-700 placeholder-gray-400 focus:outline-none bg-white border border-white focus:border-red-500"
         />
         <button
           type="submit"
           disabled={isLoading}
-          className="bg-red-600 hover:bg-red-500 disabled:bg-red-400 text-white font-semibold px-6 py-3 transition-colors"
+          className="bg-red-600 hover:bg-red-500 disabled:bg-red-400 text-lg text-white px-6 py-3 transition-colors"
         >
           {isLoading ? "Subscribing..." : "Subscribe"}
         </button>
