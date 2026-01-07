@@ -128,9 +128,9 @@ export default function AllLocations() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <div className="bg-white relative h-[548px] flex items-center from-blue-600 to-blue-800 text-white"> 
+      <div className="bg-white relative h-[400px] md:h-[548px] flex items-center from-blue-600 to-blue-800 text-white"> 
           <div className="z-0 absolute inset-0 transition-opacity bg-black duration-1000 opacity-50"></div>       
-          <div className="z-10 sm:max-w-[562px] ml-auto mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center radius20-left radius20-left-bottom text-center">
+          <div className="z-10 w-11/12 sm:max-w-[562px] ml-auto mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center radius20-left radius20-left-bottom text-center">
             <div className="text26 text-xl font-semibold text-red-600">
               Our Next Available CBT Course Is TOMORROW
             </div>            
@@ -148,23 +148,23 @@ export default function AllLocations() {
       <div className="max-w-[1400px] mx-auto px-4 py-12">
         <h1>Our Locations</h1>
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mb-12">
+          <div className="bg-white rounded-lg border border-gray-200 px-3 py-5 sm:p-6 text-center">
             <div className="text-4xl font-bold text-blue-600 mb-2">{locations.length}</div>
             <div className="border-2 border-red-200 border-w mx-auto w-[60px]"></div>
             <div className="text-lg text-gray-500 mt-4">Training Centers</div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+          <div className="bg-white rounded-lg border border-gray-200 px-3 py-5 sm:p-6 text-center">
             <div className="text-4xl font-bold text-blue-600 mb-2">50<span className="text-red-600">+</span></div>
             <div className="border-2 border-red-200 border-w mx-auto w-[60px]"></div>
             <div className="text-lg text-gray-500 mt-4">Qualified Instructors</div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+          <div className="bg-white rounded-lg border border-gray-200 px-3 py-5 sm:p-6 text-center">
             <div className="text-4xl font-bold text-blue-600 mb-2">90<span className="text-red-600">% +</span></div>
             <div className="border-2 border-red-200 border-w mx-auto w-[105px]"></div>
             <div className="text-lg text-gray-500 mt-4">Pass Rate</div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+          <div className="bg-white rounded-lg border border-gray-200 px-3 py-5 sm:p-6 text-center">
             <div className="text-4xl font-bold text-blue-600 mb-2">15<span className="text-red-600">k +</span></div>
             <div className="border-2 border-red-200 border-w mx-auto w-[96px]"></div>
             <div className="text-lg text-gray-500 mt-4">Students Trained</div>
@@ -173,10 +173,10 @@ export default function AllLocations() {
 
         {/* Filter and Search */}
         <div className="mb-14">
-          <div className="bg-blue-50 rounded-lg p-8">
-            <div className="flex gap-4">
-              <div className="grow-1 flex gap-4">
-                <div className="w-3/6">
+          <div className="bg-blue-50 rounded-lg px-5 py-7 md:p-8">
+            <div className="flex flex-wrap md:flex-nowrap gap-4">
+              <div className="grow-1 flex flex-wrap md:flex-nowrap  gap-4">
+                <div className="w-full md:w-3/6">
                   <label className="block text-base mb-2">
                     Search Location
                   </label>
@@ -186,7 +186,7 @@ export default function AllLocations() {
                     className="w-full px-4 py-3 text-gray-700 placeholder-gray-500 focus:outline-none bg-white border border-gray-300"
                   />
                 </div>
-                <div className="w-3/6">
+                <div className="w-full md:w-3/6">
                   <label className="block text-base mb-2">
                     Course Type
                   </label>
@@ -199,8 +199,8 @@ export default function AllLocations() {
                   </select>
                 </div>
               </div>
-              <div className="flex items-end">
-                <button className="bg-red-600 px-3 py-1 text-lg text-white hover:bg-red-500 text-center cursor-pointer min-w-[240px] h-[50px]">
+              <div className="flex items-end w-full md:w-auto">
+                <button className="bg-red-600 px-3 py-1 text-lg text-white hover:bg-red-500 text-center cursor-pointer w-full md:w-auto md:min-w-[240px] h-[50px]">
                   Find Locations
                 </button>
               </div>
@@ -256,22 +256,85 @@ export default function AllLocations() {
         </div>
          {/* Featured Services  */}
         <div className="mt-12">
-          <div className="p-6">
-            <div className="text-center pb-6 m-auto w-9/12">
+          <div className="py-6">
+            <div className="text-center pb-6 m-auto md:w-9/12">
               <h2 className="mb-2">Featured <span className="text-blue-600">Services</span> </h2>
               <p>Professional training services offered for all types of licence requirements, including advanced training, and assessments for compliance and auditing purposes</p>
             </div>
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <div className="bg-white rounded-lg p-4 border border-gray-300 text-center">
-                <i className="fa-solid person-biking text-3x-1"></i>
-                <h5 className="text-base font-bold mb-4">Motorcycle Training</h5>
+                <div className="h-[66px] mt-4">
+                   <i className="fa-solid fa-person-biking text-4xl text-red-500"></i>
+                </div> 
+                <h5 className="text-base font-bold mb-5">Motorcycle Training</h5>
                 <Link
                   href="/bookings"
                   className="px-3 py-1 w-full inline-block bg-white text-sm text-red-500 rounded-4xl hover:bg-red-500 hover:text-white transition-colors border border-red-500"
                 >
-                  More
+                  More <i className="fa-solid fa-arrow-right"></i>
                 </Link>
               </div>
+              <div className="bg-white rounded-lg p-4 border border-gray-300 text-center">
+                <div className="h-[66px] mt-4">
+                   <i className="fa-solid fa-car-on text-4xl text-red-500"></i>                   
+                </div> 
+                <h5 className="text-base font-bold mb-5">Driving Lessons</h5>
+                <Link
+                  href="/bookings"
+                  className="px-3 py-1 w-full inline-block bg-white text-sm text-red-500 rounded-4xl hover:bg-red-500 hover:text-white transition-colors border border-red-500"
+                >
+                  More <i className="fa-solid fa-arrow-right"></i>
+                </Link>
+              </div>
+              <div className="bg-white rounded-lg p-4 border border-gray-300 text-center">
+                <div className="h-[66px] mt-4">
+                   <i className="fa-solid fa-truck text-4xl text-red-500"></i>                  
+                </div> 
+                <h5 className="text-base font-bold mb-5">LGV Training</h5>
+                <Link
+                  href="/bookings"
+                  className="px-3 py-1 w-full inline-block bg-white text-sm text-red-500 rounded-4xl hover:bg-red-500 hover:text-white transition-colors border border-red-500"
+                >
+                  More <i className="fa-solid fa-arrow-right"></i>
+                </Link>
+              </div>
+              <div className="bg-white rounded-lg p-4 border border-gray-300 text-center">
+                <div className="h-[66px] mt-4">
+                   <i className="fa-solid fa-bus-simple text-4xl text-red-500"></i>                  
+                </div> 
+                <h5 className="text-base font-bold mb-5">PCV Training</h5>
+                <Link
+                  href="/bookings"
+                  className="px-3 py-1 w-full inline-block bg-white text-sm text-red-500 rounded-4xl hover:bg-red-500 hover:text-white transition-colors border border-red-500"
+                >
+                  More <i className="fa-solid fa-arrow-right"></i>
+                </Link>
+              </div>
+              <div className="bg-white rounded-lg p-4 border border-gray-300 text-center">
+                <div className="h-[66px] mt-4">
+                   <i className="fa-solid fa-circle-user text-4xl text-red-500"></i>            
+                </div> 
+                <h5 className="text-base font-bold mb-5">Fleet Driver Training</h5>
+                <Link
+                  href="/bookings"
+                  className="px-3 py-1 w-full inline-block bg-white text-sm text-red-500 rounded-4xl hover:bg-red-500 hover:text-white transition-colors border border-red-500"
+                >
+                  More <i className="fa-solid fa-arrow-right"></i>
+                </Link>
+              </div>
+              <div className="bg-white rounded-lg p-4 border border-gray-300 text-center">
+                <div className="h-[66px] mt-4">
+                   <i className="fa-solid fa-laptop text-4xl text-red-500"></i>                   
+                </div> 
+                <h5 className="text-base font-bold mb-5">Book Online</h5>
+                <Link
+                  href="/bookings"
+                  className="px-3 py-1 w-full inline-block bg-white text-sm text-red-500 rounded-4xl hover:bg-red-500 hover:text-white transition-colors border border-red-500"
+                >
+                  More <i className="fa-solid fa-arrow-right"></i>
+                </Link>
+              </div>
+              
             </div>
           </div>
         </div>

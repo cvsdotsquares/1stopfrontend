@@ -36,28 +36,28 @@ export default function FaqsSection({ data }: { data: FaqsData }) {
 
   return (
     <section className="bg-white py-8 md:py-16">
-      <div className="mx-auto max-w-4xl px-6">
+      <div className="mx-auto max-w-[945px] px-6">
         {/* Title */}
         <h2 className="mb-4 text-center">
           {data.title}
         </h2>
 
         {/* Subtitle */}
-        <p className="mb-4 text-center text-gray-500 leading-relaxed">
+        <p className="mb-6 text-center">
           {data.subtitle}
         </p>
 
         {/* FAQ Categories */}
-        <div className="space-y-4">
+        <div className="space-y-0">
           {data.faqs.map((category) => (
             <div
               key={category.id}
-              className="border border-gray-200 rounded-lg bg-white shadow-sm"
+              className="border-b border-gray-200"
             >
               {/* Category Header */}
               <button
                 onClick={() => toggleCategory(category.id)}
-                className="flex w-full items-center justify-between p-6 text-left hover:bg-gray-50 rounded-lg"
+                className="flex w-full items-center justify-between py-3 text-left cursor-pointer"
               >
                 <h3 className="text-xl font-bold text-gray-900">
                   {category.category}
