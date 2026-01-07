@@ -126,84 +126,81 @@ const locations = [
 
 export default function AllLocations() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-        <div className="container mx-auto px-4 py-16">
-          <div className="max-w-3xl">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Training Locations Across London
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-200 mb-8">
-              Professional motorcycle training at convenient locations throughout London and Essex
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4">
+      <div className="bg-white relative h-[548px] flex items-center from-blue-600 to-blue-800 text-white"> 
+          <div className="z-0 absolute inset-0 transition-opacity bg-black duration-1000 opacity-50"></div>       
+          <div className="z-10 sm:max-w-[562px] ml-auto mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center radius20-left radius20-left-bottom text-center">
+            <div className="text26 text-xl font-semibold text-red-600">
+              Our Next Available CBT Course Is TOMORROW
+            </div>            
+            <div className="text-center">
               <Link
                 href="/bookings"
-                className="px-6 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors text-center"
+                className="mt-3 radius20-left radius20-right-bottom inline-block bg-red-600 px-10 py-3 text-base md:text-2xl text-white hover:bg-red-700"
               >
-                Book Training Now
-              </Link>
-              <Link
-                href="/contactus.php"
-                className="px-6 py-3 border border-white text-white font-semibold rounded-lg hover:bg-white hover:text-blue-600 transition-colors text-center"
-              >
-                Contact Us
-              </Link>
+                Book Now!
+              </Link>             
             </div>
-          </div>
-        </div>
+          </div>        
       </div>
 
-      <div className="container mx-auto px-4 py-12">
+      <div className="max-w-[1400px] mx-auto px-4 py-12">
+        <h1>Our Locations</h1>
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-            <div className="text-3xl font-bold text-blue-600 mb-2">{locations.length}</div>
-            <div className="text-gray-600">Training Centers</div>
+          <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+            <div className="text-4xl font-bold text-blue-600 mb-2">{locations.length}</div>
+            <div className="border-2 border-red-200 border-w mx-auto w-[60px]"></div>
+            <div className="text-lg text-gray-500 mt-4">Training Centers</div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-            <div className="text-3xl font-bold text-green-600 mb-2">50+</div>
-            <div className="text-gray-600">Qualified Instructors</div>
+          <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+            <div className="text-4xl font-bold text-blue-600 mb-2">50<span className="text-red-600">+</span></div>
+            <div className="border-2 border-red-200 border-w mx-auto w-[60px]"></div>
+            <div className="text-lg text-gray-500 mt-4">Qualified Instructors</div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-            <div className="text-3xl font-bold text-purple-600 mb-2">90%+</div>
-            <div className="text-gray-600">Pass Rate</div>
+          <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+            <div className="text-4xl font-bold text-blue-600 mb-2">90<span className="text-red-600">% +</span></div>
+            <div className="border-2 border-red-200 border-w mx-auto w-[105px]"></div>
+            <div className="text-lg text-gray-500 mt-4">Pass Rate</div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-            <div className="text-3xl font-bold text-orange-600 mb-2">15k+</div>
-            <div className="text-gray-600">Students Trained</div>
+          <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+            <div className="text-4xl font-bold text-blue-600 mb-2">15<span className="text-red-600">k +</span></div>
+            <div className="border-2 border-red-200 border-w mx-auto w-[96px]"></div>
+            <div className="text-lg text-gray-500 mt-4">Students Trained</div>
           </div>
         </div>
 
         {/* Filter and Search */}
-        <div className="mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Search Location
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter postcode or area..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Course Type
-                </label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">All Courses</option>
-                  <option value="cbt">CBT Training</option>
-                  <option value="das">DAS Course</option>
-                  <option value="module1">Module 1</option>
-                  <option value="module2">Module 2</option>
-                </select>
+        <div className="mb-14">
+          <div className="bg-blue-50 rounded-lg p-8">
+            <div className="flex gap-4">
+              <div className="grow-1 flex gap-4">
+                <div className="w-3/6">
+                  <label className="block text-base mb-2">
+                    Search Location
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter postcode or area..."
+                    className="w-full px-4 py-3 text-gray-700 placeholder-gray-500 focus:outline-none bg-white border border-gray-300"
+                  />
+                </div>
+                <div className="w-3/6">
+                  <label className="block text-base mb-2">
+                    Course Type
+                  </label>
+                  <select className="w-full px-4 py-3 text-gray-700 placeholder-gray-500 focus:outline-none bg-white border border-gray-300">
+                    <option value="">All Courses</option>
+                    <option value="cbt">CBT Training</option>
+                    <option value="das">DAS Course</option>
+                    <option value="module1">Module 1</option>
+                    <option value="module2">Module 2</option>
+                  </select>
+                </div>
               </div>
               <div className="flex items-end">
-                <button className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors">
+                <button className="bg-red-600 px-3 py-1 text-lg text-white hover:bg-red-500 text-center cursor-pointer min-w-[240px] h-[50px]">
                   Find Locations
                 </button>
               </div>
@@ -212,151 +209,70 @@ export default function AllLocations() {
         </div>
 
         {/* Locations Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
           {locations.map((location) => (
-            <div key={location.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+            <div key={location.id} className="bg-white rounded-lg border border-gray-300 overflow-hidden hover:shadow-md transition-shadow">
               {/* Location Image */}
-              <div className="h-48 bg-gradient-to-r from-blue-400 to-blue-600 relative">
-                <div className="absolute inset-0 bg-black/20" />
-                <div className="absolute bottom-4 left-4">
-                  <h3 className="text-xl font-bold text-white">{location.name}</h3>
-                </div>
+              <div className="h-48 relative bg-gray-300">
+
               </div>
 
               {/* Location Details */}
-              <div className="p-6">
-                <p className="text-gray-600 mb-4">{location.description}</p>
+              
+              <div className="p-6 pb-8">
+                <h3 className="text-lg font-bold text-blue-600 uppercase pb-3"><i className="fa-solid fa-location-dot mr-1"></i> {location.name}</h3>
+                <p className="text-sm mb-4">{location.description}</p>
 
-                {/* Contact Info */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Contact</h4>
-                    <div className="space-y-1 text-sm text-gray-600">
-                      <div className="flex items-center">
-                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22S19 14.25 19 9C19 5.13 15.87 2 12 2M12 11.5C10.62 11.5 9.5 10.38 9.5 9S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5Z"/>
-                        </svg>
-                        {location.address}
-                      </div>
-                      <div className="flex items-center">
-                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M6.62 10.79C8.06 13.62 10.38 15.94 13.21 17.38L15.41 15.18C15.69 14.9 16.08 14.82 16.43 14.93C17.55 15.3 18.75 15.5 20 15.5C20.55 15.5 21 15.95 21 16.5V20C21 20.55 20.55 21 20 21C10.61 21 3 13.39 3 4C3 3.45 3.45 3 4 3H7.5C8.05 3 8.5 3.45 8.5 4C8.5 5.25 8.7 6.45 9.07 7.57C9.18 7.92 9.1 8.31 8.82 8.59L6.62 10.79Z"/>
-                        </svg>
-                        {location.phone}
-                      </div>
-                      <div className="flex items-center">
-                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M20 4H4C2.9 4 2.01 4.9 2.01 6L2 18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4M20 8L12 13L4 8V6L12 11L20 6V8Z"/>
-                        </svg>
-                        {location.email}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Opening Hours</h4>
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <div className="flex justify-between">
-                        <span>Mon-Fri:</span>
-                        <span>{location.openingHours.monday}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Saturday:</span>
-                        <span>{location.openingHours.saturday}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Sunday:</span>
-                        <span>{location.openingHours.sunday}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Courses Available */}
-                <div className="mb-4">
-                  <h4 className="font-semibold text-gray-900 mb-2">Available Courses</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {location.courses.map((course) => (
-                      <span
-                        key={course}
-                        className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full"
-                      >
-                        {course}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Facilities */}
-                <div className="mb-6">
-                  <h4 className="font-semibold text-gray-900 mb-2">Facilities</h4>
-                  <div className="grid grid-cols-2 gap-2">
+                {/* Courses Offer */}
+                <div className="pb-7 grow-1">
+                  <h4 className="text-lg font-bold text-blue-600 pb-3"><i className="fa-solid fa-person-biking mr-2"></i> Courses Offered</h4>                   
+                  <div className="grid grid-cols-1 gap-2">
                     {location.facilities.map((facility, index) => (
-                      <div key={index} className="flex items-center text-sm text-gray-600">
-                        <svg className="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M9 12L11 14L15 10M21 12C21 16.97 16.97 21 12 21C7.03 21 3 16.97 3 12C3 7.03 7.03 3 12 3C16.97 3 21 7.03 21 12Z"/>
-                        </svg>
+                      <div key={index} className="flex items-center text-sm">
+                        <i className="fa-solid fa-circle-check mr-2"></i>
                         {facility}
                       </div>
                     ))}
-                  </div>
+                  </div>                  
                 </div>
-
                 {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row gap-3 lg:gap-5 xl:gap-8">
                   <Link
                     href={`/cbt-training/${location.slug}`}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors text-center"
+                    className="flex-1 rounded-md bg-blue-600 px-6 py-3 text-base text-center text-white hover:bg-blue-700 text-center"
                   >
-                    View Location Details
+                    View Location
                   </Link>
                   <Link
                     href={`/bookings/step2?location=${location.id}`}
-                    className="flex-1 px-4 py-2 border border-blue-600 text-blue-600 font-medium rounded-md hover:bg-blue-50 transition-colors text-center"
+                    className="flex-1 rounded-md bg-red-600 px-6 py-3 text-base  text-center text-white hover:bg-red-500 text-center"
                   >
-                    Book Training Here
+                    Book Now
                   </Link>
                 </div>
               </div>
             </div>
           ))}
         </div>
-
-        {/* Map Section */}
+         {/* Featured Services  */}
         <div className="mt-12">
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Find Us on the Map</h2>
-            <div className="h-96 bg-gray-200 rounded-lg flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                <svg className="w-16 h-16 mx-auto mb-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22S19 14.25 19 9C19 5.13 15.87 2 12 2M12 11.5C10.62 11.5 9.5 10.38 9.5 9S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5Z"/>
-                </svg>
-                <p className="text-lg font-medium">Interactive Map</p>
-                <p className="text-sm">Google Maps integration would be here</p>
+          <div className="p-6">
+            <div className="text-center pb-6 m-auto w-9/12">
+              <h2 className="mb-2">Featured <span className="text-blue-600">Services</span> </h2>
+              <p>Professional training services offered for all types of licence requirements, including advanced training, and assessments for compliance and auditing purposes</p>
+            </div>
+            <div className="grid grid-cols-6 gap-2">
+              <div className="bg-white rounded-lg p-4 border border-gray-300 text-center">
+                <i className="fa-solid person-biking text-3x-1"></i>
+                <h5 className="text-base font-bold mb-4">Motorcycle Training</h5>
+                <Link
+                  href="/bookings"
+                  className="px-3 py-1 w-full inline-block bg-white text-sm text-red-500 rounded-4xl hover:bg-red-500 hover:text-white transition-colors border border-red-500"
+                >
+                  More
+                </Link>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* CTA Section */}
-        <div className="mt-12 bg-blue-600 rounded-lg text-white p-8 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Start Your Training?</h2>
-          <p className="text-xl text-blue-100 mb-8">
-            Book your course at any of our convenient locations with instant confirmation
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/bookings"
-              className="px-8 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              Book Training Now
-            </Link>
-            <Link
-              href="/contactus.php"
-              className="px-8 py-3 border border-white text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Get More Information
-            </Link>
           </div>
         </div>
       </div>

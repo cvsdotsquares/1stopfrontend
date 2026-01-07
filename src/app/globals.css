@@ -84,14 +84,16 @@
   --color-blue-700:#171767;
   --color-blue-800:#060038;  
   --color-blue-900:#090340;
-  --color-gray-100:#F6F6F6;
-  --color-red-600:#E02933;
+  --color-gray-100:#F6F6F6;  
   --color-red-500:#EB2D39;
+  --color-red-600:#E02933;
+  --color-red-200:#FFC1C4;
   --color-gray-500:#5B5F63;
   --color-gray-50:#FAFAFA;
   --color-blue-50:#F1F5F9;
   --color-gray-300:#DEDEDE;
   --color-gray-400:#DBDBDB;
+  --color-gray-200:#EFEFEF;
 }
 
 .dark {
@@ -172,9 +174,13 @@
     p:last-child{
       margin-bottom:0;
     }
-     /* Mobile (default) */
+    h1{
+      font-size:2.5rem;
+      font-weight: bold;
+      margin-bottom: 1.3rem;
+    }
     h2 {
-      font-size: 2.2rem; /* mobile */
+      font-size: 2.2rem;
       line-height: 1.3;
       font-weight: bold;
     }   
@@ -193,7 +199,6 @@ body{
   color: #000;
   font-size: 16px;
 }
-
 @media (min-width:768px){
 .text26{
     font-size: 1.625rem;
@@ -202,7 +207,6 @@ body{
     font-size: 3.125rem;
 }
 }
-
 .radius20-left {
   border-top-left-radius:20px;
 }
@@ -212,11 +216,9 @@ body{
 .radius20-right-bottom {
   border-bottom-right-radius:20px;
 }
-
 .about-home div:first-child {
   margin-top: 30px;
 }
-
 .list-icon ul{
   padding: 10px 0;
 }
@@ -235,20 +237,10 @@ body{
   font-family: "Font Awesome 7 Free";
   color: var(--color-red-600);
 }
-
 .across-london-block h3{
   font-size: 16px;
   font-weight: bold;
-
 }
-
-
-
-
-
-
-
-
 
 
 
