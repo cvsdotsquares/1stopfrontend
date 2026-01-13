@@ -338,7 +338,9 @@ export default function AllLocations() {
             </div>
           </div>
         </div>
+        
       </div>
+     
     </div>
   );
 }

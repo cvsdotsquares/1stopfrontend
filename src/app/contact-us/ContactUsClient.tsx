@@ -259,34 +259,30 @@ export default function ContactUsClient({
   const selectedOffice = offices.find((o) => o.id === selectedOfficeId);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {carousel_static_image ? (
-        <div className="mb-6 rounded overflow-hidden shadow">
-          <img src={carousel_static_image} alt={page_title} className="w-full h-44 object-cover" />
-        </div>
-      ) : null}
+    <div className="max-w-[1400px] mx-auto px-4 py-8">
+      
 
-      <h1 className="text-3xl font-semibold mb-4">{page_title}</h1>
+      <h1>{page_title}</h1>
 
-      <div className="prose max-w-none mb-8" dangerouslySetInnerHTML={{ __html: page_content }} />
+      <div className="prose max-w-none [&_a]:underline [&_a:hover]:text-red-500 mb-8" dangerouslySetInnerHTML={{ __html: page_content }} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded shadow">
+        <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-6 rounded">
           <div>
-            <label className="block text-sm font-medium mb-1">Your name</label>
-            <input required value={name} onChange={(e) => setName(e.target.value)} className="w-full border rounded px-3 py-2" />
+            <label className="block text-sm font-bold mb-1">Your name</label>
+            <input required value={name} onChange={(e) => setName(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Your email</label>
-            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border rounded px-3 py-2" />
+            <label className="block text-sm font-bold mb-1">Your email</label>
+            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Subject</label>
-            <input required value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full border rounded px-3 py-2" />
+            <label className="block text-sm font-bold mb-1">Subject</label>
+            <input required value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Message</label>
-            <textarea required value={message} onChange={(e) => setMessage(e.target.value)} className="w-full border rounded px-3 py-2 h-32" />
+            <label className="block text-sm font-bold mb-1">Message</label>
+            <textarea required value={message} onChange={(e) => setMessage(e.target.value)} className="w-full border rounded px-3 py-2 h-32  bg-white" />
           </div>
 
           {/* reCAPTCHA */}
@@ -297,7 +293,7 @@ export default function ContactUsClient({
           ) : null}
 
           <div>
-            <button disabled={submitting} type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
+            <button disabled={submitting} type="submit" className="min-w-[210px] mt-6 inline-block radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-center text-lg text-white hover:bg-red-500 cursor-pointer">
               {submitting ? "Sending..." : "Submit"}
             </button>
           </div>
@@ -306,9 +302,9 @@ export default function ContactUsClient({
         </form>
 
         <div>
-          <div className="bg-white p-6 rounded shadow mb-4">
-            <label className="block text-sm font-medium mb-2">Select office</label>
-            <select value={selectedOfficeId} onChange={(e) => setSelectedOfficeId(e.target.value === "all" ? "all" : Number(e.target.value))} className="w-full border rounded px-3 py-2">
+          <div className="bg-gray-50 p-6 rounded  mb-4">
+            <label className="block text-sm font-bold mb-2">Select office</label>
+            <select value={selectedOfficeId} onChange={(e) => setSelectedOfficeId(e.target.value === "all" ? "all" : Number(e.target.value))} className="w-full border bg-white rounded px-3 py-2">
               <option value="all">All offices</option>
               {offices.map((o) => (
                 <option value={o.id} key={o.id}>
@@ -318,14 +314,14 @@ export default function ContactUsClient({
             </select>
 
             <div className="mt-4">
-              <div ref={mapRef} style={{ width: "100%", height: 320 }} className="rounded overflow-hidden" />
+              <div ref={mapRef} style={{ width: "100%", }} className="rounded overflow-hidden" />
             </div>
           </div>
 
           {selectedOffice ? (
-            <div className="bg-white p-6 rounded shadow" dangerouslySetInnerHTML={{ __html: selectedOffice.content || "" }} />
+            <div className="p-6 rounded bg-gray-50" dangerouslySetInnerHTML={{ __html: selectedOffice.content || "" }} />
           ) : (
-            <div className="bg-white p-6 rounded shadow">
+            <div className="p-6 rounded bg-gray-50">
               <h3 className="font-semibold mb-2">All offices</h3>
               <ul className="list-disc pl-5">
                 {offices.map((o) => (
@@ -338,6 +334,18 @@ export default function ContactUsClient({
           )}
         </div>
       </div>
+
+      <div className="pt-8 pb-3 [&_h3]:font-bold [&_h3]:text-2xl [&_h3]:mb-4">
+          <h3><span className="mr-1 md:mr-3 text-red-500 text-large"><i className="fa-solid fa-location-dot"></i></span>
+            1 stop Instruction - East London - Beckton{" "}
+            <span style={{ color: "#383092" }}>
+              (Newham Powerleague)
+            </span>
+          </h3>
+          <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d158717.4599157036!2d0.0130463!3d51.5689611!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47d8a71ae5bb6831%3A0x884a8c0191b39955!2s1%20Stop%20Instruction%20-%20Newham%20CBT%20Test%20Centre!5e0!3m2!1sen!2sin!4v1768303487197!5m2!1sen!2sin" width="100%" height="450" loading="lazy"></iframe>
+      </div>    
+
+
     </div>
   );
 }
