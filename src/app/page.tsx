@@ -3,21 +3,37 @@
 import { useQuery } from '@tanstack/react-query';
 import { cmsApi } from '@/services/api';
 import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import DynamicBanner from '@/components/cms/DynamicBanner';
-import TestimonialsCarousel from '@/components/testimonials';
+import Hero from "@/components/home/hero/Hero";
+import AboutSection from "@/components/home/about/AboutSection";
+import ServicesSection from "@/components/home/services/ServicesSection";
+import FeatureImageLeft from "@/components/home/generic-feature/FeatureImageLeft";
+import FeatureImageRight from "@/components/home/generic-feature/FeatureImageRight";
+import TrainingSlider from "@/components/home/training-slider/TrainingSlider";
+import WhyUsSection from "@/components/home/why-us/WhyUsSection";
+import AccreditationsSection from "@/components/accreditations/AccreditationsSection";
+import FaqsSection from "@/components/home/faqs/FaqsSection";
+import GenericCta from "@/components/home/generic-cta/GenericCta";
+import TestimonialsCarousel from "@/components/testimonials";
+import FeaturesSection from "@/components/home/features/FeaturesSection";
+import homepageData from "@/data/homepage.json";
+
 
 export default function Home() {
-  // Fetch homepage content from backend using slug "home"
-  const { data: pageData, isLoading, error } = useQuery({
-    queryKey: ['page', 'home'],
-    queryFn: () => cmsApi.getPage('home'),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-  });
 
-  // Extract page data
+    // Fetch homepage data from API
+    const { data: apiData, isLoading, error } = useQuery({
+      queryKey: ['homepage'],
+      queryFn: () => cmsApi.getHomepageData(),
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    });
+
+    // Fetch page settings for testimonial display
+    const { data: pageData } = useQuery({
+      queryKey: ['page', 'home'],
+      queryFn: () => cmsApi.getPage('home'),
+      staleTime: 5 * 60 * 1000,
+    });
+
   const pageContent = pageData?.data;
 
   // Update document title and meta when page data loads
@@ -27,7 +43,7 @@ export default function Home() {
     } else if (pageContent?.page_title) {
       document.title = pageContent.page_title;
     }
-    
+
     if (pageContent?.meta_desc) {
       const metaDescription = document.querySelector('meta[name="description"]');
       if (metaDescription) {
@@ -41,126 +57,56 @@ export default function Home() {
     }
   }, [pageContent]);
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading homepage...</p>
+    // Use API data for hero, about, services, cbtAcrossLondon, cbtTestLondon, trainingSlider, whyUs, features, accreditations, faqs, and ctas sections, fallback to static data for other sections
+    const heroData = apiData?.success ? apiData.data.hero : homepageData.data.hero;
+    const aboutData = apiData?.success ? apiData.data.about : homepageData.data.about;
+    const servicesData = apiData?.success ? apiData.data.services : homepageData.data.services;
+    const showServices = pageData?.data?.featured_display === 1;
+    const cbtAcrossLondonData = apiData?.success ? apiData.data.cbtAcrossLondon : null;
+    const cbtTestLondonData = apiData?.success ? apiData.data.cbtTestLondon : null;
+    const trainingSliderData = apiData?.success ? apiData.data.trainingSlider : homepageData.data.trainingSlider;
+    const whyUsData = apiData?.success ? apiData.data.whyUs : homepageData.data.whyUs;
+    const featuresData = apiData?.success ? apiData.data.features : [];
+    const showAccreditations = pageData?.data?.accreditation_display === 1;
+    const faqsData = apiData?.success ? apiData.data.faqs : null;
+    const ctasData = apiData?.success ? apiData.data.ctas : [];
+    const showTestimonials = pageData?.data?.testimonial_display === 1;
+
+
+    if (isLoading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
-      </div>
+      );
+    }
+
+    if (error) {
+      console.error('Failed to load homepage data:', error);
+      // Fallback to static data on error
+    }
+
+    // Get CTAs by position
+    const getCTAByPosition = (position: number) => {
+      return ctasData.find((cta: any) => cta.position === position);
+    };
+
+    return(
+      <>
+        {heroData && <Hero data={heroData} />}
+        {aboutData && <AboutSection data={aboutData} />}
+        {showServices && servicesData && <ServicesSection data={servicesData} />}
+        {cbtAcrossLondonData && <FeatureImageLeft data={cbtAcrossLondonData} />}
+        {cbtTestLondonData && <FeatureImageRight data={cbtTestLondonData} />}
+        {trainingSliderData && <TrainingSlider data={trainingSliderData} />}
+        {whyUsData && <WhyUsSection data={whyUsData} />}
+        {getCTAByPosition(1) && <GenericCta {...getCTAByPosition(1)} />}
+        {featuresData.length > 0 && <FeaturesSection features={featuresData} />}
+        {getCTAByPosition(2) && <GenericCta {...getCTAByPosition(2)} />}
+        {showTestimonials && <TestimonialsCarousel limit={10} />}
+        {showAccreditations &&<AccreditationsSection />}
+        {getCTAByPosition(3) && <GenericCta {...getCTAByPosition(3)} />}
+        {faqsData && <FaqsSection data={faqsData} />}
+      </>
     );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">Failed to load homepage content</p>
-          <Button onClick={() => window.location.reload()}>
-            Try Again
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // If no page content found, show message
-  if (!pageContent) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">Homepage content not found</p>
-          <p className="text-sm text-gray-500 mb-4">Please create a page with slug "home" in the CMS</p>
-          <Button asChild>
-            <Link href="/all-locations">Browse Locations</Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen">
-      {/* Dynamic Banner Section - Based on banner_type */}
-      <DynamicBanner
-        bannerType={pageContent.banner_type}
-        pageTitle={pageContent.page_title}
-        staticImage={pageContent.carousel_static_image}
-        staticCaption={pageContent.carousel_static_caption}
-        overlayCaption={pageContent.overlay_caption}
-        overlayText={pageContent.overlay_caption_text}
-      />
-
-      {/* Main Content Section */}
-      <section className="py-12 bg-white">
-        <div className="container mx-auto px-4">
-          {/* Page Title (if no hero image) */}
-          {!pageContent.carousel_static_image && (
-            <div className="text-center mb-12">
-              <h1 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">{pageContent.page_title}</h1>
-            </div>
-          )}
-          
-          {/* Dynamic Page Content */}
-          <div 
-            className="prose prose-lg max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-blue-600 hover:prose-a:text-blue-800"
-            dangerouslySetInnerHTML={{ __html: pageContent.page_content }}
-          />
-        </div>
-      </section>
-
-      {/* Additional sections based on page settings */}
-      
-      {/* Testimonials section if enabled */}
-      {pageContent.testimonial_display === 1 && (
-        <section className="py-12 bg-gray-50">
-          <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold text-center mb-8">What Our Students Say</h2>
-            <TestimonialsCarousel limit={10} />
-            <div className="text-center mt-8">
-              <Button asChild>
-                <Link href="/testimonials">View All Testimonials</Link>
-              </Button>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Featured Services section if this is marked as featured */}
-      {pageContent.featured_display === 1 && (
-        <section className="py-12 bg-white">
-          <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl font-bold mb-8">Our Services</h2>
-            <Button asChild>
-              <Link href="/all-locations">Find Training Locations</Link>
-            </Button>
-          </div>
-        </section>
-      )}
-
-      {/* Call to Action Section */}
-      <section className="py-16 bg-blue-600 text-white">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Get Started?</h2>
-          <p className="text-xl mb-8 opacity-90">Book your motorcycle training today</p>
-          <div className="space-x-4">
-            <Button asChild size="lg" className="bg-white text-blue-600 hover:bg-gray-100">
-              <Link href="/bookings">Book Now</Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-blue-600">
-              <Link href="/all-locations">Find Locations</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Internal CSS if present */}
-      {pageContent.internal_css && (
-        <style dangerouslySetInnerHTML={{ __html: pageContent.internal_css }} />
-      )}
-    </div>
-  );
 }
