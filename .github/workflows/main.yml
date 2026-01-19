@@ -28,19 +28,16 @@ jobs:
             git clean -fd
             git pull origin dev
 
-            echo "📝 Generating .env file..."
-            if [ -f env.yml ]; then
-              if ! command -v yq &> /dev/null; then
-                echo "❌ yq is required but not installed."
-                exit 1
-              fi
-              echo "# Auto-generated from env.yml" > .env
-              yq eval '. | to_entries | .[] | "\(.key)=\(.value)"' env.yml >> .env
-            else
-              echo "# Fallback production env" > .env
-              echo "NEXT_PUBLIC_API_URL=https://1stopbackend.24livehost.com/api" >> .env
-              echo "NODE_ENV=production" >> .env
-            fi
+            echo "📝 Generating .env file from GitHub Secrets..."
+
+            cat <<EOF > .env
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_FILES_URL=${{ secrets.NEXT_PUBLIC_FILES_URL }}
+            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+            NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${{ secrets.NEXT_PUBLIC_RECAPTCHA_SITE_KEY }}
+            NODE_ENV=production
+            EOF
+
 
             echo "📦 Installing dependencies..."
             npm install
