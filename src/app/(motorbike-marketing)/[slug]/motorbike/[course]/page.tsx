@@ -8,7 +8,7 @@ function formatArea(area: string) {
   return area.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 }
 
-export default function CoursePage({ params }) {
+export default function CoursePage({ params }: { params: { slug: string; course: string } }) {
   const { slug, course } = params
   return  (
     <>
