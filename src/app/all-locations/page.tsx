@@ -6,7 +6,21 @@ import { useState, useEffect } from 'react';
 import TestimonialsCarousel from "@/components/testimonials";
 import AccreditationsSection from "@/components/accreditations/AccreditationsSection";
 import FeaturedServices from '@/components/ui/FeaturedServices';
-async function fetchLocations() {
+
+interface Location {
+  id: string;
+  locationName: string;
+  locationPicture?: string;
+  address: string[];
+  courses?: Array<Record<string, string>>;
+  slug: string;
+}
+
+interface Course {
+  [key: string]: string;
+}
+
+async function fetchLocations(): Promise<[Course[], Location[]] | []> {
   try {
     //Get api base endpoint from env variable
     const apiEndpoint = process.env.NEXT_PUBLIC_API_URL;
@@ -26,13 +40,14 @@ async function fetchLocations() {
     console.error('Error fetching locations:', error);
     return [];
   }
+  return [];
 }
 
 export default function AllLocations() {
 
-  const [allLocations, setAllLocations] = useState([]);
-  const [courses, setCourses] = useState([]);
-  const [filteredLocations, setFilteredLocations] = useState([]);
+  const [allLocations, setAllLocations] = useState<Location[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [filteredLocations, setFilteredLocations] = useState<Location[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
   const [currentPage, setCurrentPage] = useState(1);

@@ -76,7 +76,7 @@ export default function ContactUsClient({
 
   // Filter and sort offices
   useEffect(() => {
-    const filtered = (contact_offices || []).filter((o) => o.status === 1 || o.status === true);
+    const filtered = (contact_offices || []).filter((o) => o.status === 1);
     filtered.sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0));
     setOffices(filtered);
   }, [contact_offices]);

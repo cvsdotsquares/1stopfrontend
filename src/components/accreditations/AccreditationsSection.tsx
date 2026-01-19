@@ -123,7 +123,7 @@ export default function AccreditationsSection({ data }: { data?: AccreditationsD
                   {card.locations.map((location, index) => (
                     <div key={index} className="flex items-start">
                       <span className="mr-1 md:mr-3 text-red-500 text-base"><i className="fa-solid fa-location-dot"></i></span>
-                      <span className="text-black text-sm md:text-base">{location.name}</span>
+                      <span className="text-black text-sm md:text-base">{location}</span>
                     </div>
                   ))}
                 </div>
