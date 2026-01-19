@@ -50,7 +50,7 @@ function CTA() {
   )
 }
 
-export default function MotorbikeLayout({ children }) {
+export default function MotorbikeLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Hero />
