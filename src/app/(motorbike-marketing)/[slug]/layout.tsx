@@ -1,5 +1,5 @@
 // app/(motorbike-marketing)/[area]/motorbike/[course]/layout.tsx
-export default function MotorbikeLayout({ children }) {
+export default function MotorbikeLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <div className="bg-blue-600 text-white py-6 px-4 text-center">Test</div>
