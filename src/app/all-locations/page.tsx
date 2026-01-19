@@ -272,94 +272,12 @@ export default function AllLocations() {
           </div>
         )}
          {/* Featured Services  */}
-        <div className="mt-12">
-          <div className="py-6">
-            <div className="text-center pb-6 m-auto md:w-9/12">
-              <h2 className="mb-2">Featured <span className="text-blue-600">Services</span> </h2>
-              <p>Professional training services offered for all types of licence requirements, including advanced training, and assessments for compliance and auditing purposes</p>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <div className="bg-white rounded-lg p-4 border border-gray-300 text-center">
-                <div className="h-[66px] mt-4">
-                   <i className="fa-solid fa-person-biking text-4xl text-red-500"></i>
-                </div>
-                <h5 className="text-base font-bold mb-5">Motorcycle Training</h5>
-                <Link
-                  href="/bookings"
-                  className="px-3 py-1 w-full inline-block bg-white text-sm text-red-500 rounded-4xl hover:bg-red-500 hover:text-white transition-colors border border-red-500"
-                >
-                  More <i className="fa-solid fa-arrow-right"></i>
-                </Link>
-              </div>
-              <div className="bg-white rounded-lg p-4 border border-gray-300 text-center">
-                <div className="h-[66px] mt-4">
-                   <i className="fa-solid fa-car-on text-4xl text-red-500"></i>
-                </div>
-                <h5 className="text-base font-bold mb-5">Driving Lessons</h5>
-                <Link
-                  href="/bookings"
-                  className="px-3 py-1 w-full inline-block bg-white text-sm text-red-500 rounded-4xl hover:bg-red-500 hover:text-white transition-colors border border-red-500"
-                >
-                  More <i className="fa-solid fa-arrow-right"></i>
-                </Link>
-              </div>
-              <div className="bg-white rounded-lg p-4 border border-gray-300 text-center">
-                <div className="h-[66px] mt-4">
-                   <i className="fa-solid fa-truck text-4xl text-red-500"></i>
-                </div>
-                <h5 className="text-base font-bold mb-5">LGV Training</h5>
-                <Link
-                  href="/bookings"
-                  className="px-3 py-1 w-full inline-block bg-white text-sm text-red-500 rounded-4xl hover:bg-red-500 hover:text-white transition-colors border border-red-500"
-                >
-                  More <i className="fa-solid fa-arrow-right"></i>
-                </Link>
-              </div>
-              <div className="bg-white rounded-lg p-4 border border-gray-300 text-center">
-                <div className="h-[66px] mt-4">
-                   <i className="fa-solid fa-bus-simple text-4xl text-red-500"></i>
-                </div>
-                <h5 className="text-base font-bold mb-5">PCV Training</h5>
-                <Link
-                  href="/bookings"
-                  className="px-3 py-1 w-full inline-block bg-white text-sm text-red-500 rounded-4xl hover:bg-red-500 hover:text-white transition-colors border border-red-500"
-                >
-                  More <i className="fa-solid fa-arrow-right"></i>
-                </Link>
-              </div>
-              <div className="bg-white rounded-lg p-4 border border-gray-300 text-center">
-                <div className="h-[66px] mt-4">
-                   <i className="fa-solid fa-circle-user text-4xl text-red-500"></i>
-                </div>
-                <h5 className="text-base font-bold mb-5">Fleet Driver Training</h5>
-                <Link
-                  href="/bookings"
-                  className="px-3 py-1 w-full inline-block bg-white text-sm text-red-500 rounded-4xl hover:bg-red-500 hover:text-white transition-colors border border-red-500"
-                >
-                  More <i className="fa-solid fa-arrow-right"></i>
-                </Link>
-              </div>
-              <div className="bg-white rounded-lg p-4 border border-gray-300 text-center">
-                <div className="h-[66px] mt-4">
-                   <i className="fa-solid fa-laptop text-4xl text-red-500"></i>
-                </div>
-                <h5 className="text-base font-bold mb-5">Book Online</h5>
-                <Link
-                  href="/bookings"
-                  className="px-3 py-1 w-full inline-block bg-white text-sm text-red-500 rounded-4xl hover:bg-red-500 hover:text-white transition-colors border border-red-500"
-                >
-                  More <i className="fa-solid fa-arrow-right"></i>
-                </Link>
-              </div>
-
-            </div>
-          </div>
-        </div>
+         <FeaturedServices />
 
         {/* Testimonials */}
       </div>
         <TestimonialsCarousel />
         <AccreditationsSection/>
-    </div>
+      </div>
   );
 }

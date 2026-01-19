@@ -1,16 +1,29 @@
 // Simple placeholder components
 function Hero() {
   return (
-    <div className="bg-blue-600 text-white py-16 text-center">
-      <h1 className="text-4xl font-bold">Motorbike Training</h1>
-    </div>
+     <div className="bg-white relative h-[400px] md:h-[548px] flex items-center from-blue-600 to-blue-800 text-white">
+          <div className="z-0 absolute inset-0 transition-opacity bg-black duration-1000 opacity-50"></div>
+          <div className="z-10 w-11/12 sm:max-w-[562px] ml-auto mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center radius20-left radius20-left-bottom text-center">
+            <div className="text26 text-xl font-semibold text-red-600">
+              Our Next Available CBT Course Is TOMORROW
+            </div>
+            <div className="text-center">
+              <a
+                href="/bookings"
+                className="mt-3 radius20-left radius20-right-bottom inline-block bg-red-600 px-10 py-3 text-base md:text-2xl text-white hover:bg-red-700"
+              >
+                Book Now!
+              </a>
+            </div>
+          </div>
+      </div>
   )
 }
 
 function USPBar() {
   return (
-    <div className="bg-gray-100 py-8 text-center">
-      <p>Professional • Qualified • Trusted</p>
+    <div className="text-center">
+
     </div>
   )
 }
