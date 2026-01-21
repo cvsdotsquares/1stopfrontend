@@ -6,13 +6,14 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { 
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from '@/components/ui/navigation-menu';
+  HtmlNavigation,
+  HtmlNavigationItem,
+  HtmlNavigationLink,
+  HtmlNavigationTrigger,
+  HtmlNavigationDropdown,
+  HtmlMobileNavigation,
+  HtmlMobileNavigationItem
+} from '@/components/ui/html-navigation';
 import { useAuthStore } from '@/store/auth';
 import { cmsApi } from '@/services/api';
 import { MenuPage, Page } from '@/types';
@@ -113,71 +114,81 @@ const buildCompleteMenuHierarchy = (menuPages: MenuPage[], footerPages: MenuPage
   return menuPages.map(page => buildNestedStructure(page));
 };
 
-// Mobile Menu Item Component with collapsible sub-menus
-function MobileMenuItem({ item, level, onClose }: { item: MenuPage; level: number; onClose: () => void }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+
+
+// Recursive component to render menu items with unlimited nesting
+const renderMenuItem = (item: MenuPage, level: number = 0): React.ReactNode => {
   const hasChildren = item.children && item.children.length > 0;
   
-  const levelStyles = {
-    0: "font-medium text-gray-900",
-    1: "text-sm text-gray-700 ml-4",
-    2: "text-xs text-gray-600 ml-8", 
-    3: "text-xs text-gray-500 ml-12"
-  };
-  
-  const borderStyles = {
-    0: "",
-    1: "border-l-2 border-gray-200 pl-3",
-    2: "border-l border-gray-300 pl-2",
-    3: "border-l border-gray-400 pl-2"
-  };
-
-  return (
-    <div>
-      <div className="flex items-center justify-between">
+  if (level === 0) {
+    // Top level menu items
+    return (
+      <HtmlNavigationItem key={item.id} hasDropdown={hasChildren}>
+        {hasChildren ? (
+          <>
+            <HtmlNavigationTrigger>
+              {item.link_title}
+            </HtmlNavigationTrigger>
+            <HtmlNavigationDropdown className="p-1">
+              <div className="grid gap-2">
+                {item.children?.map((child) => renderMenuItem(child, level + 1))}
+                
+                {item.children && item.children.length > 8 && (
+                  <Link
+                    href={getPageUrl(item.slug)}
+                    className="block text-center py-3 mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 border-t border-gray-100 pt-3"
+                  >
+                    View All {item.link_title} ({item.children.length})
+                  </Link>
+                )}
+              </div>
+            </HtmlNavigationDropdown>
+          </>
+        ) : (
+          <HtmlNavigationLink href={getPageUrl(item.slug)}>
+            {item.link_title}
+          </HtmlNavigationLink>
+        )}
+      </HtmlNavigationItem>
+    );
+  } else {
+    // Nested menu items (level 1+)
+    return (
+      <div key={item.id} className="group/nested relative">
         <Link 
           href={getPageUrl(item.slug)} 
-          className={`py-2 hover:text-blue-600 block flex-1 ${levelStyles[level as keyof typeof levelStyles] || levelStyles[3]} ${borderStyles[level as keyof typeof borderStyles] || borderStyles[3]}`}
-          onClick={onClose}
+          className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-gray-50 transition-colors"
         >
-          {item.link_title}
-        </Link>
-        
-        {/* Expand/Collapse button for items with children */}
-        {hasChildren && (
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="p-2 text-gray-400 hover:text-gray-600"
-            aria-label={isExpanded ? 'Collapse menu' : 'Expand menu'}
-          >
-            <svg 
-              className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
+          <div>
+            <div className="font-medium text-black text-sm">{item.link_title}</div>
+            {item.page_title !== item.link_title && (
+              <div className="text-xs text-gray-500 mt-1">{item.page_title}</div>
+            )}
+          </div>
+          {hasChildren && (
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-          </button>
+          )}
+        </Link>
+        
+        {/* Nested dropdown */}
+        {hasChildren && (
+          <div className="absolute left-full top-0 w-80 bg-white rounded-lg shadow-2xl border border-gray-200 opacity-0 invisible group-hover/nested:opacity-100 group-hover/nested:visible transition-all duration-300 z-[9998] ml-1">
+            <div className="p-3">
+              <div className="font-semibold text-sm text-blue-600 border-b border-gray-100 pb-2 mb-3">
+                {item.link_title}
+              </div>
+              <div className="space-y-1 max-h-96 overflow-y-auto">
+                {item.children?.map((child) => renderMenuItem(child, level + 1))}
+              </div>
+            </div>
+          </div>
         )}
       </div>
-      
-      {/* Collapsible children */}
-      {hasChildren && isExpanded && (
-        <div className="mt-1 space-y-1">
-          {item.children?.map((child) => (
-            <MobileMenuItem 
-              key={child.id} 
-              item={child} 
-              level={level + 1} 
-              onClose={onClose} 
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+    );
+  }
+};
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -253,248 +264,35 @@ export default function Header() {
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex flex-1 justify-center overflow-visible">
-            <NavigationMenu className="overflow-visible">
-              <NavigationMenuList className="relative z-50 flex  overflow-visible">
+            <HtmlNavigation className="overflow-visible relative z-50">
               {hierarchicalMenu
                 ?.sort((a, b) => a.weight - b.weight)
-                ?.map((page) => (
-                  <NavigationMenuItem key={page.id}>
-                    {page.children && page.children.length > 0 ? (
-                      <>
-                        <NavigationMenuTrigger>
-                          {page.link_title}
-                        </NavigationMenuTrigger>
-                        <NavigationMenuContent>
-                          <div className="p-1 min-w-[320px] max-w-[320px] overflow-visible">
-                            <div className="grid gap-2 overflow-visible">
-                              {page.children?.slice(0, 8).map((child) => (
-                                <div key={child.id} className="group relative overflow-visible">
-                                  {/* Level 2: Sub-menu item */}
-                                  <Link 
-                                    href={getPageUrl(child.slug)} 
-                                    className="flex items-center justify-between py-2 px-3  rounded-md hover:bg-gray-50 transition-colors"
-                                    onMouseEnter={(e) => {
-                                      // Trigger positioning for level 3 menu
-                                      const level3Menu = e.currentTarget.parentElement?.querySelector('.level-3-menu') as HTMLElement;
-                                      if (level3Menu) {
-                                        const parentRect = e.currentTarget.getBoundingClientRect();
-                                        const viewportWidth = window.innerWidth;
-                                        let leftPos = parentRect.right + 4;
-                                        
-                                        if (leftPos + 320 > viewportWidth - 20) {
-                                          leftPos = parentRect.left - 324;
-                                        }
-                                        
-                                        level3Menu.style.left = Math.max(20, leftPos) + 'px';
-                                        level3Menu.style.top = parentRect.top + 'px';
-                                      }
-                                    }}
-                                  >
-                                    <div>
-                                      <div className="font-medium text-black text-sm">{child.link_title}</div>
-                                      {child.page_title !== child.link_title && (
-                                        <div className="text-xs text-gray-500 mt-1">{child.page_title}</div>
-                                      )}
-                                    </div>
-                                    
-                                    {/* Indicator for items with children */}
-                                    {child.children && child.children.length > 0 && (
-                                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                      </svg>
-                                    )}
-                                  </Link>
-                                  
-                                  {/* Level 3: Sub-sub menu (hover overlay) - Fixed positioning to break overflow */}
-                                  {child.children && child.children.length > 0 && (
-                                    <div 
-                                      className="level-3-menu fixed w-80 bg-white rounded-lg shadow-2xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-[9999]" 
-                                      style={{ 
-                                        left: '0px',
-                                        top: '0px'
-                                      }}
-                                      onMouseEnter={(e) => {
-                                        // Calculate position relative to the parent element
-                                        const parentRect = e.currentTarget.parentElement?.getBoundingClientRect();
-                                        const viewportWidth = window.innerWidth;
-                                        if (parentRect) {
-                                          let leftPos = parentRect.right + 4;
-                                          
-                                          // Check if menu would overflow right edge
-                                          if (leftPos + 320 > viewportWidth - 20) {
-                                            leftPos = parentRect.left - 324; // Position to left of parent
-                                          }
-                                          
-                                          e.currentTarget.style.left = Math.max(20, leftPos) + 'px';
-                                          e.currentTarget.style.top = parentRect.top + 'px';
-                                        }
-                                      }}
-                                    >
-                                      {/* Hover bridge to maintain connection */}
-                                      <div className="absolute right-full top-0 w-2 h-full bg-transparent"></div>
-                                      <div className="absolute left-full top-0 w-2 h-full bg-transparent"></div>
-                                      
-                                      <div className="p-4">
-                                        <div className="font-semibold text-sm text-blue-600 border-b border-gray-100 pb-2 mb-3">
-                                          {child.link_title}
-                                        </div>
-                                        <div className="space-y-1 max-h-96 overflow-y-auto">
-                                          {child.children.slice(0, 15).map((grandChild) => (
-                                            <div key={grandChild.id} className="group/nested relative">
-                                              <Link
-                                                href={getPageUrl(grandChild.slug)}
-                                                className="flex items-center justify-between py-2 px-3 text-sm text-black hover:text-red-600"
-                                                onMouseEnter={(e) => {
-                                                  // Trigger positioning for level 4 menu
-                                                  const level4Menu = e.currentTarget.parentElement?.querySelector('.level-4-menu') as HTMLElement;
-                                                  if (level4Menu) {
-                                                    const parentRect = e.currentTarget.getBoundingClientRect();
-                                                    const viewportWidth = window.innerWidth;
-                                                    let leftPos = parentRect.right + 6;
-                                                    
-                                                    if (leftPos + 288 > viewportWidth - 20) {
-                                                      leftPos = parentRect.left - 294;
-                                                    }
-                                                    
-                                                    level4Menu.style.left = Math.max(20, leftPos) + 'px';
-                                                    level4Menu.style.top = parentRect.top + 'px';
-                                                  }
-                                                }}
-                                              >
-                                                <span className="truncate pr-2">{grandChild.link_title}</span>
-                                                {grandChild.children && grandChild.children.length > 0 && (
-                                                  <svg className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                  </svg>
-                                                )}
-                                              </Link>
-                                              
-                                              {/* Level 4: Triple nested menu - Fixed positioning */}
-                                              {grandChild.children && grandChild.children.length > 0 && (
-                                                <div 
-                                                  className="level-4-menu fixed w-72 bg-white rounded-lg shadow-2xl border border-gray-200 opacity-0 invisible group-hover/nested:opacity-100 group-hover/nested:visible transition-all duration-300 z-[9998]" 
-                                                  style={{ 
-                                                    left: '0px',
-                                                    top: '0px'
-                                                  }}
-                                                  onMouseEnter={(e) => {
-                                                    // Calculate position relative to the parent element
-                                                    const parentRect = e.currentTarget.parentElement?.getBoundingClientRect();
-                                                    const viewportWidth = window.innerWidth;
-                                                    if (parentRect) {
-                                                      let leftPos = parentRect.right + 6;
-                                                      
-                                                      // Check if menu would overflow right edge
-                                                      if (leftPos + 288 > viewportWidth - 20) {
-                                                        leftPos = parentRect.left - 294; // Position to left of parent
-                                                      }
-                                                      
-                                                      e.currentTarget.style.left = Math.max(20, leftPos) + 'px';
-                                                      e.currentTarget.style.top = parentRect.top + 'px';
-                                                    }
-                                                  }}
-                                                >
-                                                  <div className="p-3">
-                                                    <div className="font-medium text-xs text-gray-500 uppercase tracking-wide mb-2 border-b border-gray-100 pb-1">
-                                                      {grandChild.link_title}
-                                                    </div>
-                                                    <div className="space-y-1 max-h-72 overflow-y-auto">
-                                                      {grandChild.children.slice(0, 12).map((greatGrandChild) => (
-                                                        <Link
-                                                          key={greatGrandChild.id}
-                                                          href={getPageUrl(greatGrandChild.slug)}
-                                                          className="block py-1.5 px-2 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                                        >
-                                                          <span className="truncate">{greatGrandChild.link_title}</span>
-                                                        </Link>
-                                                      ))}
-                                                      {grandChild.children && grandChild.children.length > 12 && (
-                                                        <div className="text-center py-1 text-xs text-gray-400">
-                                                          +{grandChild.children.length - 12} more
-                                                        </div>
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                </div>
-                                              )}
-                                            </div>
-                                          ))}
-                                        </div>
-                                        
-                                        {/* "View All" link if there are more items */}
-                                        {child.children.length > 15 && (
-                                          <Link
-                                            href={getPageUrl(child.slug)}
-                                            className="block text-center py-2 mt-3 text-sm text-blue-600 hover:text-blue-700 border-t border-gray-100 pt-3"
-                                          >
-                                            View All {child.link_title} ({child.children.length})
-                                          </Link>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                              
-                              {/* "View All" link for main category if there are more items */}
-                              {page.children && page.children.length > 8 && (
-                                <Link
-                                  href={getPageUrl(page.slug)}
-                                  className="block text-center py-3 mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 border-t border-gray-100 pt-3"
-                                >
-                                  View All {page.link_title} ({page.children.length})
-                                </Link>
-                              )}
-                            </div>
-                          </div>
-                        </NavigationMenuContent>
-                      </>
-                    ) : (
-                      <NavigationMenuLink asChild>
-                        <Link 
-                          href={getPageUrl(page.slug)} 
-                          className=""
-                        >
-                          {page.link_title}
-                        </Link>
-                      </NavigationMenuLink>
-                    )}
-                  </NavigationMenuItem>
-                )) || (
+                ?.map((page) => renderMenuItem(page, 0)) || (
                   // Fallback static menu if API fails
                   <>
-                    <NavigationMenuItem>
-                      <NavigationMenuLink asChild>
-                        <Link href="/" className="px-4 py-2 hover:text-blue-600">
-                          Home
-                        </Link>
-                      </NavigationMenuLink>
-                    </NavigationMenuItem>
-                    <NavigationMenuItem>
-                      <NavigationMenuLink asChild>
-                        <Link href="/courses" className="px-4 py-2 hover:text-blue-600">
-                          Courses
-                        </Link>
-                      </NavigationMenuLink>
-                    </NavigationMenuItem>
-                    <NavigationMenuItem>
-                      <NavigationMenuLink asChild>
-                        <Link href="/locations" className="px-4 py-2 hover:text-blue-600">
-                          Locations
-                        </Link>
-                      </NavigationMenuLink>
-                    </NavigationMenuItem>
-                    <NavigationMenuItem>
-                      <NavigationMenuLink asChild>
-                        <Link href="/contact" className="px-4 py-2 hover:text-blue-600">
-                          Contact
-                        </Link>
-                      </NavigationMenuLink>
-                    </NavigationMenuItem>
+                    <HtmlNavigationItem>
+                      <HtmlNavigationLink href="/">
+                        Home
+                      </HtmlNavigationLink>
+                    </HtmlNavigationItem>
+                    <HtmlNavigationItem>
+                      <HtmlNavigationLink href="/courses">
+                        Courses
+                      </HtmlNavigationLink>
+                    </HtmlNavigationItem>
+                    <HtmlNavigationItem>
+                      <HtmlNavigationLink href="/locations">
+                        Locations
+                      </HtmlNavigationLink>
+                    </HtmlNavigationItem>
+                    <HtmlNavigationItem>
+                      <HtmlNavigationLink href="/contact">
+                        Contact
+                      </HtmlNavigationLink>
+                    </HtmlNavigationItem>
                   </>
                 )}
-              </NavigationMenuList>
-            </NavigationMenu>
+            </HtmlNavigation>
           </div>
 
           {/* Search Button */}
@@ -514,45 +312,42 @@ export default function Header() {
         </div>
 
         {/* Mobile Navigation */}
-        {isMenuOpen && (
-          <div className="lg:hidden py-4 border-t max-h-[70vh] overflow-y-auto bg-white shadow-lg">
-            <nav className="flex flex-col space-y-2">
-              {hierarchicalMenu
-                ?.sort((a, b) => a.weight - b.weight)
-                ?.map((page) => (
-                  <MobileMenuItem 
-                    key={page.id} 
-                    item={page} 
-                    level={0} 
-                    onClose={() => setIsMenuOpen(false)} 
-                  />
-                )) || (
-                  // Fallback static menu
-                  <>
-                    <Link href="/" className="py-2 hover:text-blue-600">Home</Link>
-                    <Link href="/courses" className="py-2 hover:text-blue-600">Courses</Link>
-                    <Link href="/locations" className="py-2 hover:text-blue-600">Locations</Link>
-                    <Link href="/contact" className="py-2 hover:text-blue-600">Contact</Link>
-                  </>
+        <HtmlMobileNavigation isOpen={isMenuOpen}>
+          {hierarchicalMenu
+            ?.sort((a, b) => a.weight - b.weight)
+            ?.map((page) => (
+              <HtmlMobileNavigationItem 
+                key={page.id} 
+                item={page} 
+                level={0} 
+                onClose={() => setIsMenuOpen(false)} 
+              />
+            )) || (
+              // Fallback static menu
+              <>
+                <Link href="/" className="py-2 hover:text-blue-600" onClick={() => setIsMenuOpen(false)}>Home</Link>
+                <Link href="/courses" className="py-2 hover:text-blue-600" onClick={() => setIsMenuOpen(false)}>Courses</Link>
+                <Link href="/locations" className="py-2 hover:text-blue-600" onClick={() => setIsMenuOpen(false)}>Locations</Link>
+                <Link href="/contact" className="py-2 hover:text-blue-600" onClick={() => setIsMenuOpen(false)}>Contact</Link>
+              </>
+            )}
+          
+          {/* Find a "Book" or "Booking" page for the CTA button */}
+          {completeMenuData?.menuData?.pages?.find(page => page.slug.includes('booking') || page.link_title.toLowerCase().includes('book')) && (
+            <Button asChild className="w-fit">
+              <Link 
+                href={getPageUrl(
+                  completeMenuData?.menuData.pages.find(page => 
+                    page.slug.includes('booking') || page.link_title.toLowerCase().includes('book')
+                  )?.slug || 'booking'
                 )}
-              
-              {/* Find a "Book" or "Booking" page for the CTA button */}
-              {completeMenuData?.menuData?.pages?.find(page => page.slug.includes('booking') || page.link_title.toLowerCase().includes('book')) && (
-                <Button asChild className="w-fit">
-                  <Link 
-                    href={getPageUrl(
-                      completeMenuData?.menuData.pages.find(page => 
-                        page.slug.includes('booking') || page.link_title.toLowerCase().includes('book')
-                      )?.slug || 'booking'
-                    )}
-                  >
-                    Book Your Course
-                  </Link>
-                </Button>
-              )}
-            </nav>
-          </div>
-        )}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Book Your Course
+              </Link>
+            </Button>
+          )}
+        </HtmlMobileNavigation>
       </div>
     </header>
   );
