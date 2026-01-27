@@ -53,13 +53,16 @@ export default function FeaturedServices({ data }: FeaturedServicesProps) {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {services.map((service) => (
             <div key={service.id} className="bg-white rounded-lg p-4 border border-gray-300 text-center">
-              <div className="h-[66px] mt-4">
+              <div className="h-[66px] mt-4 flex items-center justify-center">
                 <Image
                   src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/featured_services/${service.service_file}`}
                   alt={service.service_title}
-                  width={120}
-                  height={80}
-                  className="max-h-20 w-auto object-contain"
+                  width={60}
+                  height={60}
+                  className="w-[60px] h-[60px] object-contain"
+                  style={{
+                    filter: 'brightness(0) saturate(100%) invert(11%) sepia(96%) saturate(7471%) hue-rotate(356deg) brightness(91%) contrast(119%)'
+                  }}
                 />
               </div>
               <h5 className="text-base font-bold mb-5">{service.service_title}</h5>
