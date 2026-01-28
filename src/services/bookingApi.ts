@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:3000/api/booking';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export interface Course {
   id: number;
@@ -94,8 +94,8 @@ export interface Attendee {
 
 export interface BookingRequest {
   course_id: number;
-  course_event_id: number;
-  location_id: number;
+  course_event_id: number | null;
+  location_id: number | null;
   selected_date: string;
   attendees_count: number;
   user_details: {
@@ -121,44 +121,56 @@ export interface BookingResponse {
 
 class BookingApiService {
   private async fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-      ...options,
-    });
+    try {
+      const response = await fetch(`${BASE_URL}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+        ...options,
+      });
 
-    const data = await response.json();
-    
-    if (!data.success) {
-      throw new Error(data.error?.message || 'API request failed');
+      if (!response.ok) {
+        console.error(`HTTP ${response.status} for ${endpoint}:`, response.statusText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log(`API Response for ${endpoint}:`, data);
+
+      if (!data.success) {
+        console.error(`API Error for ${endpoint}:`, data.error);
+        throw new Error(data.error?.message || 'API request failed');
+      }
+
+      return data.data;
+    } catch (error) {
+      console.error(`Fetch Error for ${endpoint}:`, error);
+      throw error;
     }
-    
-    return data.data;
   }
 
   async getCourses(): Promise<Course[]> {
-    return this.fetchApi<Course[]>('/courses');
+    return this.fetchApi<Course[]>(`/booking/courses`);
   }
 
   async getLocations(): Promise<Location[]> {
-    return this.fetchApi<Location[]>('/locations');
+    return this.fetchApi<Location[]>(`/locations`);
   }
 
   async getLocationsByCourse(courseId: number): Promise<Location[]> {
-    return this.fetchApi<Location[]>(`/locations/${courseId}`);
+    return this.fetchApi<Location[]>(`/booking/locations/${courseId}`);
   }
 
   async getCourseAvailability(courseId: number, locationId: number): Promise<AvailabilityResponse> {
-    const response = await fetch(`${BASE_URL}/course-availability?course_id=${courseId}&location_id=${locationId}`, {
+    const response = await fetch(`${BASE_URL}/booking/course-availability?course_id=${courseId}&location_id=${locationId}`, {
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
     const data = await response.json();
-    
+
     if (!data.success) {
       // Return empty availability instead of throwing error
       return {
@@ -170,7 +182,7 @@ class BookingApiService {
         }
       };
     }
-    
+
     return data;
   }
 
@@ -186,15 +198,36 @@ class BookingApiService {
   }
 
   async getSettings(): Promise<Settings> {
-    return this.fetchApi<Settings>('/settings');
+    return this.fetchApi<Settings>('/booking/settings');
   }
 
   async getVehicleTypes(): Promise<VehicleType[]> {
-    return this.fetchApi<VehicleType[]>('/vehicle-types');
+    return this.fetchApi<VehicleType[]>(`/booking/vehicle-types`);
   }
 
   async getLicenseTypes(): Promise<LicenseType[]> {
-    return this.fetchApi<LicenseType[]>('/license-types');
+    try {
+      return this.fetchApi<LicenseType[]>(`${BASE_URL}/booking/license-types`);
+    } catch (error) {
+      console.warn('License types API failed:', error);
+      return [{ id: 1, licence_type: "UK Full Licence", status: 1 }, { id: 2, licence_type: "Provisional Licence", status: 1 }];
+    }
+  }
+
+  async getVehicleTypesByCourseAndLocation(courseId: number, locationId: number): Promise<Record<string, string>> {
+    try {
+      return this.fetchApi<Record<string, string>>(`/booking/vehicle-types/${courseId}/${locationId}`);
+    } catch (error) {
+      console.warn(`Vehicle types API failed for course ${courseId}, location ${locationId}:`, error);
+      return { "1": "Manual Car", "2": "Automatic Car" };
+    }
+  }
+
+  async processAttendee(attendeeData: any): Promise<any> {
+    return this.fetchApi<any>('/attendee', {
+      method: 'POST',
+      body: JSON.stringify(attendeeData),
+    });
   }
 
   async validatePromoCode(promoCode: string, courseId: number, locationId: number, attendeesCount: number): Promise<PromoValidation> {

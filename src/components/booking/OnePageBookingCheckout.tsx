@@ -1,6 +1,9 @@
 "use client";
 import React, { useMemo, useState, useEffect } from "react";
 import { bookingApi, type Course, type Location, type Settings, type VehicleType, type LicenseType, type CourseEvent } from "@/services/bookingApi";
+import { authApi } from '@/services/api';
+import { useAuthStore } from '@/store/auth';
+import { toast } from 'sonner';
 
 /**
  * One‑Page Booking Checkout – Dynamic API Integration
@@ -11,6 +14,7 @@ import { bookingApi, type Course, type Location, type Settings, type VehicleType
  * • Guest checkout by default; optional account creation; optional sign‑in.
  * • Calendar availability colors: green = available, red = fully booked.
  * • Now uses dynamic data from backend APIs
+ * • Handles logged-in users in step 4
  */
 
 // ---------- Types ----------
@@ -43,7 +47,7 @@ function generateCalendarWeeksFrom(startRefDate = new Date(), courseEvents: Cour
       return eventDate === dateStr;
     });
 
-    const available = !inPast && courseEvent && courseEvent.available && courseEvent.available_spaces > 0;
+    const available = !inPast && courseEvent ? courseEvent.available && courseEvent.available_spaces > 0 : false;
     const spots = courseEvent?.available_spaces || 0;
 
     return {
@@ -80,9 +84,10 @@ interface SectionProps {
   complete: boolean;
   collapsible?: boolean;
   defaultOpen?: boolean;
+  expandDisabled?: boolean;
 }
 
-function Section({ index, title, subtitle, children, complete, collapsible = true, defaultOpen = true }: SectionProps) {
+function Section({ index, title, subtitle, children, complete, collapsible = true, defaultOpen = true, expandDisabled = false }: SectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <section className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -107,8 +112,13 @@ function Section({ index, title, subtitle, children, complete, collapsible = tru
             {collapsible && (
               <button
                 type="button"
-                onClick={() => setOpen((v) => !v)}
-                className="ml-4 inline-flex items-center gap-2 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                onClick={() => !expandDisabled && setOpen((v) => !v)}
+                disabled={expandDisabled}
+                className={`ml-4 inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
+                  expandDisabled
+                    ? "border-slate-200 text-slate-400 cursor-not-allowed"
+                    : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                }`}
                 aria-expanded={open}
               >
                 {open ? "Collapse" : "Expand"}
@@ -204,12 +214,15 @@ function Money({ value }: MoneyProps) {
 
 // ---------- Main Component ----------
 export default function OnePageBookingCheckout() {
+  // Auth state
+  const { isAuthenticated, user, login } = useAuthStore();
+
   // API Data State
   const [courses, setCourses] = useState<Course[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([]);
   const [licenseTypes, setLicenseTypes] = useState<LicenseType[]>([]);
+  const [availableVehicleTypes, setAvailableVehicleTypes] = useState<Record<string, string>>({});
   const [courseEvents, setCourseEvents] = useState<CourseEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -222,38 +235,106 @@ export default function OnePageBookingCheckout() {
   const [attendees, setAttendees] = useState(1);
   const [createAccount, setCreateAccount] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [copyToSection5, setCopyToSection5] = useState(false);
 
-  // Personal details
-  const [details, setDetails] = useState({
-    firstName: "",
-    lastName: "",
+  // Login details
+  const [loginDetails, setLoginDetails] = useState({
     email: "",
-    phone: "",
-    notes: "",
     password: "",
   });
+
+  // Account creation details
+  const [accountDetails, setAccountDetails] = useState({
+    firstName: "",
+    surname: "",
+    email: "",
+    confirmEmail: "",
+    password: "",
+    verifyPassword: "",
+    contactNumber1: "",
+    addressLine1: "",
+    postcode: "",
+    addressLine2: "",
+    addressLine3: "",
+    contactNumber2: "",
+    contactNumber3: "",
+  });
+
+  // Personal details - pre-fill if user is logged in
+  const [details, setDetails] = useState({
+    firstName: user?.first_name || "",
+    lastName: user?.last_name || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    notes: "",
+    password: "",
+    vehicleType: "",
+    licenseType: "",
+    licenseNumber: "",
+    theoryNumber: "",
+  });
+
+  // Update details when user changes or when copying from account creation
+  useEffect(() => {
+    if (user) {
+      setDetails(prev => ({
+        ...prev,
+        firstName: user.first_name || "",
+        lastName: user.last_name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+      }));
+    }
+  }, [user]);
+
+  // Copy account details to section 5 when checkbox is checked
+  useEffect(() => {
+    if (copyToSection5 && createAccount) {
+      setDetails(prev => ({
+        ...prev,
+        firstName: accountDetails.firstName,
+        lastName: accountDetails.surname,
+        email: accountDetails.email,
+        phone: accountDetails.contactNumber1,
+      }));
+    }
+  }, [copyToSection5, accountDetails, createAccount]);
+
+  // Load settings and license types when needed (step 5)
+  useEffect(() => {
+    if (selectedDate && attendees > 0) {
+      const loadStep5Data = async () => {
+        try {
+          const [settingsData, licenseTypesData, vehicleTypesData] = await Promise.all([
+            bookingApi.getSettings().catch(() => ({ vat_rate: 0.2, credit_card_surcharge: 0, booking_bcc: '' })),
+            bookingApi.getLicenseTypes().catch(() => [{ id: 1, licence_type: "UK Full Licence", status: 1 }]),
+            selectedCourse && locationId 
+              ? bookingApi.getVehicleTypesByCourseAndLocation(selectedCourse.id, locationId).catch(() => ({}))
+              : Promise.resolve({})
+          ]);
+          setSettings(settingsData);
+          setLicenseTypes(licenseTypesData);
+          setAvailableVehicleTypes(vehicleTypesData);
+        } catch (err) {
+          console.error('Failed to load step 5 data:', err);
+        }
+      };
+      loadStep5Data();
+    }
+  }, [selectedDate, attendees, selectedCourse, locationId]);
 
   // Load initial data
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         setLoading(true);
-        const [coursesData, settingsData, vehicleTypesData, licenseTypesData] = await Promise.all([
-          bookingApi.getCourses(),
-          bookingApi.getSettings(),
-          bookingApi.getVehicleTypes(),
-          bookingApi.getLicenseTypes(),
-        ]);
-
-        setCourses(coursesData);
-        setSettings(settingsData);
-        setVehicleTypes(vehicleTypesData);
-        setLicenseTypes(licenseTypesData);
-
-        // Set default course selection
-        if (coursesData.length > 0) setSelectedCourse(coursesData[0]);
+        const coursesData = await bookingApi.getCourses().catch(() => []);
+        setCourses(Array.isArray(coursesData) ? coursesData : []);
+        // Don't auto-select first course - let user choose
       } catch (err) {
+        console.error('Load initial data error:', err);
         setError(err instanceof Error ? err.message : 'Failed to load data');
+        setCourses([]);
       } finally {
         setLoading(false);
       }
@@ -274,13 +355,8 @@ export default function OnePageBookingCheckout() {
       try {
         const locationsData = await bookingApi.getLocationsByCourse(selectedCourse.id);
         setLocations(locationsData);
-
-        // Set default location selection
-        if (locationsData.length > 0) {
-          setLocationId(locationsData[0].id);
-        } else {
-          setLocationId(null);
-        }
+        // Don't auto-select first location - let user choose
+        setLocationId(null);
       } catch (err) {
         console.error('Failed to load locations:', err);
         setLocations([]);
@@ -322,6 +398,33 @@ export default function OnePageBookingCheckout() {
   const vatRate = settings?.vat_rate || 0.2;
   const { subtotal, vat, total } = computeTotals(unitPrice, attendees, vatRate);
 
+  const handleRegister = async () => {
+    try {
+      const { token, user } = await authApi.register({
+        first_name: accountDetails.firstName,
+        last_name: accountDetails.surname,
+        email: accountDetails.email,
+        password: accountDetails.password,
+        phone: accountDetails.contactNumber1,
+      });
+      login(token, user);
+      toast.success('Account created successfully!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Registration failed');
+    }
+  };
+
+  const handleLogin = async () => {
+    try {
+      const { token, user } = await authApi.login(loginDetails.email, loginDetails.password);
+      login(token, user);
+      setShowLogin(false);
+      toast.success('Logged in successfully!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Login failed');
+    }
+  };
+
   async function handlePay() {
     const missing = [];
     if (!selectedCourse) missing.push("Course");
@@ -332,19 +435,19 @@ export default function OnePageBookingCheckout() {
     if (!details.lastName) missing.push("Last name");
     if (!details.email) missing.push("Email");
     if (attendees < 1) missing.push("Number of attendees");
-    if (createAccount && !details.password) missing.push("Password (for account)");
+    if (createAccount && !accountDetails.password) missing.push("Password (for account)");
 
     if (missing.length) {
-      alert("Please complete: " + missing.join(", "));
+      toast.error("Please complete: " + missing.join(", "));
       return;
     }
 
     try {
       const bookingData = {
-        course_id: selectedCourse.id,
+        course_id: selectedCourse!.id,
         course_event_id: selectedCourseEventId,
         location_id: locationId,
-        selected_date: selectedDate.toISOString().split('T')[0],
+        selected_date: selectedDate!.toISOString().split('T')[0],
         attendees_count: attendees,
         user_details: {
           first_name: details.firstName,
@@ -358,22 +461,22 @@ export default function OnePageBookingCheckout() {
           contact1: details.phone,
           contact2: "",
           email: details.email,
-          vehicle_type: vehicleTypes[0]?.id || 1,
-          license_type: licenseTypes[0]?.id || 1,
-          license_number: "",
-          theory_number: "",
+          vehicle_type: Number(details.vehicleType) || 1,
+          license_type: Number(details.licenseType) || 1,
+          license_number: details.licenseNumber,
+          theory_number: details.theoryNumber,
           notes: details.notes,
           primary: true,
         }],
         create_account: createAccount,
-        password: details.password,
+        password: accountDetails.password,
       };
 
       const response = await bookingApi.createBookingWithAttendees(bookingData);
-      alert(`✅ Booking created! Reference: ${response.booking_ref}. Redirecting to payment gateway…`);
+      toast.success(`Booking created! Reference: ${response.booking_ref}. Redirecting to payment gateway…`);
       // Here you would redirect to payment with response.payment_token
     } catch (error) {
-      alert(`❌ Booking failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Booking failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -411,7 +514,7 @@ export default function OnePageBookingCheckout() {
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Book your course</h1>
-            <p className="mt-1 text-slate-600">One‑page checkout. You’ll be redirected only for the payment step.</p>
+            <p className="mt-1 text-slate-600">One‑page checkout. You'll be redirected only for the payment step.</p>
           </div>
           <div className="flex items-center gap-2">
             <Badge>Secure booking</Badge>
@@ -424,9 +527,9 @@ export default function OnePageBookingCheckout() {
           {/* Left: Steps */}
           <div className="md:col-span-2 space-y-6">
             {/* Step 1: Course / Voucher */}
-            <Section index={1} title="Choose a course or voucher" subtitle="All sections are on one page – pick a course to continue." complete={!!selectedCourse}>
+            <Section index={1} title="Choose a course or voucher" subtitle="All sections are on one page – pick a course to continue." complete={!!selectedCourse} defaultOpen={true} collapsible={false}>
               <div className="grid gap-3 sm:grid-cols-2">
-                {courses.map((c, index) => (
+                {Array.isArray(courses) && courses.map((c, index) => (
                   <RadioCard
                     key={`${c.id}-${index}`}
                     checked={selectedCourse?.id === c.id}
@@ -441,7 +544,7 @@ export default function OnePageBookingCheckout() {
             </Section>
 
             {/* Step 2: Location */}
-            <Section index={2} title="Pick a location" subtitle="Choose your preferred city/venue." complete={!!locationId}>
+            <Section index={2} title="Pick a location" subtitle="Choose your preferred city/venue." complete={!!locationId} defaultOpen={!!selectedCourse} collapsible={true}>
               <div className="grid gap-3 sm:grid-cols-3">
                 {locations.map((l) => (
                   <RadioCard
@@ -457,7 +560,7 @@ export default function OnePageBookingCheckout() {
             </Section>
 
             {/* Step 3: Date & Attendees */}
-            <Section index={3} title="Select date & time" subtitle="Pick a day and tell us how many attendees." complete={!!selectedDate && attendees > 0}>
+            <Section index={3} title="Select date & time" subtitle="Pick a day and tell us how many attendees." complete={!!selectedDate && attendees > 0} defaultOpen={!!locationId} collapsible={true}>
               <div className="grid gap-6 md:grid-cols-3">
                 {/* Calendar */}
                 <div className="md:col-span-2 rounded-xl border border-slate-200 bg-white p-4">
@@ -551,44 +654,223 @@ export default function OnePageBookingCheckout() {
             </Section>
 
             {/* Step 4: Account / Login (optional) */}
-            <Section index={4} title="Account (optional)" subtitle="Booking as a guest is allowed. Create an account only if you want." complete>
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <input id="createAccount" type="checkbox" className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" checked={createAccount} onChange={(e) => setCreateAccount(e.target.checked)} />
-                  <label htmlFor="createAccount" className="text-sm text-slate-700">Create an account for faster checkout next time</label>
-                </div>
-
-                {createAccount && (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Set a password" required>
-                      <input type="password" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.password} onChange={(e) => setDetails((d) => ({ ...d, password: e.target.value }))} placeholder="Minimum 8 characters" />
-                    </Field>
-                    <div className="hidden sm:block" />
-                  </div>
-                )}
-
-                <div className="text-sm">
-                  <button type="button" onClick={() => setShowLogin((v) => !v)} className="font-medium text-teal-700 underline-offset-2 hover:underline">{showLogin ? "Hide" : "Have an account?"} Sign in</button>
-                </div>
-
-                {showLogin && (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Email" required>
-                      <input type="email" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" placeholder="you@example.com" />
-                    </Field>
-                    <Field label="Password" required>
-                      <input type="password" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" placeholder="••••••••" />
-                    </Field>
-                    <div className="sm:col-span-2">
-                      <button type="button" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800" onClick={() => alert("(Mock) Logged in!")}>Sign in</button>
+            <Section index={4} title="Account (optional)" subtitle={isAuthenticated ? "You're logged in and ready to book." : "Booking as a guest is allowed. Create an account only if you want."} complete defaultOpen={!!selectedDate && attendees > 0} collapsible={true}>
+              {isAuthenticated ? (
+                <div className="rounded-lg bg-green-50 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center">
+                      <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium text-green-900">Logged in as {user?.first_name} {user?.last_name}</p>
+                      <p className="text-sm text-green-700">{user?.email}</p>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <input id="createAccount" type="checkbox" className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" checked={createAccount} onChange={(e) => setCreateAccount(e.target.checked)} />
+                    <label htmlFor="createAccount" className="text-sm text-slate-700">Create an account for faster checkout next time</label>
+                  </div>
+
+                  {createAccount && (
+                    <div className="space-y-4">
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <Field label="First name" required>
+                          <input
+                            type="text"
+                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            value={accountDetails.firstName}
+                            onChange={(e) => setAccountDetails(prev => ({ ...prev, firstName: e.target.value }))}
+                            placeholder="2-50 characters"
+                          />
+                        </Field>
+                        <Field label="Surname" required>
+                          <input
+                            type="text"
+                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            value={accountDetails.surname}
+                            onChange={(e) => setAccountDetails(prev => ({ ...prev, surname: e.target.value }))}
+                            placeholder="2-50 characters"
+                          />
+                        </Field>
+                        <Field label="Email" required>
+                          <input
+                            type="email"
+                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            value={accountDetails.email}
+                            onChange={(e) => setAccountDetails(prev => ({ ...prev, email: e.target.value }))}
+                            placeholder="you@example.com"
+                          />
+                        </Field>
+                        <Field label="Confirm Email" required>
+                          <input
+                            type="email"
+                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            value={accountDetails.confirmEmail}
+                            onChange={(e) => setAccountDetails(prev => ({ ...prev, confirmEmail: e.target.value }))}
+                            placeholder="Confirm email"
+                          />
+                        </Field>
+                        <Field label="Password" required>
+                          <input
+                            type="password"
+                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            value={accountDetails.password}
+                            onChange={(e) => setAccountDetails(prev => ({ ...prev, password: e.target.value }))}
+                            placeholder="Min 8 chars, uppercase, lowercase, number"
+                          />
+                        </Field>
+                        <Field label="Verify Password" required>
+                          <input
+                            type="password"
+                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            value={accountDetails.verifyPassword}
+                            onChange={(e) => setAccountDetails(prev => ({ ...prev, verifyPassword: e.target.value }))}
+                            placeholder="Confirm password"
+                          />
+                        </Field>
+                        <Field label="Contact Number" required>
+                          <input
+                            type="tel"
+                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            value={accountDetails.contactNumber1}
+                            onChange={(e) => setAccountDetails(prev => ({ ...prev, contactNumber1: e.target.value }))}
+                            placeholder="UK mobile number"
+                          />
+                        </Field>
+                        <Field label="Contact Number 2">
+                          <input
+                            type="tel"
+                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            value={accountDetails.contactNumber2}
+                            onChange={(e) => setAccountDetails(prev => ({ ...prev, contactNumber2: e.target.value }))}
+                            placeholder="Optional"
+                          />
+                        </Field>
+                      </div>
+
+                      <div className="space-y-4">
+                        <Field label="Address Line 1" required>
+                          <input
+                            type="text"
+                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            value={accountDetails.addressLine1}
+                            onChange={(e) => setAccountDetails(prev => ({ ...prev, addressLine1: e.target.value }))}
+                            placeholder="1-255 characters"
+                          />
+                        </Field>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <Field label="Address Line 2">
+                            <input
+                              type="text"
+                              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                              value={accountDetails.addressLine2}
+                              onChange={(e) => setAccountDetails(prev => ({ ...prev, addressLine2: e.target.value }))}
+                              placeholder="Optional"
+                            />
+                          </Field>
+                          <Field label="Address Line 3">
+                            <input
+                              type="text"
+                              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                              value={accountDetails.addressLine3}
+                              onChange={(e) => setAccountDetails(prev => ({ ...prev, addressLine3: e.target.value }))}
+                              placeholder="Optional"
+                            />
+                          </Field>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <Field label="Postcode" required>
+                            <input
+                              type="text"
+                              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                              value={accountDetails.postcode}
+                              onChange={(e) => setAccountDetails(prev => ({ ...prev, postcode: e.target.value }))}
+                              placeholder="UK postcode"
+                            />
+                          </Field>
+                          <Field label="Contact Number 3">
+                            <input
+                              type="tel"
+                              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                              value={accountDetails.contactNumber3}
+                              onChange={(e) => setAccountDetails(prev => ({ ...prev, contactNumber3: e.target.value }))}
+                              placeholder="Optional"
+                            />
+                          </Field>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <button
+                          type="button"
+                          onClick={handleRegister}
+                          className="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700"
+                        >
+                          Create Account
+                        </button>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <input
+                          id="copyToSection5"
+                          type="checkbox"
+                          className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                          checked={copyToSection5}
+                          onChange={(e) => setCopyToSection5(e.target.checked)}
+                        />
+                        <label htmlFor="copyToSection5" className="text-sm text-slate-700">
+                          Copy these details to the booking form below
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-sm">
+                    <button type="button" onClick={() => setShowLogin((v) => !v)} className="font-medium text-teal-700 underline-offset-2 hover:underline">{showLogin ? "Hide" : "Have an account?"} Sign in</button>
+                  </div>
+
+                  {showLogin && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Email" required>
+                        <input
+                          type="email"
+                          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                          value={loginDetails.email}
+                          onChange={(e) => setLoginDetails(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder="you@example.com"
+                        />
+                      </Field>
+                      <Field label="Password" required>
+                        <input
+                          type="password"
+                          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                          value={loginDetails.password}
+                          onChange={(e) => setLoginDetails(prev => ({ ...prev, password: e.target.value }))}
+                          placeholder="••••••••"
+                        />
+                      </Field>
+                      <div className="sm:col-span-2">
+                        <button
+                          type="button"
+                          onClick={handleLogin}
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          Sign in
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </Section>
 
             {/* Step 5: Personal Details */}
-            <Section index={5} title="Your details" subtitle="We’ll email your booking confirmation and joining instructions." complete={!!details.firstName && !!details.lastName && !!details.email}>
+            <Section index={5} title="Your details" subtitle="We'll email your booking confirmation and joining instructions." complete={!!details.firstName && !!details.lastName && !!details.email} defaultOpen={!!selectedDate && attendees > 0} collapsible={true}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="First name" required>
                   <input type="text" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.firstName} onChange={(e) => setDetails((d) => ({ ...d, firstName: e.target.value }))} />
@@ -602,16 +884,66 @@ export default function OnePageBookingCheckout() {
                 <Field label="Phone">
                   <input type="tel" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.phone} onChange={(e) => setDetails((d) => ({ ...d, phone: e.target.value }))} placeholder="Optional" />
                 </Field>
+                <Field label="Type Of Vehicle Required" required>
+                  <select
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                    value={details.vehicleType}
+                    onChange={(e) => setDetails((d) => ({ ...d, vehicleType: e.target.value }))}
+                  >
+                    <option value="">Select vehicle type</option>
+                    {Object.entries(availableVehicleTypes).map(([key, description]) => (
+                      <option key={key} value={key}>{description}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Driving Licence Type" required>
+                  <select
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                    value={details.licenseType}
+                    onChange={(e) => setDetails((d) => ({ ...d, licenseType: e.target.value }))}
+                  >
+                    <option value="">Select license type</option>
+                    {licenseTypes.map((license) => (
+                      <option key={license.id} value={license.id}>{license.licence_type}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Driving Licence Number" required hint="Must be 16 characters long">
+                  <input
+                    type="text"
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                    value={details.licenseNumber}
+                    onChange={(e) => setDetails((d) => ({ ...d, licenseNumber: e.target.value }))}
+                    placeholder="Must be 16 characters long"
+                    maxLength={16}
+                  />
+                </Field>
+                <Field label="Theory Number (If Applicable)">
+                  <input
+                    type="text"
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                    value={details.theoryNumber}
+                    onChange={(e) => setDetails((d) => ({ ...d, theoryNumber: e.target.value }))}
+                    placeholder="Optional"
+                  />
+                </Field>
                 <div className="sm:col-span-2">
                   <Field label="Order notes">
                     <textarea rows={3} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.notes} onChange={(e) => setDetails((d) => ({ ...d, notes: e.target.value }))} placeholder="Anything we should know?" />
                   </Field>
                 </div>
               </div>
+
+              <div className="mt-4 flex items-start gap-3">
+                <input id="confirmPhotocard" type="checkbox" className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                <label htmlFor="confirmPhotocard" className="text-sm text-slate-700">
+                  Please tick to confirm that the person attending the course above will be able to present their photocard driving licence on the day of the course.
+                </label>
+              </div>
             </Section>
 
             {/* Step 6: Review & Pay */}
-            <Section index={6} title="Review & proceed to payment" subtitle="You’ll be redirected to the secure payment page." complete>
+            <Section index={6} title="Review & proceed to payment" subtitle="You'll be redirected to the secure payment page." complete defaultOpen={false} collapsible={true} expandDisabled={!(!!details.firstName && !!details.lastName && !!details.email)}>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-xl border border-slate-200 bg-white p-4">
                   <p className="mb-2 font-medium text-slate-900">Booking summary</p>
