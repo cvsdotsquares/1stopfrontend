@@ -5,7 +5,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { 
+import {
   HtmlNavigation,
   HtmlNavigationItem,
   HtmlNavigationLink,
@@ -20,7 +20,7 @@ import { MenuPage, Page } from '@/types';
 import { Menu, X, Phone, Mail, MapPin } from 'lucide-react';
 import Image from "next/image";
 import Search from '../ui/search';
-import "@fortawesome/fontawesome-free/css/all.min.css"; 
+import "@fortawesome/fontawesome-free/css/all.min.css";
 // Helper function to convert slug to proper URL
 const getPageUrl = (slug: string) => {
   // Handle special cases for legacy PHP URLs
@@ -32,7 +32,7 @@ const getPageUrl = (slug: string) => {
     // For other PHP files, use the slug as-is for now
     return `/${slug}`;
   }
-  
+
   // Handle modern slugs
   return `/${slug}`;
 };
@@ -54,11 +54,11 @@ const pageToMenuPage = (page: Page): MenuPage => ({
 // Helper function to build comprehensive hierarchical menu structure
 const buildCompleteMenuHierarchy = (menuPages: MenuPage[], footerPages: MenuPage[], featuredServices: MenuPage[], allPages: Page[]) => {
   if (!menuPages) return [];
-  
+
   // Convert all CMS pages to MenuPage format and combine all sources
   const cmsMenuPages = allPages.map(pageToMenuPage);
   const allMenuSources = [...menuPages, ...footerPages, ...featuredServices, ...cmsMenuPages];
-  
+
   // Deduplicate pages by ID to avoid duplicates
   const uniquePages = allMenuSources.reduce((acc, page) => {
     if (!acc.has(page.id)) {
@@ -66,50 +66,50 @@ const buildCompleteMenuHierarchy = (menuPages: MenuPage[], footerPages: MenuPage
     }
     return acc;
   }, new Map<number, MenuPage>());
-  
+
   const deduplicatedPages = Array.from(uniquePages.values());
-  
+
   // Create maps for different types of relationships
   const parentMap = new Map<number, MenuPage[]>();
-  
+
   // Group children by their parent ID with support for multiple nesting levels
   deduplicatedPages.forEach(page => {
     const parentId = page.is_parent;
-    
+
     // Skip items that don't have a parent or are special categories we don't want in main nav
     if (!parentId || parentId === 0 || parentId === 854698) {
       return;
     }
-    
+
     // Include items at any reasonable parent level (supports unlimited nesting)
     if (page.parent_level > 0 && page.parent_level < 10000) {
       if (!parentMap.has(parentId)) {
         parentMap.set(parentId, []);
       }
-      
+
       // Check if this child is already in the array to avoid duplicates
       const existingChildren = parentMap.get(parentId)!;
       const alreadyExists = existingChildren.some(existing => existing.id === page.id);
-      
+
       if (!alreadyExists) {
         parentMap.get(parentId)!.push(page);
       }
     }
   });
-  
+
   // Recursive function to build nested menu structure with unlimited depth
   const buildNestedStructure = (pageItem: MenuPage, level: number = 0): MenuPage => {
     const children = parentMap.get(pageItem.id) || [];
-    
+
     // Recursively build children (supports unlimited nesting depth)
     const nestedChildren = children.map(child => buildNestedStructure(child, level + 1));
-    
+
     return {
       ...pageItem,
       children: nestedChildren.sort((a, b) => a.weight - b.weight)
     };
   };
-  
+
   // Build the final menu structure with complete nested hierarchy
   return menuPages.map(page => buildNestedStructure(page));
 };
@@ -119,7 +119,7 @@ const buildCompleteMenuHierarchy = (menuPages: MenuPage[], footerPages: MenuPage
 // Recursive component to render menu items with unlimited nesting
 const renderMenuItem = (item: MenuPage, level: number = 0): React.ReactNode => {
   const hasChildren = item.children && item.children.length > 0;
-  
+
   if (level === 0) {
     // Top level menu items
     return (
@@ -132,7 +132,7 @@ const renderMenuItem = (item: MenuPage, level: number = 0): React.ReactNode => {
             <HtmlNavigationDropdown className="p-1">
               <div className="grid gap-2">
                 {item.children?.map((child) => renderMenuItem(child, level + 1))}
-                
+
                 {item.children && item.children.length > 8 && (
                   <Link
                     href={getPageUrl(item.slug)}
@@ -155,8 +155,8 @@ const renderMenuItem = (item: MenuPage, level: number = 0): React.ReactNode => {
     // Nested menu items (level 1+)
     return (
       <div key={item.id} className="group/nested relative">
-        <Link 
-          href={getPageUrl(item.slug)} 
+        <Link
+          href={getPageUrl(item.slug)}
           className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-gray-50 transition-colors"
         >
           <div>
@@ -171,7 +171,7 @@ const renderMenuItem = (item: MenuPage, level: number = 0): React.ReactNode => {
             </svg>
           )}
         </Link>
-        
+
         {/* Nested dropdown */}
         {hasChildren && (
           <div className="absolute left-full top-0 w-80 bg-white rounded-lg shadow-2xl border border-gray-200 opacity-0 invisible group-hover/nested:opacity-100 group-hover/nested:visible transition-all duration-300 z-[9998] ml-1">
@@ -202,17 +202,16 @@ export default function Header() {
   });
 
   // Build comprehensive hierarchical menu structure
-  const hierarchicalMenu = completeMenuData ? 
+  const hierarchicalMenu = completeMenuData ?
     buildCompleteMenuHierarchy(
-      completeMenuData.menuData.pages, 
-      completeMenuData.menuData.footer_pages, 
+      completeMenuData.menuData.pages,
+      completeMenuData.menuData.footer_pages,
       completeMenuData.menuData.featured_services,
       completeMenuData.allPages
     ) : [];
 
   // Debug log (remove in production)
   if (typeof window !== 'undefined' && hierarchicalMenu.length > 0) {
-    console.log('📋 Menu loaded:', hierarchicalMenu.length, 'main items');
     hierarchicalMenu.slice(0, 2).forEach(item => {
       console.log(`- ${item.link_title}: ${item.children?.length || 0} children`);
     });
@@ -221,11 +220,11 @@ export default function Header() {
   return (
     <header className="bg-white shadow-sm relative z-40 min-h-[160px] md:min-h-[145px]">
       {/* Top bar */}
-        <div className="flex italic bg-gray-100 justify-center text-center text-sm px-2 py-3 md:hidden">“Roadcraft Professionals For All Categories Of Driving”</div>  
+        <div className="flex italic bg-gray-100 justify-center text-center text-sm px-2 py-3 md:hidden">“Roadcraft Professionals For All Categories Of Driving”</div>
         <div className="w-full flex justify-end pl-[130px] md:pl-[0px]">
           <div className="flex md:w-4/5 lg:w-3/4 md:bg-gray-100 text-black p-3 flex items-center justify-between gap-3">
-          
-            <div className="flex italic hidden md:block">“Roadcraft Professionals For All Categories Of Driving”</div>           
+
+            <div className="flex italic hidden md:block">“Roadcraft Professionals For All Categories Of Driving”</div>
             <div className="flex items-center space-x-4">
               {isAuthenticated ? (
                 <div className="flex items-center space-x-4">
@@ -244,7 +243,7 @@ export default function Header() {
                 </div>
               )}
             </div>
-          
+
         </div>
       </div>
 
@@ -316,11 +315,11 @@ export default function Header() {
           {hierarchicalMenu
             ?.sort((a, b) => a.weight - b.weight)
             ?.map((page) => (
-              <HtmlMobileNavigationItem 
-                key={page.id} 
-                item={page} 
-                level={0} 
-                onClose={() => setIsMenuOpen(false)} 
+              <HtmlMobileNavigationItem
+                key={page.id}
+                item={page}
+                level={0}
+                onClose={() => setIsMenuOpen(false)}
               />
             )) || (
               // Fallback static menu
@@ -331,13 +330,13 @@ export default function Header() {
                 <Link href="/contact" className="py-2 hover:text-blue-600" onClick={() => setIsMenuOpen(false)}>Contact</Link>
               </>
             )}
-          
+
           {/* Find a "Book" or "Booking" page for the CTA button */}
           {completeMenuData?.menuData?.pages?.find(page => page.slug.includes('booking') || page.link_title.toLowerCase().includes('book')) && (
             <Button asChild className="w-fit">
-              <Link 
+              <Link
                 href={getPageUrl(
-                  completeMenuData?.menuData.pages.find(page => 
+                  completeMenuData?.menuData.pages.find(page =>
                     page.slug.includes('booking') || page.link_title.toLowerCase().includes('book')
                   )?.slug || 'booking'
                 )}

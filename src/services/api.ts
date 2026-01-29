@@ -257,3 +257,11 @@ export const cmsApi = {
     return response.data;
   },
 };
+
+// PreBooking API
+export const preBookingApi = {
+  checkIpBlock: async () => {
+    const response = await api.get<ApiResponse<any>>('/booking/check-ip-block');
+    return response.data;
+  },
+};

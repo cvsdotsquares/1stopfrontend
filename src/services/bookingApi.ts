@@ -136,14 +136,13 @@ class BookingApiService {
       }
 
       const data = await response.json();
-      console.log(`API Response for ${endpoint}:`, data);
 
-      if (!data.success) {
+      if (data.success === false) {
         console.error(`API Error for ${endpoint}:`, data.error);
         throw new Error(data.error?.message || 'API request failed');
       }
 
-      return data.data;
+      return data.data || data;
     } catch (error) {
       console.error(`Fetch Error for ${endpoint}:`, error);
       throw error;
@@ -207,7 +206,19 @@ class BookingApiService {
 
   async getLicenseTypes(): Promise<LicenseType[]> {
     try {
-      return this.fetchApi<LicenseType[]>(`${BASE_URL}/booking/license-types`);
+      const response = await this.fetchApi<any>(`/booking/license-types`);
+      const licenseTypesObj = response.licenseTypes || response;
+
+      if (typeof licenseTypesObj === 'object' && !Array.isArray(licenseTypesObj)) {
+        // Convert object to array format
+        return Object.entries(licenseTypesObj).map(([id, licence_type]) => ({
+          id: parseInt(id),
+          licence_type: licence_type as string,
+          status: 1
+        }));
+      }
+
+      return Array.isArray(licenseTypesObj) ? licenseTypesObj : [{ id: 1, licence_type: "UK Full Licence", status: 1 }, { id: 2, licence_type: "Provisional Licence", status: 1 }];
     } catch (error) {
       console.warn('License types API failed:', error);
       return [{ id: 1, licence_type: "UK Full Licence", status: 1 }, { id: 2, licence_type: "Provisional Licence", status: 1 }];
@@ -216,7 +227,8 @@ class BookingApiService {
 
   async getVehicleTypesByCourseAndLocation(courseId: number, locationId: number): Promise<Record<string, string>> {
     try {
-      return this.fetchApi<Record<string, string>>(`/booking/vehicle-types/${courseId}/${locationId}`);
+      const response = await this.fetchApi<any>(`/booking/vehicle-types/${courseId}/${locationId}`);
+      return response.vehicleTypes || response || { "1": "Manual Car", "2": "Automatic Car" };
     } catch (error) {
       console.warn(`Vehicle types API failed for course ${courseId}, location ${locationId}:`, error);
       return { "1": "Manual Car", "2": "Automatic Car" };
@@ -243,9 +255,28 @@ class BookingApiService {
   }
 
   async createBookingWithAttendees(bookingData: BookingRequest): Promise<BookingResponse> {
-    return this.fetchApi<BookingResponse>('/create-with-attendees', {
+    return this.fetchApi<BookingResponse>('/booking/create-with-attendees', {
       method: 'POST',
       body: JSON.stringify(bookingData),
+    });
+  }
+
+  async checkIpBlock(ipAddress: string): Promise<any> {
+    return this.fetchApi<any>('/booking/check-ip-block', {
+      method: 'POST',
+      body: JSON.stringify({ ip_address: ipAddress }),
+    });
+  }
+
+  async calculatePrice(courseEventId: number, attendees: any[], promoCodeId?: number): Promise<any> {
+    return this.fetchApi<any>('/booking/pricing/calculate', {
+      method: 'POST',
+      body: JSON.stringify({
+        course_event_id: courseEventId,
+        attendees: attendees,
+        promo_code_id: promoCodeId,
+        apply_deposit_logic: true
+      }),
     });
   }
 }

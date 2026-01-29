@@ -5,6 +5,8 @@ import { authApi } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
 import { toast } from 'sonner';
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
 /**
  * One‑Page Booking Checkout – Dynamic API Integration
  * ------------------------------------------------------
@@ -83,12 +85,12 @@ interface SectionProps {
   children: React.ReactNode;
   complete: boolean;
   collapsible?: boolean;
-  defaultOpen?: boolean;
+  open: boolean;
+  onToggle: () => void;
   expandDisabled?: boolean;
 }
 
-function Section({ index, title, subtitle, children, complete, collapsible = true, defaultOpen = true, expandDisabled = false }: SectionProps) {
-  const [open, setOpen] = useState(defaultOpen);
+function Section({ index, title, subtitle, children, complete, collapsible = true, open, onToggle, expandDisabled = false }: SectionProps) {
   return (
     <section className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex items-start gap-4">
@@ -112,7 +114,7 @@ function Section({ index, title, subtitle, children, complete, collapsible = tru
             {collapsible && (
               <button
                 type="button"
-                onClick={() => !expandDisabled && setOpen((v) => !v)}
+                onClick={onToggle}
                 disabled={expandDisabled}
                 className={`ml-4 inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
                   expandDisabled
@@ -224,6 +226,7 @@ export default function OnePageBookingCheckout() {
   const [licenseTypes, setLicenseTypes] = useState<LicenseType[]>([]);
   const [availableVehicleTypes, setAvailableVehicleTypes] = useState<Record<string, string>>({});
   const [courseEvents, setCourseEvents] = useState<CourseEvent[]>([]);
+  const [pricing, setPricing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -236,6 +239,15 @@ export default function OnePageBookingCheckout() {
   const [createAccount, setCreateAccount] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [copyToSection5, setCopyToSection5] = useState(false);
+  const [confirmPhotocard, setConfirmPhotocard] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+
+  // Booking Flow State
+  const [ipBlocked, setIpBlocked] = useState(false);
+  const [blockMessage, setBlockMessage] = useState('');
+  const [bookingLock, setBookingLock] = useState<{lock_id: string, expires_at: string, event_id: string} | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<number>(0);
+  const [userIP, setUserIP] = useState<string>('');
 
   // Login details
   const [loginDetails, setLoginDetails] = useState({
@@ -287,6 +299,65 @@ export default function OnePageBookingCheckout() {
     }
   }, [user]);
 
+  // Section expansion state
+  const [expandedSections, setExpandedSections] = useState<Record<number, boolean>>({
+    1: true, // Always start with section 1 expanded
+    2: false,
+    3: false,
+    4: false,
+    5: false,
+    6: false,
+  });
+
+  // Section completion validation
+  const sectionComplete = {
+    1: !!selectedCourse,
+    2: !!locationId,
+    3: !!selectedDate && attendees > 0,
+    4: true, // Account section is always optional/complete
+    5: !!details.firstName && !!details.lastName && !!details.email,
+    6: false, // Final section never auto-completes
+  };
+
+  // Check if all previous sections are complete
+  const allPreviousSectionsComplete = (sectionIndex: number) => {
+    for (let i = 1; i < sectionIndex; i++) {
+      if (!sectionComplete[i]) return false;
+    }
+    return true;
+  };
+
+  // Auto-expand next section when current is completed
+  useEffect(() => {
+    if (sectionComplete[1] && !expandedSections[2]) {
+      setExpandedSections(prev => ({ ...prev, 2: true }));
+    }
+  }, [sectionComplete[1]]);
+
+  useEffect(() => {
+    if (sectionComplete[2] && !expandedSections[3]) {
+      setExpandedSections(prev => ({ ...prev, 3: true }));
+    }
+  }, [sectionComplete[2]]);
+
+  useEffect(() => {
+    if (sectionComplete[3] && !expandedSections[4]) {
+      setExpandedSections(prev => ({ ...prev, 4: true }));
+    }
+  }, [sectionComplete[3]]);
+
+  useEffect(() => {
+    if (allPreviousSectionsComplete(5) && !expandedSections[5]) {
+      setExpandedSections(prev => ({ ...prev, 5: true }));
+    }
+  }, [sectionComplete[1], sectionComplete[2], sectionComplete[3], sectionComplete[4]]);
+
+  useEffect(() => {
+    if (sectionComplete[5] && !expandedSections[6]) {
+      setExpandedSections(prev => ({ ...prev, 6: true }));
+    }
+  }, [sectionComplete[5]]);
+
   // Copy account details to section 5 when checkbox is checked
   useEffect(() => {
     if (copyToSection5 && createAccount) {
@@ -300,6 +371,25 @@ export default function OnePageBookingCheckout() {
     }
   }, [copyToSection5, accountDetails, createAccount]);
 
+  // Save form data to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedCourse || locationId || selectedDate || details.firstName) {
+      const formData = {
+        selectedCourse,
+        locationId,
+        selectedDate: selectedDate?.toISOString(),
+        selectedCourseEventId,
+        attendees,
+        details,
+        accountDetails,
+        createAccount,
+        confirmPhotocard,
+        acceptTerms
+      };
+      localStorage.setItem('booking_form_data', JSON.stringify(formData));
+    }
+  }, [selectedCourse, locationId, selectedDate, selectedCourseEventId, attendees, details, accountDetails, createAccount, confirmPhotocard, acceptTerms]);
+
   // Load settings and license types when needed (step 5)
   useEffect(() => {
     if (selectedDate && attendees > 0) {
@@ -308,7 +398,7 @@ export default function OnePageBookingCheckout() {
           const [settingsData, licenseTypesData, vehicleTypesData] = await Promise.all([
             bookingApi.getSettings().catch(() => ({ vat_rate: 0.2, credit_card_surcharge: 0, booking_bcc: '' })),
             bookingApi.getLicenseTypes().catch(() => [{ id: 1, licence_type: "UK Full Licence", status: 1 }]),
-            selectedCourse && locationId 
+            selectedCourse && locationId
               ? bookingApi.getVehicleTypesByCourseAndLocation(selectedCourse.id, locationId).catch(() => ({}))
               : Promise.resolve({})
           ]);
@@ -323,14 +413,64 @@ export default function OnePageBookingCheckout() {
     }
   }, [selectedDate, attendees, selectedCourse, locationId]);
 
-  // Load initial data
+  // Get user IP and check block status on load
   useEffect(() => {
-    const loadInitialData = async () => {
+    const initializeBooking = async () => {
       try {
         setLoading(true);
+
+        // Check for existing booking lock first
+        const savedLock = localStorage.getItem('booking_lock');
+        const savedFormData = localStorage.getItem('booking_form_data');
+
+        if (savedLock) {
+          const lockInfo = JSON.parse(savedLock);
+          const expiry = new Date(lockInfo.expires_at).getTime();
+          const now = new Date().getTime();
+
+          if (expiry > now) {
+            // Lock is still valid, restore state
+            setBookingLock(lockInfo);
+            setTimeRemaining(Math.max(0, expiry - now));
+
+            if (savedFormData) {
+              const formData = JSON.parse(savedFormData);
+              setSelectedCourse(formData.selectedCourse);
+              setLocationId(formData.locationId);
+              setSelectedDate(new Date(formData.selectedDate));
+              setSelectedCourseEventId(formData.selectedCourseEventId);
+              setAttendees(formData.attendees);
+              setDetails(formData.details);
+              setAccountDetails(formData.accountDetails);
+              setCreateAccount(formData.createAccount);
+              setConfirmPhotocard(formData.confirmPhotocard || false);
+              setAcceptTerms(formData.acceptTerms || false);
+            }
+
+            toast.info('Previous booking session restored. Complete payment to secure your booking.');
+          } else {
+            // Lock expired, clear storage
+            localStorage.removeItem('booking_lock');
+            localStorage.removeItem('booking_form_data');
+          }
+        }
+
+        // Get user IP
+        const ip = await fetch('/api/get-ip').then(r => r.json()).then(d => d.ip).catch(() => '127.0.0.1');
+        setUserIP(ip);
+
+        // Check IP block status
+        const ipCheck = await bookingApi.checkIpBlock(ip).catch(() => ({ blocked: false }));
+
+        if (ipCheck.blocked) {
+          setIpBlocked(true);
+          setBlockMessage(ipCheck.message || 'Your IP is temporarily blocked');
+          return;
+        }
+
+        // Load courses if not blocked
         const coursesData = await bookingApi.getCourses().catch(() => []);
         setCourses(Array.isArray(coursesData) ? coursesData : []);
-        // Don't auto-select first course - let user choose
       } catch (err) {
         console.error('Load initial data error:', err);
         setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -340,7 +480,7 @@ export default function OnePageBookingCheckout() {
       }
     };
 
-    loadInitialData();
+    initializeBooking();
   }, []);
 
   // Load locations when course changes
@@ -394,9 +534,34 @@ export default function OnePageBookingCheckout() {
     [locations, locationId]
   );
 
-  const unitPrice = selectedCourse?.school_one_off_price || 0;
-  const vatRate = settings?.vat_rate || 0.2;
-  const { subtotal, vat, total } = computeTotals(unitPrice, attendees, vatRate);
+  // Calculate pricing when details change
+  useEffect(() => {
+    const calculatePricing = async () => {
+      if (!selectedCourseEventId || !details.vehicleType || !details.licenseType) {
+        setPricing(null);
+        return;
+      }
+
+      try {
+        const attendees = [{
+          vehicle_type: Number(details.vehicleType),
+          license_type: details.licenseType
+        }];
+
+        const pricingResult = await bookingApi.calculatePrice(selectedCourseEventId, attendees);
+        setPricing(pricingResult.pricing_breakdown);
+      } catch (error) {
+        console.error('Failed to calculate pricing:', error);
+        setPricing(null);
+      }
+    };
+
+    calculatePricing();
+  }, [selectedCourseEventId, details.vehicleType, details.licenseType]);
+
+  const subtotal = pricing?.final_totals?.subtotal || 0;
+  const vat = pricing?.final_totals?.vat || 0;
+  const total = pricing?.final_totals?.final_amount || 0;
 
   const handleRegister = async () => {
     try {
@@ -425,6 +590,134 @@ export default function OnePageBookingCheckout() {
     }
   };
 
+  // Countdown timer effect
+  useEffect(() => {
+    if (!bookingLock) return;
+
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const expiry = new Date(bookingLock.expires_at).getTime();
+      const remaining = Math.max(0, expiry - now);
+
+      setTimeRemaining(remaining);
+
+      if (remaining <= 0) {
+        setBookingLock(null);
+        localStorage.removeItem('booking_lock');
+        localStorage.removeItem('booking_form_data');
+
+        // Call cleanup API
+        fetch(`${BASE_URL}/booking/cleanup-prebookings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: user?.id || null,
+            ip_address: userIP
+          })
+        }).catch(console.error);
+
+        toast.error('Booking lock expired. Please try again.');
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [bookingLock]);
+
+  const formatTime = (ms: number) => {
+    if (!ms || ms <= 0) return '0:00';
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const handleBookNow = async () => {
+    if (!selectedCourseEventId || !userIP) {
+      toast.error('Missing required booking information');
+      return;
+    }
+
+    // Validate required checkboxes
+    if (!confirmPhotocard) {
+      toast.error('Please confirm you can present your photocard driving licence');
+      return;
+    }
+    if (!acceptTerms) {
+      toast.error('Please accept the Terms & Conditions');
+      return;
+    }
+
+    try {
+      // Check availability first
+      const availability = await fetch(`${BASE_URL}/booking/course-availability/${selectedCourseEventId}`)
+        .then(r => r.json());
+
+      if (availability.available_spaces < attendees) {
+        toast.error('Not enough spaces available');
+        return;
+      }
+
+      // Lock spaces
+      const lockResponse = await fetch(`${BASE_URL}/booking/lock-spaces`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_id: selectedCourseEventId.toString(),
+          space_count: attendees,
+          ip_address: userIP
+        })
+      }).then(r => r.json());
+
+      if (!lockResponse.success) {
+        toast.error('Failed to lock booking spaces');
+        return;
+      }
+
+      // Log IP activity
+      await fetch(`${BASE_URL}/booking/log-ip-activity`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ip_address: userIP,
+          lock_session_id: lockResponse.lock_id,
+          booking_status: 'pending'
+        })
+      });
+
+      // Store lock info and form data
+      const tenMinutes = 10 * 60 * 1000;
+      const expiry = new Date().getTime() + tenMinutes;
+      const lockInfo = {
+        lock_id: lockResponse.lock_id,
+        expires_at: new Date(expiry).toISOString(),
+        event_id: selectedCourseEventId.toString()
+      };
+
+      const formData = {
+        selectedCourse,
+        locationId,
+        selectedDate: selectedDate?.toISOString(),
+        selectedCourseEventId,
+        attendees,
+        details,
+        accountDetails,
+        createAccount,
+        confirmPhotocard,
+        acceptTerms
+      };
+
+      setBookingLock(lockInfo);
+      localStorage.setItem('booking_lock', JSON.stringify(lockInfo));
+      localStorage.setItem('booking_form_data', JSON.stringify(formData));
+
+      setTimeRemaining(tenMinutes);
+
+      toast.success('Spaces locked! Complete payment within 10 minutes.');
+
+    } catch (error) {
+      toast.error('Failed to lock booking spaces');
+    }
+  };
+
   async function handlePay() {
     const missing = [];
     if (!selectedCourse) missing.push("Course");
@@ -436,6 +729,9 @@ export default function OnePageBookingCheckout() {
     if (!details.email) missing.push("Email");
     if (attendees < 1) missing.push("Number of attendees");
     if (createAccount && !accountDetails.password) missing.push("Password (for account)");
+    if (!bookingLock) missing.push("Booking lock (click Book Now first)");
+    if (!confirmPhotocard) missing.push("Photocard confirmation");
+    if (!acceptTerms) missing.push("Terms & Conditions acceptance");
 
     if (missing.length) {
       toast.error("Please complete: " + missing.join(", "));
@@ -449,6 +745,7 @@ export default function OnePageBookingCheckout() {
         location_id: locationId,
         selected_date: selectedDate!.toISOString().split('T')[0],
         attendees_count: attendees,
+        lock_id: bookingLock!.lock_id,
         user_details: {
           first_name: details.firstName,
           sur_name: details.lastName,
@@ -473,6 +770,11 @@ export default function OnePageBookingCheckout() {
       };
 
       const response = await bookingApi.createBookingWithAttendees(bookingData);
+
+      // Clear localStorage on successful booking
+      localStorage.removeItem('booking_lock');
+      localStorage.removeItem('booking_form_data');
+
       toast.success(`Booking created! Reference: ${response.booking_ref}. Redirecting to payment gateway…`);
       // Here you would redirect to payment with response.payment_token
     } catch (error) {
@@ -486,6 +788,23 @@ export default function OnePageBookingCheckout() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
           <p className="text-slate-600">Loading booking options...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (ipBlocked) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">Access Temporarily Restricted</h2>
+          <p className="text-slate-600 mb-4">{blockMessage}</p>
+          <p className="text-sm text-slate-500">Please try again later or contact support if you believe this is an error.</p>
         </div>
       </div>
     );
@@ -515,6 +834,14 @@ export default function OnePageBookingCheckout() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Book your course</h1>
             <p className="mt-1 text-slate-600">One‑page checkout. You'll be redirected only for the payment step.</p>
+            {bookingLock && (
+              <div className="mt-2 flex items-center gap-2 text-sm">
+                <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                <span className="text-orange-600 font-medium">
+                  Spaces locked - Complete payment in {formatTime(timeRemaining)}
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Badge>Secure booking</Badge>
@@ -527,24 +854,42 @@ export default function OnePageBookingCheckout() {
           {/* Left: Steps */}
           <div className="md:col-span-2 space-y-6">
             {/* Step 1: Course / Voucher */}
-            <Section index={1} title="Choose a course or voucher" subtitle="All sections are on one page – pick a course to continue." complete={!!selectedCourse} defaultOpen={true} collapsible={false}>
+            <Section
+              index={1}
+              title="Choose a course or voucher"
+              subtitle="All sections are on one page – pick a course to continue."
+              complete={sectionComplete[1]}
+              collapsible={false}
+              open={expandedSections[1]}
+              onToggle={() => setExpandedSections(prev => ({ ...prev, 1: !prev[1] }))}
+            >
               <div className="grid gap-3 sm:grid-cols-2">
-                {Array.isArray(courses) && courses.map((c, index) => (
-                  <RadioCard
-                    key={`${c.id}-${index}`}
-                    checked={selectedCourse?.id === c.id}
-                    onClick={() => setSelectedCourse(c)}
-                    onChange={() => setSelectedCourse(c)}
-                    title={c.course_name}
-                    caption={`Duration: ${c.duration}`}
-                    right={<span className="text-sm font-semibold text-slate-900"><Money value={c.school_one_off_price} /></span>}
-                  />
-                ))}
+                {Array.isArray(courses) && courses.map((c, index) => {
+                  const isSelected = selectedCourse &&
+                    selectedCourse.id === c.id &&
+                    selectedCourse.course_name === c.course_name;
+                  return (
+                    <RadioCard
+                      key={`course-${c.id}-${c.course_name}-${index}`}
+                      checked={isSelected}
+                      onChange={() => setSelectedCourse(c)}
+                      title={c.course_name}
+                    />
+                  );
+                })}
               </div>
             </Section>
 
             {/* Step 2: Location */}
-            <Section index={2} title="Pick a location" subtitle="Choose your preferred city/venue." complete={!!locationId} defaultOpen={!!selectedCourse} collapsible={true}>
+            <Section
+              index={2}
+              title="Pick a location"
+              subtitle="Choose your preferred city/venue."
+              complete={sectionComplete[2]}
+              open={expandedSections[2]}
+              onToggle={() => setExpandedSections(prev => ({ ...prev, 2: !prev[2] }))}
+              expandDisabled={!sectionComplete[1]}
+            >
               <div className="grid gap-3 sm:grid-cols-3">
                 {locations.map((l) => (
                   <RadioCard
@@ -560,7 +905,15 @@ export default function OnePageBookingCheckout() {
             </Section>
 
             {/* Step 3: Date & Attendees */}
-            <Section index={3} title="Select date & time" subtitle="Pick a day and tell us how many attendees." complete={!!selectedDate && attendees > 0} defaultOpen={!!locationId} collapsible={true}>
+            <Section
+              index={3}
+              title="Select date & time"
+              subtitle="Pick a day and tell us how many attendees."
+              complete={sectionComplete[3]}
+              open={expandedSections[3]}
+              onToggle={() => setExpandedSections(prev => ({ ...prev, 3: !prev[3] }))}
+              expandDisabled={!sectionComplete[2]}
+            >
               <div className="grid gap-6 md:grid-cols-3">
                 {/* Calendar */}
                 <div className="md:col-span-2 rounded-xl border border-slate-200 bg-white p-4">
@@ -654,7 +1007,15 @@ export default function OnePageBookingCheckout() {
             </Section>
 
             {/* Step 4: Account / Login (optional) */}
-            <Section index={4} title="Account (optional)" subtitle={isAuthenticated ? "You're logged in and ready to book." : "Booking as a guest is allowed. Create an account only if you want."} complete defaultOpen={!!selectedDate && attendees > 0} collapsible={true}>
+            <Section
+              index={4}
+              title="Account (optional)"
+              subtitle={isAuthenticated ? "You're logged in and ready to book." : "Booking as a guest is allowed. Create an account only if you want."}
+              complete={sectionComplete[4]}
+              open={expandedSections[4]}
+              onToggle={() => setExpandedSections(prev => ({ ...prev, 4: !prev[4] }))}
+              expandDisabled={!sectionComplete[3]}
+            >
               {isAuthenticated ? (
                 <div className="rounded-lg bg-green-50 p-4">
                   <div className="flex items-center gap-3">
@@ -870,7 +1231,15 @@ export default function OnePageBookingCheckout() {
             </Section>
 
             {/* Step 5: Personal Details */}
-            <Section index={5} title="Your details" subtitle="We'll email your booking confirmation and joining instructions." complete={!!details.firstName && !!details.lastName && !!details.email} defaultOpen={!!selectedDate && attendees > 0} collapsible={true}>
+            <Section
+              index={5}
+              title="Your details"
+              subtitle="We'll email your booking confirmation and joining instructions."
+              complete={sectionComplete[5]}
+              open={expandedSections[5]}
+              onToggle={() => setExpandedSections(prev => ({ ...prev, 5: !prev[5] }))}
+              expandDisabled={!allPreviousSectionsComplete(5)}
+            >
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="First name" required>
                   <input type="text" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.firstName} onChange={(e) => setDetails((d) => ({ ...d, firstName: e.target.value }))} />
@@ -935,7 +1304,7 @@ export default function OnePageBookingCheckout() {
               </div>
 
               <div className="mt-4 flex items-start gap-3">
-                <input id="confirmPhotocard" type="checkbox" className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                <input id="confirmPhotocard" type="checkbox" className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" checked={confirmPhotocard} onChange={(e) => setConfirmPhotocard(e.target.checked)} />
                 <label htmlFor="confirmPhotocard" className="text-sm text-slate-700">
                   Please tick to confirm that the person attending the course above will be able to present their photocard driving licence on the day of the course.
                 </label>
@@ -943,7 +1312,15 @@ export default function OnePageBookingCheckout() {
             </Section>
 
             {/* Step 6: Review & Pay */}
-            <Section index={6} title="Review & proceed to payment" subtitle="You'll be redirected to the secure payment page." complete defaultOpen={false} collapsible={true} expandDisabled={!(!!details.firstName && !!details.lastName && !!details.email)}>
+            <Section
+              index={6}
+              title="Review & proceed to payment"
+              subtitle="You'll be redirected to the secure payment page."
+              complete={sectionComplete[6]}
+              open={expandedSections[6]}
+              onToggle={() => setExpandedSections(prev => ({ ...prev, 6: !prev[6] }))}
+              expandDisabled={!sectionComplete[5]}
+            >
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-xl border border-slate-200 bg-white p-4">
                   <p className="mb-2 font-medium text-slate-900">Booking summary</p>
@@ -975,19 +1352,44 @@ export default function OnePageBookingCheckout() {
               </div>
 
               <div className="mt-4 flex items-start gap-4">
-                <input id="terms" type="checkbox" className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                <input id="terms" type="checkbox" className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} />
                 <label htmlFor="terms" className="text-sm text-slate-700">I agree to the <a className="text-teal-700 underline-offset-2 hover:underline" href="#">Terms & Conditions</a> and <a className="text-teal-700 underline-offset-2 hover:underline" href="#">Privacy Policy</a>.</label>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:flex sm:items-center sm:justify-between">
-                <p className="text-sm text-slate-600">You will be redirected to a secure payment page to complete your booking.</p>
-                <button type="button" onClick={handlePay} className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500/40">
-                  Proceed to payment
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                    <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414-1.414L13.586 10 10.293 6.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    <path fillRule="evenodd" d="M3 10a1 1 0 011-1h11a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                  </svg>
-                </button>
+              <div className="mt-4 space-y-3">
+                {!bookingLock ? (
+                  <div className="grid gap-3 sm:flex sm:items-center sm:justify-between">
+                    <p className="text-sm text-slate-600">Click "Book Now" to lock your spaces, then proceed to payment.</p>
+                    <button
+                      type="button"
+                      onClick={handleBookNow}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500/40"
+                    >
+                      Book Now (Lock Spaces)
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:flex sm:items-center sm:justify-between">
+                    <div className="text-sm">
+                      <p className="text-slate-600">Spaces locked! Complete payment within:</p>
+                      <p className="font-mono text-lg font-bold text-orange-600">{formatTime(timeRemaining)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handlePay}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+                    >
+                      Proceed to payment
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                        <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414-1.414L13.586 10 10.293 6.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M3 10a1 1 0 011-1h11a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
               </div>
             </Section>
           </div>
