@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { bookingApi, type Course, type Location, type Settings, type VehicleType, type LicenseType, type CourseEvent } from "@/services/bookingApi";
 import { authApi } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
@@ -156,10 +156,12 @@ interface RadioCardProps {
   title: string;
   caption?: string;
   right?: React.ReactNode;
+  disabled?: boolean;
 }
 
-function RadioCard({ checked, onChange, onClick, title, caption, right }: RadioCardProps) {
+function RadioCard({ checked, onChange, onClick, title, caption, right, disabled = false }: RadioCardProps) {
   const handleClick = () => {
+    if (disabled) return;
     onChange();
     onClick?.();
   };
@@ -168,15 +170,17 @@ function RadioCard({ checked, onChange, onClick, title, caption, right }: RadioC
     <button
       type="button"
       onClick={handleClick}
-      className={`w-full rounded-xl border p-4 text-left transition-all hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
+      disabled={disabled}
+      className={`w-full rounded-xl border p-4 text-left transition-all ${disabled ? 'cursor-not-allowed opacity-60' : 'hover:shadow-sm'} focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
         checked ? "border-teal-500 bg-teal-50" : "border-slate-200 bg-white"
       }`}
       aria-pressed={!!checked}
+      aria-disabled={disabled ? true : undefined}
     >
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <div className={`h-4 w-4 rounded-full border ${checked ? "border-teal-600 bg-teal-600" : "border-slate-400"}`} />
+            <div className={`h-4 w-4 flex-none rounded-full border ${checked ? "border-teal-600 bg-teal-600" : "border-slate-400"}`} />
             <p className="font-medium text-slate-900">{title}</p>
           </div>
           {caption && <p className="mt-1 text-sm text-slate-500">{caption}</p>}
@@ -247,7 +251,29 @@ export default function OnePageBookingCheckout() {
   const [blockMessage, setBlockMessage] = useState('');
   const [bookingLock, setBookingLock] = useState<{lock_id: string, expires_at: string, event_id: string} | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
+
+  // When a lock is held, collapse sections 1 & 2 and disable changes; restore previous expansion when lock is released
+  const prevExpandedRef = useRef<Record<number, boolean> | null>(null);
+  // Temporary holder for a restored location id (applied after locations fetch completes)
+  const restoredLocationIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (bookingLock) {
+      setExpandedSections(prev => {
+        // save current state and collapse course/location
+        prevExpandedRef.current = prev;
+        return { ...prev, 1: false, 2: false };
+      });
+    } else if (prevExpandedRef.current) {
+      setExpandedSections(prev => ({ ...prev, ...prevExpandedRef.current! }));
+      prevExpandedRef.current = null;
+    }
+  }, [bookingLock]);
   const [userIP, setUserIP] = useState<string>('');
+
+  // UI submit states
+  const [isLocking, setIsLocking] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   // Login details
   const [loginDetails, setLoginDetails] = useState({
@@ -371,47 +397,96 @@ export default function OnePageBookingCheckout() {
     }
   }, [copyToSection5, accountDetails, createAccount]);
 
-  // Save form data to localStorage whenever it changes
+  // Save sanitized form data to localStorage whenever it changes (DO NOT store sensitive fields like passwords)
   useEffect(() => {
     if (selectedCourse || locationId || selectedDate || details.firstName) {
       const formData = {
-        selectedCourse,
+        // store only identifiers and minimal display name for the selected course
+        selectedCourseId: selectedCourse?.id ?? null,
+        selectedCourseName: selectedCourse?.course_name ?? null,
         locationId,
         selectedDate: selectedDate?.toISOString(),
         selectedCourseEventId,
         attendees,
-        details,
-        accountDetails,
+        // store only non-sensitive details
+        details: {
+          firstName: details.firstName,
+          lastName: details.lastName,
+          email: details.email,
+          phone: details.phone,
+          notes: details.notes,
+          vehicleType: details.vehicleType,
+          licenseType: details.licenseType,
+          licenseNumber: details.licenseNumber,
+          theoryNumber: details.theoryNumber,
+        },
+        // store account fields but omit passwords and verification fields
+        accountDetails: {
+          firstName: accountDetails.firstName,
+          surname: accountDetails.surname,
+          email: accountDetails.email,
+          contactNumber1: accountDetails.contactNumber1,
+          addressLine1: accountDetails.addressLine1,
+          postcode: accountDetails.postcode,
+        },
         createAccount,
         confirmPhotocard,
-        acceptTerms
+        acceptTerms,
       };
-      localStorage.setItem('booking_form_data', JSON.stringify(formData));
+
+      try {
+        localStorage.setItem('booking_form_data', JSON.stringify(formData));
+      } catch (e) {
+        console.warn('Failed to save booking_form_data', e);
+      }
     }
   }, [selectedCourse, locationId, selectedDate, selectedCourseEventId, attendees, details, accountDetails, createAccount, confirmPhotocard, acceptTerms]);
 
-  // Load settings and license types when needed (step 5)
+  // Load settings and license types when needed (step 5) — memoized to avoid redundant calls while user types
+  const step5FetchedRef = useRef<{ selectedCourseId?: number | null; locationId?: number | null; selectedDateISO?: string | null; attendees?: number } | null>(null);
+
   useEffect(() => {
-    if (selectedDate && attendees > 0) {
-      const loadStep5Data = async () => {
-        try {
-          const [settingsData, licenseTypesData, vehicleTypesData] = await Promise.all([
-            bookingApi.getSettings().catch(() => ({ vat_rate: 0.2, credit_card_surcharge: 0, booking_bcc: '' })),
-            bookingApi.getLicenseTypes().catch(() => [{ id: 1, licence_type: "UK Full Licence", status: 1 }]),
-            selectedCourse && locationId
-              ? bookingApi.getVehicleTypesByCourseAndLocation(selectedCourse.id, locationId).catch(() => ({}))
-              : Promise.resolve({})
-          ]);
-          setSettings(settingsData);
-          setLicenseTypes(licenseTypesData);
-          setAvailableVehicleTypes(vehicleTypesData);
-        } catch (err) {
-          console.error('Failed to load step 5 data:', err);
-        }
-      };
-      loadStep5Data();
+    if (!selectedDate || attendees <= 0) return;
+
+    const current = {
+      selectedCourseId: selectedCourse?.id ?? null,
+      locationId: locationId ?? null,
+      selectedDateISO: selectedDate?.toISOString() ?? null,
+      attendees,
+    };
+
+    // If we've already fetched for the same parameters, skip
+    if (
+      step5FetchedRef.current &&
+      step5FetchedRef.current.selectedCourseId === current.selectedCourseId &&
+      step5FetchedRef.current.locationId === current.locationId &&
+      step5FetchedRef.current.selectedDateISO === current.selectedDateISO &&
+      step5FetchedRef.current.attendees === current.attendees
+    ) {
+      return;
     }
-  }, [selectedDate, attendees, selectedCourse, locationId]);
+
+    const loadStep5Data = async () => {
+      try {
+        const [settingsData, licenseTypesData, vehicleTypesData] = await Promise.all([
+          bookingApi.getSettings().catch(() => ({ vat_rate: 0.2, credit_card_surcharge: 0, booking_bcc: '' })),
+          bookingApi.getLicenseTypes().catch(() => [{ id: 1, licence_type: "UK Full Licence", status: 1 }]),
+          current.selectedCourseId && current.locationId
+            ? bookingApi.getVehicleTypesByCourseAndLocation(current.selectedCourseId, current.locationId).catch(() => ({}))
+            : Promise.resolve({})
+        ]);
+        setSettings(settingsData);
+        setLicenseTypes(licenseTypesData);
+        setAvailableVehicleTypes(vehicleTypesData);
+
+        step5FetchedRef.current = current;
+      } catch (err) {
+        console.error('Failed to load step 5 data:', err);
+      }
+    };
+
+    loadStep5Data();
+  }, [selectedDate?.toISOString(), attendees, selectedCourse?.id, locationId]);
 
   // Get user IP and check block status on load
   useEffect(() => {
@@ -434,17 +509,35 @@ export default function OnePageBookingCheckout() {
             setTimeRemaining(Math.max(0, expiry - now));
 
             if (savedFormData) {
-              const formData = JSON.parse(savedFormData);
-              setSelectedCourse(formData.selectedCourse);
-              setLocationId(formData.locationId);
-              setSelectedDate(new Date(formData.selectedDate));
-              setSelectedCourseEventId(formData.selectedCourseEventId);
-              setAttendees(formData.attendees);
-              setDetails(formData.details);
-              setAccountDetails(formData.accountDetails);
-              setCreateAccount(formData.createAccount);
-              setConfirmPhotocard(formData.confirmPhotocard || false);
-              setAcceptTerms(formData.acceptTerms || false);
+              try {
+                const formData = JSON.parse(savedFormData);
+
+                // Rehydrate selectedCourse with minimal shape (full object will be available after courses load)
+                if (formData.selectedCourseId) {
+                  setSelectedCourse({ id: formData.selectedCourseId, course_name: formData.selectedCourseName } as Course);
+                }
+
+                setLocationId(formData.locationId ?? null);
+                // Store the restored location id so we can re-apply it after locations are loaded
+                restoredLocationIdRef.current = formData.locationId ?? null;
+                setSelectedDate(formData.selectedDate ? new Date(formData.selectedDate) : null);
+                setSelectedCourseEventId(formData.selectedCourseEventId ?? null);
+                setAttendees(formData.attendees ?? 1);
+
+                if (formData.details) {
+                  setDetails(prev => ({ ...prev, ...formData.details, password: "" }));
+                }
+
+                if (formData.accountDetails) {
+                  setAccountDetails(prev => ({ ...prev, ...formData.accountDetails, password: "", verifyPassword: "" }));
+                }
+
+                setCreateAccount(!!formData.createAccount);
+                setConfirmPhotocard(!!formData.confirmPhotocard);
+                setAcceptTerms(!!formData.acceptTerms);
+              } catch (e) {
+                console.warn('Failed to parse saved booking_form_data', e);
+              }
             }
 
             toast.info('Previous booking session restored. Complete payment to secure your booking.');
@@ -483,6 +576,52 @@ export default function OnePageBookingCheckout() {
     initializeBooking();
   }, []);
 
+  // Sync booking lock and form data across tabs
+  useEffect(() => {
+    function handleStorageEvent(e: StorageEvent) {
+      try {
+        if (e.key === 'booking_lock') {
+          if (!e.newValue) {
+            // lock removed in another tab
+            setBookingLock(null);
+            setTimeRemaining(0);
+            toast.info('Booking lock removed in another tab');
+          } else {
+            const lockInfo = JSON.parse(e.newValue);
+            setBookingLock(lockInfo);
+            const expiry = new Date(lockInfo.expires_at).getTime();
+            setTimeRemaining(Math.max(0, expiry - Date.now()));
+          }
+        }
+
+        if (e.key === 'booking_form_data' && e.newValue) {
+          const formData = JSON.parse(e.newValue);
+
+          if (formData.selectedCourseId) {
+            setSelectedCourse({ id: formData.selectedCourseId, course_name: formData.selectedCourseName } as Course);
+          }
+
+          setLocationId(formData.locationId ?? null);
+          setSelectedDate(formData.selectedDate ? new Date(formData.selectedDate) : null);
+          setSelectedCourseEventId(formData.selectedCourseEventId ?? null);
+          setAttendees(formData.attendees ?? 1);
+
+          if (formData.details) setDetails(prev => ({ ...prev, ...formData.details, password: "" }));
+          if (formData.accountDetails) setAccountDetails(prev => ({ ...prev, ...formData.accountDetails, password: "", verifyPassword: "" }));
+
+          setCreateAccount(!!formData.createAccount);
+          setConfirmPhotocard(!!formData.confirmPhotocard);
+          setAcceptTerms(!!formData.acceptTerms);
+        }
+      } catch (err) {
+        console.warn('Error handling storage event', err);
+      }
+    }
+
+    window.addEventListener('storage', handleStorageEvent);
+    return () => window.removeEventListener('storage', handleStorageEvent);
+  }, []);
+
   // Load locations when course changes
   useEffect(() => {
     const loadLocations = async () => {
@@ -495,8 +634,22 @@ export default function OnePageBookingCheckout() {
       try {
         const locationsData = await bookingApi.getLocationsByCourse(selectedCourse.id);
         setLocations(locationsData);
-        // Don't auto-select first location - let user choose
-        setLocationId(null);
+        // If we have a restored location id (from restored storage), prefer and apply it
+        if (restoredLocationIdRef.current != null) {
+          const restored = restoredLocationIdRef.current;
+          if (locationsData.some(l => l.id === restored)) {
+            setLocationId(restored);
+          } else {
+            setLocationId(null);
+          }
+          restoredLocationIdRef.current = null;
+        } else {
+          // Don't auto-select first location - let user choose
+          // Preserve current selection if it's still valid for the new course
+          if (!locationsData.some(l => l.id === locationId)) {
+            setLocationId(null);
+          }
+        }
       } catch (err) {
         console.error('Failed to load locations:', err);
         setLocations([]);
@@ -507,20 +660,31 @@ export default function OnePageBookingCheckout() {
     loadLocations();
   }, [selectedCourse]);
 
-  // Load availability when course/location changes
+  // Track last availability fetch to avoid duplicate requests
+  const availabilityFetchedRef = useRef<{ courseId?: number | null; locationId?: number | null } | null>(null);
+
+  // Load availability when course/location changes (with guard to prevent redundant calls)
   useEffect(() => {
     const loadAvailability = async () => {
       if (!selectedCourse || !locationId) {
         setCourseEvents([]);
+        availabilityFetchedRef.current = null;
+        return;
+      }
+
+      // Skip if we already fetched for this course/location
+      if (availabilityFetchedRef.current?.courseId === selectedCourse.id && availabilityFetchedRef.current?.locationId === locationId) {
         return;
       }
 
       try {
         const response = await bookingApi.getCourseAvailability(selectedCourse.id, locationId);
         setCourseEvents(response.data.availability);
+        availabilityFetchedRef.current = { courseId: selectedCourse.id, locationId };
       } catch (err) {
         console.error('Failed to load availability:', err);
         setCourseEvents([]);
+        availabilityFetchedRef.current = null;
       }
     };
 
@@ -564,6 +728,25 @@ export default function OnePageBookingCheckout() {
   const total = pricing?.final_totals?.final_amount || 0;
 
   const handleRegister = async () => {
+    // Basic client-side validation
+    if (!accountDetails.firstName || !accountDetails.surname || !accountDetails.email) {
+      toast.error('Please complete name and email to create an account');
+      return;
+    }
+    if (accountDetails.email !== accountDetails.confirmEmail) {
+      toast.error('Email and confirmation do not match');
+      return;
+    }
+    if (!accountDetails.password || accountDetails.password.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+    if (accountDetails.password !== accountDetails.verifyPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    setIsRegistering(true);
     try {
       const { token, user } = await authApi.register({
         first_name: accountDetails.firstName,
@@ -576,6 +759,8 @@ export default function OnePageBookingCheckout() {
       toast.success('Account created successfully!');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Registration failed');
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -591,8 +776,13 @@ export default function OnePageBookingCheckout() {
   };
 
   // Countdown timer effect
+  const cleanupCalledRef = React.useRef(false);
+
   useEffect(() => {
     if (!bookingLock) return;
+
+    // reset cleanup guard when a new lock is created
+    cleanupCalledRef.current = false;
 
     const interval = setInterval(() => {
       const now = new Date().getTime();
@@ -601,27 +791,26 @@ export default function OnePageBookingCheckout() {
 
       setTimeRemaining(remaining);
 
-      if (remaining <= 0) {
+      if (remaining <= 0 && !cleanupCalledRef.current) {
+        cleanupCalledRef.current = true; // ensure we call cleanup only once
+
+        // Clear lock locally
         setBookingLock(null);
         localStorage.removeItem('booking_lock');
         localStorage.removeItem('booking_form_data');
 
-        // Call cleanup API
-        fetch(`${BASE_URL}/booking/cleanup-prebookings`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: user?.id || null,
-            ip_address: userIP
-          })
-        }).catch(console.error);
+        // Call cleanup API via bookingApi (POST expecting user_id & ip_address)
+        // For anonymous users pass 0 so backend can cleanup guest prebookings correctly
+        bookingApi.cleanupPrebookings(user?.id ?? 0, userIP).catch((err) => {
+          console.error('cleanupPrebookings failed', err);
+        });
 
         toast.error('Booking lock expired. Please try again.');
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [bookingLock]);
+  }, [bookingLock, user, userIP]);
 
   const formatTime = (ms: number) => {
     if (!ms || ms <= 0) return '0:00';
@@ -646,6 +835,7 @@ export default function OnePageBookingCheckout() {
       return;
     }
 
+    setIsLocking(true);
     try {
       // Check availability first
       const availability = await fetch(`${BASE_URL}/booking/course-availability/${selectedCourseEventId}`)
@@ -656,14 +846,15 @@ export default function OnePageBookingCheckout() {
         return;
       }
 
-      // Lock spaces
+      // Lock spaces (include user_id; 0 if guest)
       const lockResponse = await fetch(`${BASE_URL}/booking/lock-spaces`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           event_id: selectedCourseEventId.toString(),
           space_count: attendees,
-          ip_address: userIP
+          ip_address: userIP,
+          user_id: (user?.id ?? 0)
         })
       }).then(r => r.json());
 
@@ -693,21 +884,43 @@ export default function OnePageBookingCheckout() {
       };
 
       const formData = {
-        selectedCourse,
+        selectedCourseId: selectedCourse?.id ?? null,
+        selectedCourseName: selectedCourse?.course_name ?? null,
         locationId,
         selectedDate: selectedDate?.toISOString(),
         selectedCourseEventId,
         attendees,
-        details,
-        accountDetails,
+        details: {
+          firstName: details.firstName,
+          lastName: details.lastName,
+          email: details.email,
+          phone: details.phone,
+          notes: details.notes,
+          vehicleType: details.vehicleType,
+          licenseType: details.licenseType,
+          licenseNumber: details.licenseNumber,
+          theoryNumber: details.theoryNumber,
+        },
+        accountDetails: {
+          firstName: accountDetails.firstName,
+          surname: accountDetails.surname,
+          email: accountDetails.email,
+          contactNumber1: accountDetails.contactNumber1,
+          addressLine1: accountDetails.addressLine1,
+          postcode: accountDetails.postcode,
+        },
         createAccount,
         confirmPhotocard,
-        acceptTerms
+        acceptTerms,
       };
 
       setBookingLock(lockInfo);
       localStorage.setItem('booking_lock', JSON.stringify(lockInfo));
-      localStorage.setItem('booking_form_data', JSON.stringify(formData));
+      try {
+        localStorage.setItem('booking_form_data', JSON.stringify(formData));
+      } catch (e) {
+        console.warn('Failed to save booking_form_data', e);
+      }
 
       setTimeRemaining(tenMinutes);
 
@@ -715,6 +928,8 @@ export default function OnePageBookingCheckout() {
 
     } catch (error) {
       toast.error('Failed to lock booking spaces');
+    } finally {
+      setIsLocking(false);
     }
   };
 
@@ -728,16 +943,51 @@ export default function OnePageBookingCheckout() {
     if (!details.lastName) missing.push("Last name");
     if (!details.email) missing.push("Email");
     if (attendees < 1) missing.push("Number of attendees");
-    if (createAccount && !accountDetails.password) missing.push("Password (for account)");
+    if (createAccount) {
+      if (!accountDetails.password) missing.push("Password (for account)");
+      if (accountDetails.password !== accountDetails.verifyPassword) {
+        toast.error('Account password and verification do not match');
+        return;
+      }
+      if (accountDetails.email !== accountDetails.confirmEmail) {
+        toast.error('Account email and confirmation do not match');
+        return;
+      }
+    }
+
+    // Licence number must be exactly 16 characters
+    if (!details.licenseNumber || details.licenseNumber.length !== 16) missing.push("Driving licence number (16 characters)");
+
     if (!bookingLock) missing.push("Booking lock (click Book Now first)");
     if (!confirmPhotocard) missing.push("Photocard confirmation");
     if (!acceptTerms) missing.push("Terms & Conditions acceptance");
+
+    // Verify booking lock hasn't expired
+    if (bookingLock) {
+      try {
+        const expiry = new Date(bookingLock.expires_at).getTime();
+        if (Date.now() > expiry) {
+          // Clear stale lock and prompt user to re-lock
+          setBookingLock(null);
+          localStorage.removeItem('booking_lock');
+          localStorage.removeItem('booking_form_data');
+          toast.error('Booking lock expired. Please click Book Now to re-lock your spaces.');
+          return;
+        }
+      } catch (e) {
+        // If parsing fails, remove stale data to be safe
+        setBookingLock(null);
+        localStorage.removeItem('booking_lock');
+        localStorage.removeItem('booking_form_data');
+      }
+    }
 
     if (missing.length) {
       toast.error("Please complete: " + missing.join(", "));
       return;
     }
 
+    setIsPaying(true);
     try {
       const bookingData = {
         course_id: selectedCourse!.id,
@@ -777,8 +1027,20 @@ export default function OnePageBookingCheckout() {
 
       toast.success(`Booking created! Reference: ${response.booking_ref}. Redirecting to payment gateway…`);
       // Here you would redirect to payment with response.payment_token
-    } catch (error) {
-      toast.error(`Booking failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } catch (error: any) {
+      const errMsg = error instanceof Error ? error.message : (error?.response?.data?.message ?? 'Unknown error');
+      const responseMsg = (error?.response?.data?.message ?? '').toString().toLowerCase();
+      if (responseMsg.includes('lock') || responseMsg.includes('expired')) {
+        toast.error('Booking failed: booking lock invalid or expired. Please click Book Now to re-lock your spaces.');
+        // Clear local lock to force user to re-lock
+        setBookingLock(null);
+        localStorage.removeItem('booking_lock');
+        localStorage.removeItem('booking_form_data');
+      } else {
+        toast.error(`Booking failed: ${errMsg}`);
+      }
+    } finally {
+      setIsPaying(false);
     }
   }
 
@@ -859,9 +1121,9 @@ export default function OnePageBookingCheckout() {
               title="Choose a course or voucher"
               subtitle="All sections are on one page – pick a course to continue."
               complete={sectionComplete[1]}
-              collapsible={false}
               open={expandedSections[1]}
               onToggle={() => setExpandedSections(prev => ({ ...prev, 1: !prev[1] }))}
+              expandDisabled={!!bookingLock}
             >
               <div className="grid gap-3 sm:grid-cols-2">
                 {Array.isArray(courses) && courses.map((c, index) => {
@@ -874,6 +1136,7 @@ export default function OnePageBookingCheckout() {
                       checked={isSelected}
                       onChange={() => setSelectedCourse(c)}
                       title={c.course_name}
+                      disabled={!!bookingLock}
                     />
                   );
                 })}
@@ -888,7 +1151,7 @@ export default function OnePageBookingCheckout() {
               complete={sectionComplete[2]}
               open={expandedSections[2]}
               onToggle={() => setExpandedSections(prev => ({ ...prev, 2: !prev[2] }))}
-              expandDisabled={!sectionComplete[1]}
+              expandDisabled={!sectionComplete[1] || !!bookingLock}
             >
               <div className="grid gap-3 sm:grid-cols-3">
                 {locations.map((l) => (
@@ -899,6 +1162,7 @@ export default function OnePageBookingCheckout() {
                     onChange={() => setLocationId(l.id)}
                     title={l.location_name}
                     caption={`${l.address1}, ${l.postcode}`}
+                    disabled={!!bookingLock}
                   />
                 ))}
               </div>
@@ -1170,9 +1434,10 @@ export default function OnePageBookingCheckout() {
                         <button
                           type="button"
                           onClick={handleRegister}
-                          className="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700"
+                          disabled={isRegistering}
+                          className={`w-full rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition ${isRegistering ? 'bg-teal-400 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-700'}`}
                         >
-                          Create Account
+                          {isRegistering ? 'Creating…' : 'Create Account'}
                         </button>
                       </div>
 
@@ -1363,9 +1628,11 @@ export default function OnePageBookingCheckout() {
                     <button
                       type="button"
                       onClick={handleBookNow}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500/40"
+                      disabled={isLocking}
+                      aria-busy={isLocking}
+                      className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-orange-500/40 ${isLocking ? 'bg-orange-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700'}`}
                     >
-                      Book Now (Lock Spaces)
+                      {isLocking ? 'Locking…' : 'Book Now (Lock Spaces)'}
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
                         <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                       </svg>
@@ -1380,9 +1647,11 @@ export default function OnePageBookingCheckout() {
                     <button
                       type="button"
                       onClick={handlePay}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+                      disabled={isPaying}
+                      aria-busy={isPaying}
+                      className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${isPaying ? 'bg-teal-400 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-700'}`}
                     >
-                      Proceed to payment
+                      {isPaying ? 'Processing…' : 'Proceed to payment'}
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
                         <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414-1.414L13.586 10 10.293 6.707a1 1 0 010-1.414z" clipRule="evenodd" />
                         <path fillRule="evenodd" d="M3 10a1 1 0 011-1h11a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
