@@ -99,7 +99,7 @@ export default function AccreditationsSection({ data }: { data?: AccreditationsD
     {
       id: 2,
       type: 'gift',
-      image: '/home/gift-bow.png'
+      image: '/gift.png'
     }
   ];
 
