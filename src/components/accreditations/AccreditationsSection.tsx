@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 interface AccreditationsData {
   title: string;
@@ -73,9 +74,36 @@ export default function AccreditationsSection({ data }: { data?: AccreditationsD
     }
   }, [data]);
 
-  const displayData = data || fallbackData;
+  const pathname = usePathname();
+  const showCards = pathname === '/' || pathname.startsWith('/home');
 
-  console.log(displayData);
+  // Static default cards to display on homepage when CMS doesn't provide cards
+  const staticCards = [
+    {
+      id: 1,
+      title: "Local Area's To Us",
+      subtitle: 'CBT Training and Motorcycle Courses across London',
+      type: 'locations',
+      locations: [
+        'High Barnet CBT',
+        'Friern Barnet CBT',
+        'Finchley CBT',
+        'Southgate CBT',
+        'Arnos Grove CBT',
+        'Muswell Hill CBT',
+        'Hornsey CBT',
+        'Wood Green CBT',
+        'Highgate CBT'
+      ]
+    },
+    {
+      id: 2,
+      type: 'gift',
+      image: '/home/gift-bow.png'
+    }
+  ];
+
+  const displayData = data || fallbackData;
 
   if (!displayData) return null;
   return (
@@ -104,47 +132,49 @@ export default function AccreditationsSection({ data }: { data?: AccreditationsD
           ))}
         </div>
 
-        {/* Cards Grid */}
-        <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-2">
-          {displayData.cards.map((card) => (
-            <div
-              key={card.id}
-              className="rounded-lg bg-blue-50 border border-gray-300 p-4 md:p-8 relative"
-            >
-              <h3 className="mb-2 text-2xl md:text-3xl font-bold">
-                {card.title || ""}
-              </h3>
-              <p className="mb-3 md:mb-6 text-gray-500">
-                {card.subtitle || ""}
-              </p>
+        {/* Cards Grid (homepage only) */}
+        {showCards && (
+          <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-2">
+            {(displayData.cards && displayData.cards.length ? displayData.cards : staticCards).map((card) => (
+              <div
+                key={card.id}
+                className="rounded-lg bg-blue-50 border border-gray-300 p-4 md:p-8 relative"
+              >
+                <h3 className="mb-2 text-2xl md:text-3xl font-bold">
+                  {card.title || ""}
+                </h3>
+                <p className="mb-3 md:mb-6 text-gray-500">
+                  {card.subtitle || ""}
+                </p>
 
-              {card.type === "locations" && card.locations && (
-                <div className="grid grid-cols-2 gap-2 md:grid-cols-2">
-                  {card.locations.map((location, index) => (
-                    <div key={index} className="flex items-start">
-                      <span className="mr-1 md:mr-3 text-red-500 text-base"><i className="fa-solid fa-location-dot"></i></span>
-                      <span className="text-black text-sm md:text-base">{location}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {card.type === "gift" && (
-                <>
-                  <div className="xl:pt-4 xl:pr-[210px]">
-                  <h4 className="mb-3 text-2xl md:text-3xl font-bold">
-                    Gift <span className="text-red-500">Vouchers</span> Available
-                  </h4>
-                  <p className="text-base md:text-2xl">
-                    Give the gift of two wheels — CBT Training and Motorcycle Course Gift Vouchers available now!
-                  </p>
-                  <img src='/gift.png' alt="Gift Vouchers" className="hidden xl:block absolute bottom-0 top-0 right-2 object-contain h-full"/>
+                {card.type === "locations" && card.locations && (
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-2">
+                    {card.locations.map((location, index) => (
+                      <div key={index} className="flex items-start">
+                        <span className="mr-1 md:mr-3 text-red-500 text-base"><i className="fa-solid fa-location-dot"></i></span>
+                        <span className="text-black text-sm md:text-base">{location}</span>
+                      </div>
+                    ))}
                   </div>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
+                )}
+
+                {card.type === "gift" && (
+                  <>
+                    <div className="xl:pt-4 xl:pr-[210px]">
+                    <h4 className="mb-3 text-2xl md:text-3xl font-bold">
+                      Gift <span className="text-red-500">Vouchers</span> Available
+                    </h4>
+                    <p className="text-base md:text-2xl">
+                      Give the gift of two wheels — CBT Training and Motorcycle Course Gift Vouchers available now!
+                    </p>
+                    <img src={card.image || '/gift.png'} alt="Gift Vouchers" className="hidden xl:block absolute bottom-0 top-0 right-2 object-contain h-full"/>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
