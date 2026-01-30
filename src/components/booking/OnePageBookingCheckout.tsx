@@ -92,7 +92,7 @@ interface SectionProps {
 
 function Section({ index, title, subtitle, children, complete, collapsible = true, open, onToggle, expandDisabled = false }: SectionProps) {
   return (
-    <section className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section id={`section-${index}`} className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex items-start gap-4">
         <div className="flex flex-col items-center">
           <div
@@ -357,30 +357,46 @@ export default function OnePageBookingCheckout() {
   useEffect(() => {
     if (sectionComplete[1] && !expandedSections[2]) {
       setExpandedSections(prev => ({ ...prev, 2: true }));
+      // Scroll to the newly opened section (give time for layout)
+      setTimeout(() => {
+        document.getElementById('section-2')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
     }
   }, [sectionComplete[1]]);
 
   useEffect(() => {
     if (sectionComplete[2] && !expandedSections[3]) {
       setExpandedSections(prev => ({ ...prev, 3: true }));
+      setTimeout(() => {
+        document.getElementById('section-3')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
     }
   }, [sectionComplete[2]]);
 
   useEffect(() => {
     if (sectionComplete[3] && !expandedSections[4]) {
       setExpandedSections(prev => ({ ...prev, 4: true }));
+      setTimeout(() => {
+        document.getElementById('section-4')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
     }
   }, [sectionComplete[3]]);
 
   useEffect(() => {
     if (allPreviousSectionsComplete(5) && !expandedSections[5]) {
       setExpandedSections(prev => ({ ...prev, 5: true }));
+      setTimeout(() => {
+        document.getElementById('section-5')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
     }
   }, [sectionComplete[1], sectionComplete[2], sectionComplete[3], sectionComplete[4]]);
 
   useEffect(() => {
     if (sectionComplete[5] && !expandedSections[6]) {
       setExpandedSections(prev => ({ ...prev, 6: true }));
+      setTimeout(() => {
+        document.getElementById('section-6')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
     }
   }, [sectionComplete[5]]);
 
@@ -478,6 +494,13 @@ export default function OnePageBookingCheckout() {
         setSettings(settingsData);
         setLicenseTypes(licenseTypesData);
         setAvailableVehicleTypes(vehicleTypesData);
+
+        // Default to first license/vehicle type if user hasn't chosen one yet
+        setDetails(prev => ({
+          ...prev,
+          licenseType: prev.licenseType || (licenseTypesData && licenseTypesData.length > 0 ? String(licenseTypesData[0].id) : ''),
+          vehicleType: prev.vehicleType || (vehicleTypesData && Object.keys(vehicleTypesData).length > 0 ? Object.keys(vehicleTypesData)[0] : ''),
+        }));
 
         step5FetchedRef.current = current;
       } catch (err) {
@@ -659,6 +682,16 @@ export default function OnePageBookingCheckout() {
 
     loadLocations();
   }, [selectedCourse]);
+
+  // Default: select course with id 1 if available (only when user hasn't already selected a course)
+  useEffect(() => {
+    if (Array.isArray(courses) && courses.length > 0 && !selectedCourse) {
+      const defaultCourse = courses.find(c => c.id === 1);
+      if (defaultCourse) {
+        setSelectedCourse(defaultCourse);
+      }
+    }
+  }, [courses, selectedCourse]);
 
   // Track last availability fetch to avoid duplicate requests
   const availabilityFetchedRef = useRef<{ courseId?: number | null; locationId?: number | null } | null>(null);
