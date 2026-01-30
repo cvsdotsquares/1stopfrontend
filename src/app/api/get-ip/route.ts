@@ -6,8 +6,9 @@ export async function GET(request: NextRequest) {
   const realIP = request.headers.get('x-real-ip');
   const cfConnectingIP = request.headers.get('cf-connecting-ip');
   
-  let ip = request.ip || '127.0.0.1';
-  
+  // Start with a sensible default
+  let ip = '127.0.0.1';
+
   // Check for forwarded IPs (most reliable first)
   if (cfConnectingIP) {
     ip = cfConnectingIP;
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
   } else if (forwarded) {
     ip = forwarded.split(',')[0].trim();
   }
-  
+
   // Clean up IPv6 localhost
   if (ip === '::1') {
     ip = '127.0.0.1';

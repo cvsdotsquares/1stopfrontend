@@ -279,6 +279,14 @@ class BookingApiService {
       }),
     });
   }
+
+  async cleanupPrebookings(userId?: number, ipAddress?: string): Promise<any> {
+    return this.fetchApi<any>('/booking/cleanup-prebookings', {
+      method: 'POST',
+      // send 0 for anonymous users so backend can match prebookings locked by guests
+      body: JSON.stringify({ user_id: userId ?? 0, ip_address: ipAddress ?? '' }),
+    });
+  }
 }
 
 export const bookingApi = new BookingApiService();

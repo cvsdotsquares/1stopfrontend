@@ -7,7 +7,7 @@
         "label": "Our Next Available CBT Course Is",
         "dateText": "TOMORROW",
         "ctaText": "Book Now!",
-        "ctaLink": "/book"
+        "ctaLink": "/bookings"
       },
       "search": {
         "title": "Find your training",
@@ -19,7 +19,7 @@
         "promoCode": "SUMMER10",
         "primaryCta": {
           "text": "Book Online Now",
-          "link": "/book"
+          "link": "/bookings"
         },
         "secondaryCta": {
           "text": "Find a CBT Training",
@@ -314,7 +314,7 @@
             "You must have either a UK Provisional, UK Full, or EU Driving Licence (with supporting D91 Form).",
             "Be able to demonstrate basic balance and co-ordination (usually, but not always, this is means being able to ride a bicycle to a competent standard).",
             "Make sure you have read, and understand the <a href='/highway-code' class='text-indigo-600 hover:underline'>Highway Code</a>, and UK road traffic procedure.",
-            "Choose a date and book a CBT course <a href='/book' class='text-indigo-600 hover:underline'>online</a>, or over the phone by calling our offices on <span class='text-red-600'>020 8597 7333</span> or <span class='text-red-600'>0800 848 8418</span>."
+            "Choose a date and book a CBT course <a href='/bookings' class='text-indigo-600 hover:underline'>online</a>, or over the phone by calling our offices on <span class='text-red-600'>020 8597 7333</span> or <span class='text-red-600'>0800 848 8418</span>."
           ]
         },
         {

@@ -336,7 +336,7 @@ export default function OnePageBookingCheckout() {
   });
 
   // Section completion validation
-  const sectionComplete = {
+  const sectionComplete: Record<number, boolean> = {
     1: !!selectedCourse,
     2: !!locationId,
     3: !!selectedDate && attendees > 0,
@@ -1127,9 +1127,7 @@ export default function OnePageBookingCheckout() {
             >
               <div className="grid gap-3 sm:grid-cols-2">
                 {Array.isArray(courses) && courses.map((c, index) => {
-                  const isSelected = selectedCourse &&
-                    selectedCourse.id === c.id &&
-                    selectedCourse.course_name === c.course_name;
+                  const isSelected = !!(selectedCourse?.id === c.id && selectedCourse?.course_name === c.course_name);
                   return (
                     <RadioCard
                       key={`course-${c.id}-${c.course_name}-${index}`}
