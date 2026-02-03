@@ -379,7 +379,7 @@ function BookingConfirmationContent() {
               📞 Call {selectedLocation?.phone}
             </a>
             <Link
-              href="/contactus.php"
+              href="/contact-us"
               className="px-6 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
             >
               ✉️ Contact Support

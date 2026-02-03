@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface HeroData {
   backgroundImages: {
@@ -54,6 +55,91 @@ export default function Hero({ data }: { data: HeroData }) {
     return `${process.env.NEXT_PUBLIC_FILES_URL || ''}${currentImage.src}`;
   };
 
+  // Router + postcode state
+  const router = useRouter();
+  const [postcode, setPostcode] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [nextCBT, setNextCBT] = useState<any>(null);
+
+  // Fetch next CBT availability
+  useEffect(() => {
+    const fetchNextCBT = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/booking/next-availability-cbt`);
+        const data = await response.json();
+        if (data.success) {
+          setNextCBT(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch next CBT availability:', error);
+      }
+    };
+    fetchNextCBT();
+  }, []);
+
+  // Fetch postcode suggestions
+  useEffect(() => {
+    if (postcode.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const fetchSuggestions = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/helper/suggest-postal-codes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query: postcode }),
+        });
+        const data = await response.json();
+        if (data.success && Array.isArray(data.data)) {
+          setSuggestions(data.data);
+          setShowSuggestions(true);
+        }
+      } catch (error) {
+        console.error('Failed to fetch postcode suggestions:', error);
+      }
+    };
+
+    const timeoutId = setTimeout(fetchSuggestions, 300);
+    return () => clearTimeout(timeoutId);
+  }, [postcode]);
+
+  // Format date display
+  const getDateDisplay = () => {
+    if (!nextCBT?.next_available?.date) return '';
+
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const nextDate = new Date(nextCBT.next_available.date);
+
+    if (nextDate.toDateString() === tomorrow.toDateString()) {
+      return 'TOMORROW';
+    }
+
+    return nextCBT.next_available.date;
+  };
+
+  // Generate booking URL
+  const getBookingURL = () => {
+    if (!nextCBT) return '/bookings';
+
+    const params = new URLSearchParams({
+      course_id: nextCBT.course_id.toString(),
+      location_id: nextCBT.location_id.toString(),
+      date: nextCBT.next_available.date,
+      course_event_id: nextCBT.next_available.course_event_id.toString()
+    });
+
+    return `/bookings?${params.toString()}`;
+  };
+
   return (
     <section className="relative w-full overflow-hidden">
       {/* Background Images */}
@@ -88,14 +174,14 @@ export default function Hero({ data }: { data: HeroData }) {
           {/* CBT floating card */}
           <div className="mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center radius20-left radius20-left-bottom">
             <div className="text26 text-xl font-semibold text-red-600">
-              {data.nextCourse.label} {data.nextCourse.dateText}
+              Our Next Available CBT Course Is {getDateDisplay()}
             </div>
 
             <a
-              href={data.nextCourse.ctaLink}
+              href={getBookingURL()}
               className="mt-3 radius20-left radius20-right-bottom inline-block bg-red-600 px-10 py-3 text-base md:text-2xl text-white hover:bg-red-700"
             >
-              {data.nextCourse.ctaText}
+              Book Now
             </a>
           </div>
 
@@ -112,12 +198,54 @@ export default function Hero({ data }: { data: HeroData }) {
                 <input
                   type="text"
                   placeholder={data.search.placeholder}
+                  aria-label={data.search.placeholder}
+                  value={postcode}
+                  onChange={(e) => setPostcode(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const term = postcode.trim();
+                      router.push(`/all-locations${term ? `?postcode=${encodeURIComponent(term)}` : ''}`);
+                      setShowSuggestions(false);
+                    }
+                    if (e.key === 'Escape') {
+                      setShowSuggestions(false);
+                    }
+                  }}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                   className="w-full  bg-white px-4 py-3 pr-12 text-gray-800  focus:outline-none"
                 />
 
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-indigo-600">
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-b-md shadow-lg z-50 max-h-48 overflow-y-auto">
+                    {suggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => {
+                          setPostcode(suggestion);
+                          setShowSuggestions(false);
+                          router.push(`/all-locations?postcode=${encodeURIComponent(suggestion)}`);
+                        }}
+                        className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  aria-label="Search locations by postcode"
+                  onClick={() => {
+                    const term = postcode.trim();
+                    router.push(`/all-locations${term ? `?postcode=${encodeURIComponent(term)}` : ''}`);
+                    setShowSuggestions(false);
+                  }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-600 hover:text-indigo-800 hover:scale-105 transform transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-400 rounded"
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search h-5 w-5" aria-hidden="true"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
-                </span>
+                </button>
               </div>
             </div>
 
@@ -146,7 +274,7 @@ export default function Hero({ data }: { data: HeroData }) {
               </a>
 
               <a
-                href={data.promotion.secondaryCta.link}
+                href="/bookings?course_id=1&location_id=18"
                 className="min-w-[210px] radius20-left radius20-right-bottom text-base md:text-lg bg-white px-6 py-3 text-black text-center hover:bg-red-600 hover:text-white"
               >
                 {data.promotion.secondaryCta.text}
@@ -158,7 +286,7 @@ export default function Hero({ data }: { data: HeroData }) {
       </div>
       </div>
       {/* Bottom banner */}
-      <div className="w-full bg-black py-6 text-center px-3">        
+      <div className="w-full bg-black py-6 text-center px-3">
           <p
           className="text-2xl md:text-4xl text-white"
           dangerouslySetInnerHTML={{ __html: data.footerText }}

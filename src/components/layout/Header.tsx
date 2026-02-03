@@ -9,7 +9,7 @@ import {
   HtmlNavigation,
   HtmlNavigationItem,
   HtmlNavigationLink,
-  HtmlNavigationTrigger,
+  HtmlNavigationLinkWithDropdown,
   HtmlNavigationDropdown,
   HtmlMobileNavigation,
   HtmlMobileNavigationItem
@@ -117,7 +117,7 @@ const buildCompleteMenuHierarchy = (menuPages: MenuPage[], footerPages: MenuPage
 
 
 // Recursive component to render menu items with unlimited nesting
-const renderMenuItem = (item: MenuPage, level: number = 0): React.ReactNode => {
+const renderMenuItem = (item: any, level: number = 0): React.ReactNode => {
   const hasChildren = item.children && item.children.length > 0;
 
   if (level === 0) {
@@ -126,27 +126,18 @@ const renderMenuItem = (item: MenuPage, level: number = 0): React.ReactNode => {
       <HtmlNavigationItem key={item.id} hasDropdown={hasChildren}>
         {hasChildren ? (
           <>
-            <HtmlNavigationTrigger>
-              {item.link_title}
-            </HtmlNavigationTrigger>
+            <HtmlNavigationLinkWithDropdown href={`/${item.page_slug}`}>
+              {item.page_title}
+            </HtmlNavigationLinkWithDropdown>
             <HtmlNavigationDropdown className="p-1">
               <div className="grid gap-2">
-                {item.children?.map((child) => renderMenuItem(child, level + 1))}
-
-                {item.children && item.children.length > 8 && (
-                  <Link
-                    href={getPageUrl(item.slug)}
-                    className="block text-center py-3 mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 border-t border-gray-100 pt-3"
-                  >
-                    View All {item.link_title} ({item.children.length})
-                  </Link>
-                )}
+                {item.children?.map((child: any) => renderMenuItem(child, level + 1))}
               </div>
             </HtmlNavigationDropdown>
           </>
         ) : (
-          <HtmlNavigationLink href={getPageUrl(item.slug)}>
-            {item.link_title}
+          <HtmlNavigationLink href={`/${item.page_slug}`}>
+            {item.page_title}
           </HtmlNavigationLink>
         )}
       </HtmlNavigationItem>
@@ -156,14 +147,11 @@ const renderMenuItem = (item: MenuPage, level: number = 0): React.ReactNode => {
     return (
       <div key={item.id} className="group/nested relative">
         <Link
-          href={getPageUrl(item.slug)}
+          href={`/${item.page_slug}`}
           className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-gray-50 transition-colors"
         >
           <div>
-            <div className="font-medium text-black text-sm">{item.link_title}</div>
-            {item.page_title !== item.link_title && (
-              <div className="text-xs text-gray-500 mt-1">{item.page_title}</div>
-            )}
+            <div className="font-medium text-black text-sm">{item.page_title}</div>
           </div>
           {hasChildren && (
             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -177,10 +165,10 @@ const renderMenuItem = (item: MenuPage, level: number = 0): React.ReactNode => {
           <div className="absolute left-full top-0 w-80 bg-white rounded-lg shadow-2xl border border-gray-200 opacity-0 invisible group-hover/nested:opacity-100 group-hover/nested:visible transition-all duration-300 z-[9998] ml-1">
             <div className="p-3">
               <div className="font-semibold text-sm text-blue-600 border-b border-gray-100 pb-2 mb-3">
-                {item.link_title}
+                {item.page_title}
               </div>
               <div className="space-y-1 max-h-96 overflow-y-auto">
-                {item.children?.map((child) => renderMenuItem(child, level + 1))}
+                {item.children?.map((child: any) => renderMenuItem(child, level + 1))}
               </div>
             </div>
           </div>
@@ -203,16 +191,11 @@ export default function Header() {
 
   // Build comprehensive hierarchical menu structure
   const hierarchicalMenu = completeMenuData ?
-    buildCompleteMenuHierarchy(
-      completeMenuData.menuData.pages,
-      completeMenuData.menuData.footer_pages,
-      completeMenuData.menuData.featured_services,
-      completeMenuData.allPages
-    ) : [];
+    completeMenuData.menu_items || [] : [];
 
   // Debug log (remove in production)
   if (typeof window !== 'undefined' && hierarchicalMenu.length > 0) {
-    hierarchicalMenu.slice(0, 2).forEach(item => {
+    hierarchicalMenu.slice(0, 2).forEach((item: any) => {
       console.log(`- ${item.link_title}: ${item.children?.length || 0} children`);
     });
   }
@@ -265,8 +248,8 @@ export default function Header() {
           <div className="hidden lg:flex flex-1 justify-center overflow-visible">
             <HtmlNavigation className="overflow-visible relative z-50">
               {hierarchicalMenu
-                ?.sort((a, b) => a.weight - b.weight)
-                ?.map((page) => renderMenuItem(page, 0)) || (
+                ?.sort((a: any, b: any) => a.weight - b.weight)
+                ?.map((page: any) => renderMenuItem(page, 0)) || (
                   // Fallback static menu if API fails
                   <>
                     <HtmlNavigationItem>
@@ -313,8 +296,8 @@ export default function Header() {
         {/* Mobile Navigation */}
         <HtmlMobileNavigation isOpen={isMenuOpen}>
           {hierarchicalMenu
-            ?.sort((a, b) => a.weight - b.weight)
-            ?.map((page) => (
+            ?.sort((a: any, b: any) => a.weight - b.weight)
+            ?.map((page: any) => (
               <HtmlMobileNavigationItem
                 key={page.id}
                 item={page}
@@ -332,11 +315,11 @@ export default function Header() {
             )}
 
           {/* Find a "Book" or "Booking" page for the CTA button */}
-          {completeMenuData?.menuData?.pages?.find(page => page.slug.includes('booking') || page.link_title.toLowerCase().includes('book')) && (
+          {completeMenuData?.menuData?.pages?.find((page: any) => page.slug.includes('booking') || page.link_title.toLowerCase().includes('book')) && (
             <Button asChild className="w-fit">
               <Link
                 href={getPageUrl(
-                  completeMenuData?.menuData.pages.find(page =>
+                  completeMenuData?.menuData.pages.find((page: any) =>
                     page.slug.includes('booking') || page.link_title.toLowerCase().includes('book')
                   )?.slug || 'booking'
                 )}

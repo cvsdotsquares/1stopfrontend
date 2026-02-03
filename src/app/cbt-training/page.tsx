@@ -345,7 +345,7 @@ export default function CBTTraining() {
               Book CBT Now - £120
             </Link>
             <Link
-              href="/contactus.php"
+              href="/contact-us"
               className="px-8 py-3 border border-white text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
             >
               Ask a Question

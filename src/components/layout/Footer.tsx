@@ -63,9 +63,9 @@ export default function Footer() {
             <h3 className="text-xl font-semibold mb-5">Our Services</h3>
             <ul className="space-y-3">
               {menuData?.featured_services
-                ?.sort((a, b) => a.weight - b.weight)
+                ?.sort((a: any, b: any) => a.weight - b.weight)
                 ?.slice(0, 6) // Limit to 6 items for layout
-                ?.map((service) => (
+                ?.map((service: any) => (
                   <li key={service.id}>
                     <Link
                       href={getPageUrl(service.slug)}
@@ -92,10 +92,10 @@ export default function Footer() {
             <h3 className="text-xl font-semibold mb-5">Quick Links</h3>
             <ul className="space-y-3">
               {menuData?.footer_pages
-                ?.filter(page => page.parent_level === 0) // Only show main footer pages
-                ?.sort((a, b) => a.weight - b.weight)
+                ?.filter((page: any) => page.parent_level === 0) // Only show main footer pages
+                ?.sort((a: any, b: any) => a.weight - b.weight)
                 ?.slice(0, 6) // Limit to 6 items for layout
-                ?.map((page) => (
+                ?.map((page: any) => (
                   <li key={page.id}>
                     <Link
                       href={getPageUrl(page.slug)}
@@ -187,7 +187,7 @@ export default function Footer() {
           <div className="max-w-[1400px] mx-auto px-4">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <div className="text-gray-400 text-sm mb-4 md:mb-0">
-                Copyright 2025, All Right Reserved.
+                Copyright {new Date().getFullYear()}, All Right Reserved.
               </div>
               <div className="flex gap-4 text-sm items-center">
                 <div className="ssl"><img src="/ssl.png" alt="SSL Certificate" className=""/></div>

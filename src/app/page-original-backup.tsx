@@ -2,7 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { cmsApi, coursesApi } from '@/services/api';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import TestimonialsCarousel from '@/components/testimonials';
@@ -30,6 +31,10 @@ export default function Home() {
   // Extract page data
   const pageContent = pageData?.data;
   const featuredCourses = coursesData;
+
+  // Hero postcode state + router
+  const [postcode, setPostcode] = useState('');
+  const router = useRouter();
 
   // Update document title and meta when page data loads
   useEffect(() => {
@@ -104,7 +109,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/40"></div>
 
         {/* Right side panels */}
-        <div className="absolute right-8 top-8 w-80 space-y-4">
+        <div className="absolute right-8 top-8 w-80 space-y-4 z-20">
           {/* Top panel - CBT Course Available */}
           <div className="bg-white/95 backdrop-blur-sm rounded-lg p-6 text-center shadow-lg">
             <h3 className="text-red-500 text-lg font-bold mb-4">
@@ -123,9 +128,26 @@ export default function Home() {
               <input
                 type="text"
                 placeholder="Enter a postcode"
+                aria-label="Enter postcode to find training locations"
+                value={postcode}
+                onChange={(e) => setPostcode(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const term = postcode.trim();
+                    router.push(`/all-locations${term ? `?postcode=${encodeURIComponent(term)}` : ''}`);
+                  }
+                }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md pr-10"
               />
-              <button className="absolute right-2 top-2 text-gray-400 hover:text-gray-600">
+              <button
+                type="button"
+                onClick={() => {
+                  const term = postcode.trim();
+                  router.push(`/all-locations${term ? `?postcode=${encodeURIComponent(term)}` : ''}`);
+                }}
+                className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 hover:scale-110 transform transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-300 rounded"
+                aria-label="Search locations by postcode"
+              >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>

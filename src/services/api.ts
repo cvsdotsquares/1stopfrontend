@@ -234,22 +234,14 @@ export const cmsApi = {
     return response.data;
   },
 
-  getMenu: async () => {
-    const response = await api.get<ApiResponse<MenuData>>('/cms/menu');
+  getMenu: async (id: number = 5) => {
+    const response = await api.post<ApiResponse<any>>('/helper/menu-structure', { id });
     return response.data.data;
   },
 
-  getCompleteMenu: async () => {
-    // Get both menu structure and all pages for complete hierarchy
-    const [menuResponse, pagesResponse] = await Promise.all([
-      api.get<ApiResponse<MenuData>>('/cms/menu'),
-      api.get<ApiResponse<Page[]>>('/cms/pages?limit=100')
-    ]);
-
-    return {
-      menuData: menuResponse.data.data,
-      allPages: pagesResponse.data.data
-    };
+  getCompleteMenu: async (id: number = 5) => {
+    const response = await api.post<ApiResponse<any>>('/helper/menu-structure', { id });
+    return response.data.data;
   },
 
   getHomepageData: async () => {

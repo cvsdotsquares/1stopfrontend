@@ -517,6 +517,13 @@ export default function OnePageBookingCheckout() {
       try {
         setLoading(true);
 
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const courseId = urlParams.get('course_id');
+        const locationIdParam = urlParams.get('location_id');
+        const dateParam = urlParams.get('date');
+        const courseEventId = urlParams.get('course_event_id');
+
         // Check for existing booking lock first
         const savedLock = localStorage.getItem('booking_lock');
         const savedFormData = localStorage.getItem('booking_form_data');
@@ -587,6 +594,26 @@ export default function OnePageBookingCheckout() {
         // Load courses if not blocked
         const coursesData = await bookingApi.getCourses().catch(() => []);
         setCourses(Array.isArray(coursesData) ? coursesData : []);
+
+        // Apply URL parameters after courses are loaded
+        if (courseId && coursesData) {
+          const course = coursesData.find(c => c.id === parseInt(courseId));
+          if (course) {
+            setSelectedCourse(course);
+          }
+        }
+
+        if (locationIdParam) {
+          setLocationId(parseInt(locationIdParam));
+        }
+
+        if (dateParam) {
+          setSelectedDate(new Date(dateParam));
+        }
+
+        if (courseEventId) {
+          setSelectedCourseEventId(parseInt(courseEventId));
+        }
       } catch (err) {
         console.error('Load initial data error:', err);
         setError(err instanceof Error ? err.message : 'Failed to load data');

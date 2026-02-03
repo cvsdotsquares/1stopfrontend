@@ -77,6 +77,22 @@ export function HtmlNavigationTrigger({ className, children }: { className?: str
   );
 }
 
+// Navigation Link with Dropdown (clickable link + dropdown)
+export function HtmlNavigationLinkWithDropdown({ href, className, children }: { href: string; className?: string; children: React.ReactNode }) {
+  return (
+    <Link 
+      href={href}
+      className={cn("inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-red-600", className)}
+    >
+      {children}
+      <ChevronDownIcon
+        className="relative top-[1px] ml-1 size-3 transition-transform duration-300 group-hover/item:rotate-180"
+        aria-hidden="true"
+      />
+    </Link>
+  );
+}
+
 // Navigation Dropdown Content
 export function HtmlNavigationDropdown({ className, children }: { className?: string; children: React.ReactNode }) {
   return (

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import TestimonialsCarousel from "@/components/testimonials";
 import AccreditationsSection from "@/components/accreditations/AccreditationsSection";
 import FeaturedServices from '@/components/ui/FeaturedServices';
@@ -63,14 +64,33 @@ export default function AllLocations() {
     }
   }, [currentPage]);
 
+  const searchParams = useSearchParams();
+
   useEffect(() => {
     fetchLocations().then(data => {
       const [coursesData, locationsData] = data || [[], []];
       setAllLocations(locationsData || []);
       setCourses(coursesData || []);
-      setFilteredLocations(locationsData || []);
+
+      // If a postcode query param exists, use it to pre-filter the locations
+      const postcodeQuery = searchParams?.get('postcode') || '';
+      setSearchTerm(postcodeQuery);
+
+      if (postcodeQuery) {
+        const filtered = (locationsData || []).filter(location => {
+          const lowerQuery = postcodeQuery.toLowerCase();
+          const addressMatch = Array.isArray(location.address)
+            ? location.address.join(' ').toLowerCase().includes(lowerQuery)
+            : Object.values(location.address || {}).some(line => typeof line === 'string' && line.toLowerCase().includes(lowerQuery));
+
+          return addressMatch || location.locationName.toLowerCase().includes(lowerQuery);
+        });
+        setFilteredLocations(filtered);
+      } else {
+        setFilteredLocations(locationsData || []);
+      }
     });
-  }, []);
+  }, [searchParams]);
 
   const handleFilter = () => {
     let filtered = allLocations.filter(location => {
@@ -94,6 +114,11 @@ export default function AllLocations() {
     setFilteredLocations(filtered);
     setCurrentPage(1);
   };
+
+  useEffect(() => {
+    // Run filter whenever searchTerm, selectedCourse or allLocations change
+    handleFilter();
+  }, [searchTerm, selectedCourse, allLocations]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredLocations.length / itemsPerPage);

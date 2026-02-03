@@ -578,7 +578,7 @@ export default function BookingStep4() {
                 <div className="text-center">
                   <p className="text-sm text-gray-600 mb-2">Need help?</p>
                   <Link
-                    href="/contactus.php"
+                    href="/contact-us"
                     className="text-blue-600 text-sm font-medium hover:underline"
                   >
                     Contact Support

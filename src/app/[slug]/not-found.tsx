@@ -33,7 +33,7 @@ export default function NotFound() {
               Go back home
             </Link>
             <Link
-              href="/contactus.php"
+              href="/contact-us"
               className="text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors"
             >
               Contact support <span aria-hidden="true">&rarr;</span>
@@ -55,7 +55,7 @@ export default function NotFound() {
             </li>
             <li>
               <Link
-                href="/contactus.php"
+                href="/contact-us"
                 className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
               >
                 Contact Us

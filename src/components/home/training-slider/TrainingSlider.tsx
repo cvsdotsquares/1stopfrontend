@@ -21,7 +21,6 @@ export default function TrainingSlider({ data }: { data: TrainingSliderData }) {
 
   const extendedSlides = [...data.slides, ...data.slides, ...data.slides];
   const startIndex = data.slides.length;
-
   /* Responsive slides per view */
   useEffect(() => {
     const updateSlidesPerView = () => {
