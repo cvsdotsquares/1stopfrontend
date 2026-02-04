@@ -96,9 +96,8 @@ function Section({ index, title, subtitle, children, complete, collapsible = tru
       <div className="flex items-start gap-4">
         <div className="flex flex-col items-center">
           <div
-            className={`h-10 w-10 shrink-0 rounded-full border-2 flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
-              complete ? "border-teal-500 bg-teal-500 text-white" : "border-teal-400 text-teal-600"
-            }`}
+            className={`h-10 w-10 shrink-0 rounded-full border-2 flex items-center justify-center text-sm font-semibold transition-all duration-300 ${complete ? "border-teal-500 bg-teal-500 text-white" : "border-teal-400 text-teal-600"
+              }`}
             aria-hidden
           >
             {index}
@@ -116,11 +115,10 @@ function Section({ index, title, subtitle, children, complete, collapsible = tru
                 type="button"
                 onClick={onToggle}
                 disabled={expandDisabled}
-                className={`ml-4 inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
-                  expandDisabled
-                    ? "border-slate-200 text-slate-400 cursor-not-allowed"
-                    : "border-slate-200 text-slate-700 hover:bg-slate-50"
-                }`}
+                className={`ml-4 inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${expandDisabled
+                  ? "border-slate-200 text-slate-400 cursor-not-allowed"
+                  : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                  }`}
                 aria-expanded={open}
               >
                 {open ? "Collapse" : "Expand"}
@@ -171,9 +169,8 @@ function RadioCard({ checked, onChange, onClick, title, caption, right, disabled
       type="button"
       onClick={handleClick}
       disabled={disabled}
-      className={`w-full rounded-xl border p-4 text-left transition-all ${disabled ? 'cursor-not-allowed opacity-60' : 'hover:shadow-sm'} focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
-        checked ? "border-teal-500 bg-teal-50" : "border-slate-200 bg-white"
-      }`}
+      className={`w-full rounded-xl border p-4 text-left transition-all ${disabled ? 'cursor-not-allowed opacity-60' : 'hover:shadow-sm'} focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${checked ? "border-teal-500 bg-teal-50" : "border-slate-200 bg-white"
+        }`}
       aria-pressed={!!checked}
       aria-disabled={disabled ? true : undefined}
     >
@@ -249,7 +246,7 @@ export default function OnePageBookingCheckout() {
   // Booking Flow State
   const [ipBlocked, setIpBlocked] = useState(false);
   const [blockMessage, setBlockMessage] = useState('');
-  const [bookingLock, setBookingLock] = useState<{lock_id: string, expires_at: string, event_id: string} | null>(null);
+  const [bookingLock, setBookingLock] = useState<{ lock_id: string, expires_at: string, event_id: string } | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
   // When a lock is held, collapse sections 1 & 2 and disable changes; restore previous expansion when lock is released
@@ -274,6 +271,20 @@ export default function OnePageBookingCheckout() {
   const [isLocking, setIsLocking] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+
+  // WorldPay Form State
+  const [paymentFormUrl, setPaymentFormUrl] = useState<string>('');
+  const [paymentFormFields, setPaymentFormFields] = useState<Record<string, string>>({});
+  const paymentFormRef = useRef<HTMLFormElement>(null);
+
+  // Auto-submit form when fields are ready
+  useEffect(() => {
+    console.log('Payment Effect Triggered:', { url: paymentFormUrl, fields: Object.keys(paymentFormFields).length, formRef: !!paymentFormRef.current });
+    if (paymentFormUrl && Object.keys(paymentFormFields).length > 0 && paymentFormRef.current) {
+      console.log('Submitting Payment Form...');
+      paymentFormRef.current.submit();
+    }
+  }, [paymentFormUrl, paymentFormFields]);
 
   // Login details
   const [loginDetails, setLoginDetails] = useState({
@@ -1085,7 +1096,18 @@ export default function OnePageBookingCheckout() {
       localStorage.removeItem('booking_lock');
       localStorage.removeItem('booking_form_data');
 
-      toast.success(`Booking created! Reference: ${response.booking_ref}. Redirecting to payment gateway…`);
+      if (response.payment_data) {
+        console.log('Payment Data Received:', response.payment_data);
+        console.log('Payment URL:', response.payment_data.url);
+        console.log('Payment Fields:', response.payment_data.fields);
+        toast.success(`Booking created! Reference: ${response.booking_ref}. Redirecting to payment gateway…`);
+        setPaymentFormUrl(response.payment_data.url);
+        setPaymentFormFields(response.payment_data.fields);
+      } else {
+        console.warn('Payment Data Missing in Response:', response);
+        // Fallback for logic where payment data is missing or legacy flow
+        toast.success(`Booking created! Reference: ${response.booking_ref}. (No payment data generated)`);
+      }
       // Here you would redirect to payment with response.payment_token
     } catch (error: any) {
       const errMsg = error instanceof Error ? error.message : (error?.response?.data?.message ?? 'Unknown error');
@@ -1275,13 +1297,12 @@ export default function OnePageBookingCheckout() {
                                 setSelectedCourseEventId(cell.courseEventId || null);
                               }}
                               title={cell.available ? `${cell.spots} spots left` : "Not available"}
-                              className={`aspect-square rounded-lg border text-sm tabular-nums transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
-                                cell.available
-                                  ? isSelected
-                                    ? "border-emerald-600 bg-emerald-600 text-white font-semibold"
-                                    : "border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600"
-                                  : "border-red-300 bg-red-50 text-red-500 cursor-not-allowed"
-                              } ${isToday ? "ring-2 ring-teal-400" : ""}`}
+                              className={`aspect-square rounded-lg border text-sm tabular-nums transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${cell.available
+                                ? isSelected
+                                  ? "border-emerald-600 bg-emerald-600 text-white font-semibold"
+                                  : "border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600"
+                                : "border-red-300 bg-red-50 text-red-500 cursor-not-allowed"
+                                } ${isToday ? "ring-2 ring-teal-400" : ""}`}
                             >
                               <div>{cell.date.getDate()}</div>
                               <div className="text-[10px]">{cell.available ? `${cell.spots}×` : "—"}</div>
@@ -1763,6 +1784,36 @@ export default function OnePageBookingCheckout() {
           </aside>
         </div>
       </div>
+
+      {/* Hidden Payment Form */}
+      {paymentFormUrl && Object.keys(paymentFormFields).length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Redirecting to Payment</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              You will be redirected to the secure payment gateway. If the redirect doesn't happen automatically, click the button below.
+            </p>
+            <form ref={paymentFormRef} action={paymentFormUrl} method="POST">
+              {Object.entries(paymentFormFields).map(([key, value]) => (
+                <input key={key} type="hidden" name={key} value={value} />
+              ))}
+              <button 
+                type="submit" 
+                className="w-full bg-teal-600 text-white py-2 px-4 rounded-lg hover:bg-teal-700 transition"
+              >
+                Continue to Payment
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Fallback Hidden Form */}
+      <form ref={paymentFormRef} action={paymentFormUrl} method="POST" className="hidden">
+        {Object.entries(paymentFormFields).map(([key, value]) => (
+          <input key={key} type="hidden" name={key} value={value} />
+        ))}
+      </form>
     </div>
   );
 }
