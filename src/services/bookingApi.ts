@@ -117,6 +117,10 @@ export interface BookingResponse {
   vat: number;
   total_amount: number;
   payment_token: string;
+  payment_data?: {
+    url: string;
+    fields: Record<string, string>;
+  };
 }
 
 class BookingApiService {
