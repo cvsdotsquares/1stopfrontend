@@ -1,6 +1,19 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import PageContent from '@/components/cms/PageContent';
+import CarouselBanner from '@/components/cms/CarouselBanner';
+import FeaturedServices from '@/components/ui/FeaturedServices'
+import TestimonialsCarousel from "@/components/testimonials";
+import AccreditationsSection from "@/components/accreditations/AccreditationsSection";
+import AboutSection from "@/components/home/about/AboutSection";
+import ServicesSection from "@/components/home/services/ServicesSection";
+import FeatureImageLeft from "@/components/home/generic-feature/FeatureImageLeft";
+import FeatureImageRight from "@/components/home/generic-feature/FeatureImageRight";
+import TrainingSlider from "@/components/home/training-slider/TrainingSlider";
+import WhyUsSection from "@/components/home/why-us/WhyUsSection";
+import GenericCta from "@/components/home/generic-cta/GenericCta";
+import Link from 'next/link';
+import Image from 'next/image';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
@@ -35,10 +48,28 @@ type CmsPage = {
   overlay_caption?: number;
   overlay_caption_text?: string;
   featured_service?: number;
+  testimonial_display?: number;
+  accreditation_display?: number;
   featured_icon?: string;
   dynamic_sections?: CmsSection[];
   page_content?: string;
   meta?: { title?: string; description?: string; canonical?: string; ogImage?: string };
+  about_data?: any;
+  services_data?: any;
+  feature_left_data?: any;
+  feature_right_data?: any;
+  training_slider_data?: any;
+  why_us_data?: any;
+  generic_cta_data?: any;
+  slider_images?: any;
+  about?: any;
+  services?: any;
+  training_slider?: any;
+  why_us?: any;
+  cbt_london?: any;
+  cbt_test_london?: any;
+  features?: any;
+  banners?: any;
 };
 
 async function fetchCmsPage(slug: string): Promise<CmsPage | null> {
@@ -79,33 +110,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return metadata;
 }
 
-function renderItem(item: CmsItem) {
-  switch (item.item_type) {
-    case 'text':
-      return <div key={item.id} dangerouslySetInnerHTML={{ __html: item.item_content || '' }} />;
-    case 'link':
-      return (
-        <div key={item.id} className="my-2">
-          <a href={item.item_url} className="text-blue-600 hover:underline" target="_blank" rel="noreferrer">
-            {item.item_title || item.item_url}
-          </a>
-        </div>
-      );
-    case 'image':
-      const src = item.item_image
-        ? item.item_image.startsWith('http')
-          ? item.item_image
-          : `${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/${item.item_image}`
-        : '';
-      return (
-        <div key={item.id} className="my-4">
-          {src ? <img src={src} alt={item.item_title || ''} className="max-w-full h-auto rounded" /> : null}
-        </div>
-      );
-    default:
-      return <div key={item.id}>{item.item_content}</div>;
-  }
-}
+
 
 export default async function CmsCatchAllPage({ params }: { params: Promise<{ slug: string[] }> }) {
   const { slug } = await params;
@@ -117,102 +122,88 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
 
   return (
     <div className="min-h-screen">
+      {/* Carousel Banner when banner_type is 1 */}
+      {page.banner_type == 2 && <CarouselBanner />}
+
       {/* Banner header if present */}
       {page.banner_type == 1 && (page.carousel_static_image || page.overlay_caption == 1) && (
-        <div className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-          {page.carousel_static_image && (
-            <div
-              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-              style={{ backgroundImage: `url(${page.carousel_static_image})` }}
-            >
-              <div className="absolute inset-0 bg-black/40" />
-            </div>
-          )}
-          <div className="relative container mx-auto px-4 py-16">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">{page.link_title || page.page_title}</h1>
-            {page.overlay_caption == 1 && page.overlay_caption_text && (
-              <p className="text-xl md:text-2xl text-gray-200 max-w-2xl">{page.overlay_caption_text}</p>
+          <div className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+            {page.carousel_static_image && (
+              <div
+                className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                style={{ backgroundImage: `url(${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/${page.carousel_static_image})` }}
+              >
+                <div className="absolute inset-0 bg-black/40" />
+              </div>
             )}
-            {page.carousel_static_caption && <p className="text-lg text-gray-300 mt-4">{page.carousel_static_caption}</p>}
+            <div className="relative container mx-auto px-4 py-16">
+              <h1 className="text-4xl md:text-5xl font-bold mb-4">{page.link_title || page.page_title}</h1>
+              {page.overlay_caption == 1 && page.overlay_caption_text && (
+                <p className="text-xl md:text-2xl text-gray-200 max-w-2xl" dangerouslySetInnerHTML={{ __html: page.overlay_caption_text }} />
+              )}
+              {page.carousel_static_caption && <p className="text-lg text-gray-300 mt-4" dangerouslySetInnerHTML={{ __html: page.carousel_static_caption }} />}
+            </div>
           </div>
-        </div>
+      )}
+      {/* Dynamic sections */}
+      {Array.isArray(page.dynamic_sections) &&
+        page.dynamic_sections.map((s) => {
+          if (s.make_cta == 1) {
+            return (
+              <div className="bg-gray-100 pt-8 md:pt-16" key={`section-${s.id}`}>
+                <div className="max-w-[1400px] mx-auto">
+                  <div className="[&_h2]:text-black [&_h2]:mb-5 [&_h2]:text-3xl text-gray-500 [&_a]:underline [&_a:hover]:text-red-500 [&_div]:p-5 [&_div]:bg-blue-100 [&_div]:text-blue-600 [&_div]:border-l-2 [&_div]:border-blue-600">
+                    <h2 className="text-center">{s.section_title}</h2>
+                    <span className="flex justify-center items-center gap-8 flex-wrap">
+                      {s.items.map((item) => (
+                        <span key={item.id} className="text-center">
+                          {item.item_image && <img src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/dynamic_content/${item.item_image}`} alt={item.item_title} className="max-w-sm h-auto rounded-lg mb-4" />}
+                          {item.item_content && <span className="block text-lg text-gray-700 mb-4" dangerouslySetInnerHTML={{ __html: item.item_content }} />}
+                          {item.item_url && <Link className="inline-block text-white bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-lg font-semibold transition-colors" href={item.item_url}>{item.item_title}</Link>}
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div className="pt-8 md:pt-16" key={`section-${s.id}`}>
+              <div className="max-w-[1400px] mx-auto">
+                <div className="[&_h2]:text-black [&_h2]:mb-5 [&_h2]:text-3xl text-gray-500 [&_a]:underline [&_a:hover]:text-red-500 [&_div]:p-5 [&_div]:bg-blue-100  [&_div]:text-blue-600 [&_div]:border-l-2 [&_div]:border-blue-600">
+                  <h2>{s.section_title}</h2>
+                  {s.items.map((item) => (
+                    <span key={item.id} dangerouslySetInnerHTML={{ __html: item.item_content || '' }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+      {/* Fallback content */}
+      {(!Array.isArray(page.dynamic_sections) || page.dynamic_sections.length === 0) &&
+        page.page_content && (
+          <section className="mb-8">
+            <PageContent content={page.page_content} />
+          </section>
       )}
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <div className="lg:col-span-3">
-            {!(page.banner_type == 1 && (page.carousel_static_image || page.overlay_caption == 1)) && (
-              <header className="mb-8">
-                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{page.link_title || page.page_title}</h1>
-              </header>
-            )}
-            {/* Dynamic sections */}
-            {Array.isArray(page.dynamic_sections) && page.dynamic_sections.map((s) => {
-              if (s.make_cta == 1) {
-                const links = s.items?.filter(i => i.item_type == 'link') || [];
-                const images = s.items?.filter(i => i.item_type == 'image') || [];
-                const texts = s.items?.filter(i => i.item_type == 'text') || [];
+      {/* Homepage Components */}
+      {page.about && <AboutSection data={page.about} />}
+      {page.services && <ServicesSection data={page.services} />}
+      {page.cbt_london && <FeatureImageLeft data={page.cbt_london} />}
+      {page.cbt_test_london && <FeatureImageRight data={page.cbt_test_london} />}
+      {page.training_slider && <TrainingSlider data={page.training_slider} />}
+      {page.why_us && <WhyUsSection data={page.why_us} />}
+      {page.banners && <GenericCta {...page.banners} />}
 
-                return (
-                  <section key={s.id} className="mb-8 relative">
-                    {/* Full-bleed background */}
-                    <div className="absolute left-1/2 -translate-x-1/2 w-screen bg-gray-100 py-8 md:py-16 -z-10" />
-                    <div className="max-w-[1400px] mx-auto px-4 relative">
-                      <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-                        {/* Left: title and descriptive text */}
-                        <div className="flex-1">
-                          {s.section_title && <h2 className="text-3xl font-bold text-black mb-4">{s.section_title}</h2>}
-                          <div suppressHydrationWarning={true} className="prose max-w-none text-gray-700">
-                            {texts.length > 0 ? texts.map(t => (
-                              <p key={t.id} dangerouslySetInnerHTML={{ __html: t.item_content || '' }} />
-                            )) : (
-                              <div>{s.items && s.items.map((item) => renderItem(item))}</div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Center: CTA button and quick links */}
-                        <div className="flex flex-col items-center md:items-center md:justify-center gap-4 md:gap-6 md:flex-none">
-
-                          {links.length > 1 && (
-                            <ul className="mt-2 flex flex-col md:flex-col text-sm">
-                              {links.slice(1).map(l => (
-                                <li key={l.id}><a className="text-blue-600 hover:underline" href={l.item_url}>{l.item_title || l.item_url}</a></li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-
-                        {/* Right: featured image */}
-                        {images[0] && (
-                          <div className="md:ml-6 md:flex-none">
-                            <img src={images[0].item_image?.startsWith('http') ? images[0].item_image : `${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/${images[0].item_image}`} alt={images[0].item_title || ''} className="w-40 rounded shadow-md" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </section>
-                );
-              }
-
-              return (
-                <section key={s.id} className="mb-8">
-                  {s.section_title && <h2 className="text-xl font-semibold mb-3">{s.section_title}</h2>}
-                  <div suppressHydrationWarning={true} className="prose max-w-none">
-                    {s.items && s.items.map(renderItem)}
-                  </div>
-                </section>
-              );
-            })}
-
-            {(!Array.isArray(page.dynamic_sections) || page.dynamic_sections.length === 0) && page.page_content && (
-              <section className="mb-8">
-                <PageContent content={page.page_content} />
-              </section>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* Conditional components */}
+      {page.featured_service == 1 && <FeaturedServices />}
+      {page.testimonial_display == 1 && <TestimonialsCarousel />}
+      {page.accreditation_display == 1 && <AccreditationsSection />}
     </div>
   );
 }

@@ -15,7 +15,6 @@ type Office = {
 type Props = {
   page_title: string;
   page_content: string;
-  carousel_static_image?: string;
   contact_offices: Office[];
 };
 
@@ -29,7 +28,6 @@ declare global {
 export default function ContactUsClient({
   page_title,
   page_content,
-  carousel_static_image,
   contact_offices,
 }: Props) {
   const [name, setName] = useState("");
@@ -260,7 +258,7 @@ export default function ContactUsClient({
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 py-8">
-      
+
 
       <h1>{page_title}</h1>
 
@@ -343,7 +341,7 @@ export default function ContactUsClient({
             </span>
           </h3>
           <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d158717.4599157036!2d0.0130463!3d51.5689611!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47d8a71ae5bb6831%3A0x884a8c0191b39955!2s1%20Stop%20Instruction%20-%20Newham%20CBT%20Test%20Centre!5e0!3m2!1sen!2sin!4v1768303487197!5m2!1sen!2sin" width="100%" height="450" loading="lazy"></iframe>
-      </div>    
+      </div>
 
 
     </div>

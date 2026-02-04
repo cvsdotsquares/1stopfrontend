@@ -248,6 +248,11 @@ export const cmsApi = {
     const response = await api.get<ApiResponse<any>>('/homepage');
     return response.data;
   },
+
+  getFooterData: async () => {
+    const response = await api.get<ApiResponse<any>>('/helper/footer-data');
+    return response.data;
+  },
 };
 
 // PreBooking API

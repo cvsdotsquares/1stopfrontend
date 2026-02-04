@@ -7,6 +7,13 @@ import { useSearchParams } from 'next/navigation';
 import TestimonialsCarousel from "@/components/testimonials";
 import AccreditationsSection from "@/components/accreditations/AccreditationsSection";
 import FeaturedServices from '@/components/ui/FeaturedServices';
+import AboutSection from "@/components/home/about/AboutSection";
+import ServicesSection from "@/components/home/services/ServicesSection";
+import FeatureImageLeft from "@/components/home/generic-feature/FeatureImageLeft";
+import FeatureImageRight from "@/components/home/generic-feature/FeatureImageRight";
+import TrainingSlider from "@/components/home/training-slider/TrainingSlider";
+import WhyUsSection from "@/components/home/why-us/WhyUsSection";
+import GenericCta from "@/components/home/generic-cta/GenericCta";
 
 interface Location {
   id: string;
@@ -21,7 +28,7 @@ interface Course {
   [key: string]: string;
 }
 
-async function fetchLocations(): Promise<[Course[], Location[]] | []> {
+async function fetchLocations(): Promise<[Course[], Location[], any] | []> {
   try {
     //Get api base endpoint from env variable
     const apiEndpoint = process.env.NEXT_PUBLIC_API_URL;
@@ -32,10 +39,9 @@ async function fetchLocations(): Promise<[Course[], Location[]] | []> {
     }
 
     const data = await response.json();
-    console.log('API Response:', data);
 
     if (Array.isArray(data.locationData)) {
-      return [data.courseData , data.locationData];
+      return [data.courseData , data.locationData, data];
     }
   } catch (error) {
     console.error('Error fetching locations:', error);
@@ -48,6 +54,7 @@ export default function AllLocations() {
 
   const [allLocations, setAllLocations] = useState<Location[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [pageData, setPageData] = useState<any>({});
   const [filteredLocations, setFilteredLocations] = useState<Location[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
@@ -68,9 +75,10 @@ export default function AllLocations() {
 
   useEffect(() => {
     fetchLocations().then(data => {
-      const [coursesData, locationsData] = data || [[], []];
+      const [coursesData, locationsData, pageDataResponse] = data || [[], [], {}];
       setAllLocations(locationsData || []);
       setCourses(coursesData || []);
+      setPageData(pageDataResponse || {});
 
       // If a postcode query param exists, use it to pre-filter the locations
       const postcodeQuery = searchParams?.get('postcode') || '';
@@ -126,7 +134,6 @@ export default function AllLocations() {
   const paginatedLocations = filteredLocations.slice(startIndex, startIndex + itemsPerPage);
 
   const safeLocations = Array.isArray(paginatedLocations) ? paginatedLocations : [];
-
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -313,6 +320,15 @@ export default function AllLocations() {
         )}
          {/* Featured Services  */}
          <FeaturedServices />
+
+        {/* Homepage Components */}
+        {pageData.about && <AboutSection data={pageData.about} />}
+        {pageData.services && <ServicesSection data={pageData.services} />}
+        {pageData.cbt_london && <FeatureImageLeft data={pageData.cbt_london} />}
+        {pageData.cbt_test_london && <FeatureImageRight data={pageData.cbt_test_london} />}
+        {pageData.training_slider && <TrainingSlider data={pageData.training_slider} />}
+        {pageData.why_us && <WhyUsSection data={pageData.why_us} />}
+        {pageData.banners && <GenericCta {...pageData.banners} />}
 
         {/* Testimonials */}
       </div>

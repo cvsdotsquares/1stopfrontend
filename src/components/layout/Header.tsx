@@ -196,7 +196,6 @@ export default function Header() {
   // Debug log (remove in production)
   if (typeof window !== 'undefined' && hierarchicalMenu.length > 0) {
     hierarchicalMenu.slice(0, 2).forEach((item: any) => {
-      console.log(`- ${item.link_title}: ${item.children?.length || 0} children`);
     });
   }
 

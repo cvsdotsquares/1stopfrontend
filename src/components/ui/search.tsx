@@ -95,7 +95,3 @@ export default function Search({ placeholder = "Search...", className, onSearch 
     </div>
   );
 }
-
-// Usage:
-// import Search from '@/components/ui/search'
-// <Search onSearch={(q)=> console.log('search', q)} />
