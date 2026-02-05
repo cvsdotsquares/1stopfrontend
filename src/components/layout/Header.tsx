@@ -211,6 +211,9 @@ export default function Header() {
               {isAuthenticated ? (
                 <div className="flex items-center space-x-4">
                   <span>Welcome, {user?.first_name}</span>
+                  <div className="inline-block">
+                    <Link href="/bookings" className="px-2 py-1 min-w-[75px] bg-red-600 text-center text-white rounded-tl-lg rounded-br-lg hover:bg-blue-600 text-nowrap border border-red-600 hover:border-blue-600">Book Online Now</Link>
+                  </div>
                   <Link href="/dashboard" className="border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Dashboard</Link>
                   <button onClick={logout} className="border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Logout</button>
                 </div>

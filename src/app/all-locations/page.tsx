@@ -14,9 +14,11 @@ import FeatureImageRight from "@/components/home/generic-feature/FeatureImageRig
 import TrainingSlider from "@/components/home/training-slider/TrainingSlider";
 import WhyUsSection from "@/components/home/why-us/WhyUsSection";
 import GenericCta from "@/components/home/generic-cta/GenericCta";
+import CounterAnimation from '@/components/ui/CounterAnimation';
 
 interface Location {
   id: string;
+  locationId?: string;
   locationName: string;
   locationPicture?: string;
   address: string[];
@@ -55,6 +57,8 @@ function AllLocationsContent() {
   const [allLocations, setAllLocations] = useState<Location[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [pageData, setPageData] = useState<any>({});
+  const [counterData, setCounterData] = useState<any>({});
+  const [nextCBT, setNextCBT] = useState<any>(null);
   const [filteredLocations, setFilteredLocations] = useState<Location[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
@@ -100,6 +104,26 @@ function AllLocationsContent() {
         setFilteredLocations(locationsData || []);
       }
     });
+
+    // Fetch counter data
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/helper/counter-data`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setCounterData(data.data);
+        }
+      })
+      .catch(err => console.error('Failed to fetch counter data:', err));
+
+    // Fetch next CBT availability
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/booking/next-availability-cbt`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setNextCBT(data.data);
+        }
+      })
+      .catch(err => console.error('Failed to fetch next CBT availability:', err));
   }, [searchParams]);
 
   const handleFilter = () => {
@@ -142,9 +166,41 @@ function AllLocationsContent() {
     setShowCourseModal(true);
   };
 
+  // Format date display
+  const getDateDisplay = () => {
+    if (!nextCBT?.next_available?.date) return 'TOMORROW';
+
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const nextDate = new Date(nextCBT.next_available.date);
+
+    if (nextDate.toDateString() === tomorrow.toDateString()) {
+      return 'TOMORROW';
+    }
+
+    return nextCBT.next_available.date;
+  };
+
+  // Generate booking URL
+  const getBookingURL = () => {
+    if (!nextCBT) return '/bookings';
+
+    const params = new URLSearchParams({
+      course_id: nextCBT.course_id.toString(),
+      location_id: nextCBT.location_id.toString(),
+      date: nextCBT.next_available.date,
+      course_event_id: nextCBT.next_available.course_event_id.toString()
+    });
+
+    return `/bookings?${params.toString()}`;
+  };
+
   const handleCourseSelect = (courseId: string) => {
     if (selectedLocation) {
-      window.location.href = `/bookings?course_id=${courseId}&location_id=${selectedLocation.id}`;
+      const locationId = selectedLocation.locationId || selectedLocation.id;
+      window.location.href = `/bookings?course_id=${courseId}&location_id=${locationId}`;
     }
   };
 
@@ -157,15 +213,15 @@ function AllLocationsContent() {
           </div>
           <div className="z-10 w-11/12 sm:max-w-[562px] ml-auto mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center radius20-left radius20-left-bottom text-center">
             <div className="text26 text-xl font-semibold text-red-600">
-              Our Next Available CBT Course Is TOMORROW
+              Our Next Available CBT Course Is {getDateDisplay()}
             </div>
             <div className="text-center">
-              <Link
-                href="/bookings"
+              <a
+                href={getBookingURL()}
                 className="mt-3 radius20-left radius20-right-bottom inline-block bg-red-600 px-10 py-3 text-base md:text-2xl text-white hover:bg-red-700"
               >
                 Book Now!
-              </Link>
+              </a>
             </div>
           </div>
       </div>
@@ -175,22 +231,34 @@ function AllLocationsContent() {
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mb-12">
           <div className="bg-white rounded-lg border border-gray-200 px-3 py-5 sm:p-6 text-center">
-            <div className="text-4xl font-bold text-blue-600 mb-2">{filteredLocations.length}</div>
+            <div className="text-4xl font-bold text-blue-600 mb-2">
+              {counterData.taining_centers ? <CounterAnimation end={counterData.taining_centers} /> : filteredLocations.length}
+            </div>
             <div className="border-2 border-red-200 border-w mx-auto w-[60px]"></div>
             <div className="text-lg text-gray-500 mt-4">Training Centers</div>
           </div>
           <div className="bg-white rounded-lg border border-gray-200 px-3 py-5 sm:p-6 text-center">
-            <div className="text-4xl font-bold text-blue-600 mb-2">50<span className="text-red-600">+</span></div>
+            <div className="text-4xl font-bold text-blue-600 mb-2">
+              {counterData.qualified_instructors ? <CounterAnimation end={counterData.qualified_instructors} suffix="+" /> : '50+'}
+            </div>
             <div className="border-2 border-red-200 border-w mx-auto w-[60px]"></div>
             <div className="text-lg text-gray-500 mt-4">Qualified Instructors</div>
           </div>
           <div className="bg-white rounded-lg border border-gray-200 px-3 py-5 sm:p-6 text-center">
-            <div className="text-4xl font-bold text-blue-600 mb-2">90<span className="text-red-600">% +</span></div>
+            <div className="text-4xl font-bold text-blue-600 mb-2">
+              {counterData.passing_rate ? (
+                <><CounterAnimation end={parseFloat(counterData.passing_rate)} /><span className="text-red-600">% +</span></>
+              ) : (
+                <>90<span className="text-red-600">% +</span></>
+              )}
+            </div>
             <div className="border-2 border-red-200 border-w mx-auto w-[105px]"></div>
             <div className="text-lg text-gray-500 mt-4">Pass Rate</div>
           </div>
           <div className="bg-white rounded-lg border border-gray-200 px-3 py-5 sm:p-6 text-center">
-            <div className="text-4xl font-bold text-blue-600 mb-2">15<span className="text-red-600">k +</span></div>
+            <div className="text-4xl font-bold text-blue-600 mb-2">
+              {counterData.student_tainined ? <CounterAnimation end={counterData.student_tainined} suffix="k +" /> : '15k +'}
+            </div>
             <div className="border-2 border-red-200 border-w mx-auto w-[96px]"></div>
             <div className="text-lg text-gray-500 mt-4">Students Trained</div>
           </div>
@@ -293,7 +361,7 @@ function AllLocationsContent() {
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3 lg:gap-5 xl:gap-8">
                   <Link
-                    href={`/cbt-training/${location.slug}`}
+                    href={`/location/${location.slug}`}
                     className="flex-1 rounded-md bg-blue-600 px-6 py-3 text-base text-center text-white hover:bg-blue-700 text-center"
                   >
                     View Details

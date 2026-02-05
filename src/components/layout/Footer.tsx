@@ -115,8 +115,18 @@ export default function Footer() {
             <div>
               <div className="uppercase pb-2">Approved Instructors</div>
               <div className="flex flex-wrap gap-4">
-                <img width="280" height="75" src="/DVSA-approved-motorcycle-training-body-white.png" alt="DVSA Approved" className="inline-block"/>
-                <img width="280" height="75" src="/DVSA-ADI-white-no-bg.png" alt="DVSA ADI" className="inline-block"/>
+                {footerData?.success && footerData.data.menu_imgs ? (
+                  footerData.data.menu_imgs
+                    .filter((img: any) => img.type === "1")
+                    .map((img: any) => (
+                      <img key={img.id} src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}${img.src}`} alt="Approved Instructor" className="inline-block" />
+                    ))
+                ) : (
+                  <>
+                    <img width="280" height="75" src="/DVSA-approved-motorcycle-training-body-white.png" alt="DVSA Approved" className="inline-block"/>
+                    <img width="280" height="75" src="/DVSA-ADI-white-no-bg.png" alt="DVSA ADI" className="inline-block"/>
+                  </>
+                )}
               </div>
             </div>
             <div className="lg:pl-24">
@@ -135,8 +145,18 @@ export default function Footer() {
                 Copyright {new Date().getFullYear()}, All Right Reserved.
               </div>
               <div className="flex gap-4 text-sm items-center">
-                <div className="ssl"><img src="/ssl.png" alt="SSL Certificate" className=""/></div>
-                <div className="payment"><img src="/paymen.png" alt="Payment Methods" className=""/></div>
+                {footerData?.success && footerData.data.menu_imgs ? (
+                  footerData.data.menu_imgs
+                    .filter((img: any) => img.type === "2")
+                    .map((img: any) => (
+                      <img key={img.id} src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}${img.src}`} alt="SSL & Payment" className="" />
+                    ))
+                ) : (
+                  <>
+                    <div className="ssl"><img src="/ssl.png" alt="SSL Certificate" className=""/></div>
+                    <div className="payment"><img src="/paymen.png" alt="Payment Methods" className=""/></div>
+                  </>
+                )}
               </div>
             </div>
           </div>
