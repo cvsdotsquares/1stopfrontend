@@ -1114,7 +1114,11 @@ export default function OnePageBookingCheckout() {
       localStorage.removeItem('booking_lock');
       localStorage.removeItem('booking_form_data');
 
-      if (response.payment_data) {
+      if (response.stripe_session_url) {
+        console.log('Stripe Session URL Received:', response.stripe_session_url);
+        toast.success(`Booking created! Reference: ${response.booking_ref}. Redirecting to Stripe payment…`);
+        window.location.href = response.stripe_session_url;
+      } else if (response.payment_data) {
         console.log('Payment Data Received:', response.payment_data);
         console.log('Payment URL:', response.payment_data.url);
         console.log('Payment Fields:', response.payment_data.fields);
@@ -1122,9 +1126,8 @@ export default function OnePageBookingCheckout() {
         setPaymentFormUrl(response.payment_data.url);
         setPaymentFormFields(response.payment_data.fields);
       } else {
-        console.warn('Payment Data Missing in Response:', response);
-        // Fallback for logic where payment data is missing or legacy flow
-        toast.success(`Booking created! Reference: ${response.booking_ref}. (No payment data generated)`);
+        console.warn('No payment data in response:', response);
+        toast.success(`Booking created! Reference: ${response.booking_ref}. (No payment session generated)`);
       }
       // Here you would redirect to payment with response.payment_token
     } catch (error: any) {
