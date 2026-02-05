@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import TestimonialsCarousel from "@/components/testimonials";
 import AccreditationsSection from "@/components/accreditations/AccreditationsSection";
@@ -50,7 +50,7 @@ async function fetchLocations(): Promise<[Course[], Location[], any] | []> {
   return [];
 }
 
-export default function AllLocations() {
+function AllLocationsContent() {
 
   const [allLocations, setAllLocations] = useState<Location[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -334,6 +334,14 @@ export default function AllLocations() {
       </div>
         <TestimonialsCarousel />
         <AccreditationsSection/>
-      </div>
+    </div>
+  );
+}
+
+export default function AllLocations() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AllLocationsContent />
+    </Suspense>
   );
 }

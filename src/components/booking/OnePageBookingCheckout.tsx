@@ -230,6 +230,7 @@ export default function OnePageBookingCheckout() {
   const [pricing, setPricing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [courseLocationError, setCourseLocationError] = useState<string | null>(null);
 
   // Form State
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -616,6 +617,23 @@ export default function OnePageBookingCheckout() {
 
         if (locationIdParam) {
           setLocationId(parseInt(locationIdParam));
+        }
+
+        // Validate course and location combination if both are provided
+        if (courseId && locationIdParam && coursesData) {
+          const course = coursesData.find(c => c.id === parseInt(courseId));
+          if (course) {
+            try {
+              const locationsForCourse = await bookingApi.getLocationsByCourse(course.id);
+              const locationExists = locationsForCourse.some(l => l.id === parseInt(locationIdParam));
+              if (!locationExists) {
+                setCourseLocationError('Course is not active on the selected location');
+              }
+            } catch (err) {
+              console.error('Failed to validate course/location:', err);
+              setCourseLocationError('Course is not active on the selected location');
+            }
+          }
         }
 
         if (dateParam) {
@@ -1140,41 +1158,19 @@ export default function OnePageBookingCheckout() {
     );
   }
 
-  if (ipBlocked) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h2 className="text-xl font-semibold text-slate-900 mb-2">Access Temporarily Restricted</h2>
-          <p className="text-slate-600 mb-4">{blockMessage}</p>
-          <p className="text-sm text-slate-500">Please try again later or contact support if you believe this is an error.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">Error: {error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-50">
+      {courseLocationError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 mb-4 flex items-center justify-between">
+          <p className="text-sm">{courseLocationError}</p>
+          <button
+            onClick={() => setCourseLocationError(null)}
+            className="text-red-500 hover:text-red-700"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <div className="mx-auto max-w-6xl px-4 py-8 md:py-12">
         {/* Page Header */}
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
