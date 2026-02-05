@@ -1114,11 +1114,7 @@ export default function OnePageBookingCheckout() {
       localStorage.removeItem('booking_lock');
       localStorage.removeItem('booking_form_data');
 
-      if (response.stripe_session_url) {
-        console.log('Stripe Session URL Received:', response.stripe_session_url);
-        toast.success(`Booking created! Reference: ${response.booking_ref}. Redirecting to Stripe payment…`);
-        window.location.href = response.stripe_session_url;
-      } else if (response.payment_data) {
+      if (response.payment_data) {
         console.log('Payment Data Received:', response.payment_data);
         console.log('Payment URL:', response.payment_data.url);
         console.log('Payment Fields:', response.payment_data.fields);

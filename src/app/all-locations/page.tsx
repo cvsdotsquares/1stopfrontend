@@ -59,6 +59,8 @@ function AllLocationsContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [showCourseModal, setShowCourseModal] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const itemsPerPage = 6;
 
   // Scroll to locations grid when page changes
@@ -134,6 +136,18 @@ function AllLocationsContent() {
   const paginatedLocations = filteredLocations.slice(startIndex, startIndex + itemsPerPage);
 
   const safeLocations = Array.isArray(paginatedLocations) ? paginatedLocations : [];
+
+  const handleBookNow = (location: Location) => {
+    setSelectedLocation(location);
+    setShowCourseModal(true);
+  };
+
+  const handleCourseSelect = (courseId: string) => {
+    if (selectedLocation) {
+      window.location.href = `/bookings?course_id=${courseId}&location_id=${selectedLocation.id}`;
+    }
+  };
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -282,14 +296,14 @@ function AllLocationsContent() {
                     href={`/cbt-training/${location.slug}`}
                     className="flex-1 rounded-md bg-blue-600 px-6 py-3 text-base text-center text-white hover:bg-blue-700 text-center"
                   >
-                    View Location
+                    View Details
                   </Link>
-                  <Link
-                    href={`/bookings/step2?location=${location.id}`}
-                    className="flex-1 rounded-md bg-red-600 px-6 py-3 text-base  text-center text-white hover:bg-red-500 text-center"
+                  <button
+                    onClick={() => handleBookNow(location)}
+                    className="flex-1 rounded-md bg-red-600 px-6 py-3 text-base text-center text-white hover:bg-red-500 cursor-pointer"
                   >
                     Book Now
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>
@@ -316,6 +330,45 @@ function AllLocationsContent() {
             >
               Next
             </button>
+          </div>
+        )}
+
+        {/* Course Selection Modal */}
+        {showCourseModal && selectedLocation && (
+          <div className="fixed inset-0 flex items-center justify-center z-50" style={{backgroundColor: 'rgba(0, 0, 0, 0.1)'}}>
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold">Select a Course</h3>
+                <button
+                  onClick={() => setShowCourseModal(false)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+              <p className="text-gray-600 mb-4">Choose a course available at {selectedLocation.locationName}:</p>
+              <div className="space-y-2 mb-6">
+                {selectedLocation.courses?.map((course, index) => {
+                  const courseId = Object.keys(course)[0];
+                  const courseName = course[courseId];
+                  return (
+                    <button
+                      key={courseId}
+                      onClick={() => handleCourseSelect(courseId)}
+                      className="w-full text-left p-3 border border-gray-300 rounded hover:bg-blue-50 hover:border-blue-500 transition-colors"
+                    >
+                      {courseName}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setShowCourseModal(false)}
+                className="w-full bg-gray-500 text-white py-2 px-4 rounded hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
          {/* Featured Services  */}

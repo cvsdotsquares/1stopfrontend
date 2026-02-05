@@ -186,7 +186,7 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
       {/* Fallback content */}
       {(!Array.isArray(page.dynamic_sections) || page.dynamic_sections.length === 0) &&
         page.page_content && (
-          <section className="mb-8">
+          <section className="mb-8 container mx-auto px-4 py-8 md:py-16 max-w-[1400px]">
             <PageContent content={page.page_content} />
           </section>
       )}
