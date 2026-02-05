@@ -128,6 +128,19 @@ export default function Footer() {
           </div>
         </div>
       </div>
+        <div className="py-2 bg-blue-900">
+          <div className="max-w-[1400px] mx-auto px-4">
+            <div className="flex flex-col md:flex-row justify-between items-center">
+              <div className="text-gray-400 text-sm mb-4 md:mb-0">
+                Copyright {new Date().getFullYear()}, All Right Reserved.
+              </div>
+              <div className="flex gap-4 text-sm items-center">
+                <div className="ssl"><img src="/ssl.png" alt="SSL Certificate" className=""/></div>
+                <div className="payment"><img src="/paymen.png" alt="Payment Methods" className=""/></div>
+              </div>
+            </div>
+          </div>
+        </div>
     </footer>
   );
 }
