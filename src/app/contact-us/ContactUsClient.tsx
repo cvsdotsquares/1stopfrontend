@@ -45,30 +45,20 @@ export default function ContactUsClient({
   const markersRef = useRef<any[]>([]);
   const captchaRef = useRef<HTMLDivElement | null>(null);
 
-  // Check if reCAPTCHA is available and render it
+  // Check if reCAPTCHA is available
   useEffect(() => {
-    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || (typeof window !== "undefined" ? (window as any).__NEXT_PUBLIC_RECAPTCHA_SITE_KEY : undefined);
-
+    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
     if (siteKey && typeof window !== "undefined") {
-      const checkAndRender = () => {
-        if ((window as any).grecaptcha && captchaRef.current && !captchaRef.current.innerHTML) {
-          try {
-            (window as any).grecaptcha.render(captchaRef.current, {
-              sitekey: siteKey,
-              theme: 'light',
-            });
+      const checkRecaptcha = () => {
+        if ((window as any).grecaptcha && (window as any).grecaptcha.ready) {
+          (window as any).grecaptcha.ready(() => {
             setRecaptchaReady(true);
-          } catch (err) {
-            console.warn("Failed to render reCAPTCHA", err);
-            setRecaptchaReady(false);
-          }
-        } else if ((window as any).grecaptcha) {
-          setRecaptchaReady(true);
+          });
         } else {
-          setTimeout(checkAndRender, 100);
+          setTimeout(checkRecaptcha, 100);
         }
       };
-      checkAndRender();
+      checkRecaptcha();
     }
   }, []);
 
@@ -207,21 +197,15 @@ export default function ContactUsClient({
     setStatusMsg(null);
 
     try {
-      // Get reCAPTCHA token
+      // Get reCAPTCHA v3 token
       let recaptchaToken = "";
-      const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || (typeof window !== "undefined" ? (window as any).__NEXT_PUBLIC_RECAPTCHA_SITE_KEY : undefined);
-
-      if (siteKey && (window as any).grecaptcha) {
+      const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+      
+      if (siteKey && (window as any).grecaptcha && (window as any).grecaptcha.execute) {
         try {
-          if ((window as any).grecaptcha.execute) {
-            // For v3 invisible captcha
-            recaptchaToken = await (window as any).grecaptcha.execute(siteKey, { action: "submit" });
-          } else if ((window as any).grecaptcha.getResponse) {
-            // For v2 checkbox captcha
-            recaptchaToken = (window as any).grecaptcha.getResponse();
-          }
-        } catch (captchaErr) {
-          console.warn("Failed to get reCAPTCHA token", captchaErr);
+          recaptchaToken = await (window as any).grecaptcha.execute(siteKey, { action: 'submit' });
+        } catch (err) {
+          console.warn("Failed to get reCAPTCHA token", err);
         }
       }
 
@@ -239,10 +223,6 @@ export default function ContactUsClient({
         setEmail("");
         setSubject("");
         setMessage("");
-        // Reset captcha
-        if ((window as any).grecaptcha && (window as any).grecaptcha.reset) {
-          (window as any).grecaptcha.reset();
-        }
       } else {
         setStatusMsg(json?.message || "Failed to send message");
       }
@@ -282,13 +262,6 @@ export default function ContactUsClient({
             <label className="block text-sm font-bold mb-1">Message</label>
             <textarea required value={message} onChange={(e) => setMessage(e.target.value)} className="w-full border rounded px-3 py-2 h-32  bg-white" />
           </div>
-
-          {/* reCAPTCHA */}
-          {process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ? (
-            <div className="my-4">
-              <div ref={captchaRef} className="g-recaptcha"></div>
-            </div>
-          ) : null}
 
           <div>
             <button disabled={submitting} type="submit" className="min-w-[210px] mt-6 inline-block radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-center text-lg text-white hover:bg-red-500 cursor-pointer">

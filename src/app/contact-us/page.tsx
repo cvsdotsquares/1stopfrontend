@@ -1,4 +1,5 @@
 import React from "react";
+import Script from "next/script";
 import ContactUsClient from "./ContactUsClient";
 import CarouselBanner from '@/components/cms/CarouselBanner';
 import AccreditationsSection from "@/components/accreditations/AccreditationsSection";
@@ -14,6 +15,8 @@ import GenericCta from "@/components/home/generic-cta/GenericCta";
 
 export const revalidate = 60; // revalidate data periodically
 
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+
 export default async function Page() {
   try {
     const apiBase = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "") : "";
@@ -26,6 +29,12 @@ export default async function Page() {
 
     return (
       <>
+        {RECAPTCHA_SITE_KEY && (
+          <Script
+            src={`https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`}
+            strategy="lazyOnload"
+          />
+        )}
         {/* Carousel Banner when banner_type is 2 */}
         {data.banner_type == 2 && <CarouselBanner />}
 

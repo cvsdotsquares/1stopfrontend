@@ -222,7 +222,7 @@ export default function Header() {
                   <div className="inline-block">
                   <Link href="/bookings" className="px-2 py-1 min-w-[75px] bg-red-600 text-center text-white rounded-tl-lg rounded-br-lg hover:bg-blue-600 text-nowrap border border-red-600 hover:border-blue-600">Book Online Now</Link>
                   </div>
-                  <Link href="/auth/login" className="border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Enquiry</Link>
+                  <Link href="/contact-us" className="border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Enquiry</Link>
                   <Link href="/auth/login" className="border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Login</Link>
                   <Link href="/auth/register" className="border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Sign Up</Link>
                 </div>
