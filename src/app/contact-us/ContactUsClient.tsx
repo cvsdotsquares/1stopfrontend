@@ -226,7 +226,7 @@ export default function ContactUsClient({
       }
 
       const payload = { name, email, subject, message, recaptchaToken };
-      const res = await fetch("/api/contactus", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contactus`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

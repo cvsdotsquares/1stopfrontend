@@ -65,6 +65,8 @@ function AllLocationsContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const itemsPerPage = 6;
 
   // Scroll to locations grid when page changes
@@ -153,6 +155,37 @@ function AllLocationsContent() {
     // Run filter whenever searchTerm, selectedCourse or allLocations change
     handleFilter();
   }, [searchTerm, selectedCourse, allLocations]);
+
+  // Fetch postcode suggestions
+  useEffect(() => {
+    if (searchTerm.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const fetchSuggestions = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/helper/suggest-postal-codes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query: searchTerm }),
+        });
+        const data = await response.json();
+        if (data.success && Array.isArray(data.data)) {
+          setSuggestions(data.data);
+          setShowSuggestions(true);
+        }
+      } catch (error) {
+        console.error('Failed to fetch suggestions:', error);
+      }
+    };
+
+    const timeoutId = setTimeout(fetchSuggestions, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredLocations.length / itemsPerPage);
@@ -269,7 +302,7 @@ function AllLocationsContent() {
           <div className="bg-blue-50 rounded-lg px-5 py-7 md:p-8">
             <div className="flex flex-wrap md:flex-nowrap gap-4">
               <div className="grow-1 flex flex-wrap md:flex-nowrap  gap-4">
-                <div className="w-full md:w-3/6">
+                <div className="w-full md:w-3/6 relative">
                   <label className="block text-base mb-2">
                     Search Location
                   </label>
@@ -278,8 +311,26 @@ function AllLocationsContent() {
                     placeholder="Enter postcode or area..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                     className="w-full px-4 py-3 text-gray-700 placeholder-gray-500 focus:outline-none bg-white border border-gray-300"
                   />
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-b-md shadow-lg z-50 max-h-48 overflow-y-auto">
+                      {suggestions.map((suggestion, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => {
+                            setSearchTerm(suggestion);
+                            setShowSuggestions(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="w-full md:w-3/6">
                   <label className="block text-base mb-2">
