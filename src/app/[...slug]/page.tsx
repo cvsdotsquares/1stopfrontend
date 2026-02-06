@@ -95,7 +95,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const page = await fetchCmsPage(slugStr);
   if (!page) return {};
 
-  const title = page.meta_title || page.link_title || page.page_title || undefined;
+  const stripHtml = (html: string) => {
+    return html
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/<[^>]*>/g, '')
+      .trim();
+  };
+  
+  const rawTitle = page.meta_title || page.link_title || page.page_title || '';
+  const title = stripHtml(rawTitle);
   const description = page.meta_desc || page.meta?.description || undefined;
   const canonical = page.meta?.canonical || undefined;
   const ogImage = page.meta?.ogImage || page.carousel_static_image || undefined;

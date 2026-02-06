@@ -60,8 +60,21 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const page = await fetchLocationPage(slugStr);
   if (!page) return {};
 
+  const stripHtml = (html: string) => {
+    return html
+      .replace(/<[^>]*>/g, '')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/<[^>]*>/g, '')
+      .trim();
+  };
+  const title = stripHtml(page.page_title);
+
   return {
-    title: page.page_title,
+    title,
     description: page.meta_description || undefined,
     keywords: page.meta_keywords || undefined,
   };
