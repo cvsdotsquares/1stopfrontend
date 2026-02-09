@@ -96,7 +96,7 @@ function Section({ index, title, subtitle, children, complete, collapsible = tru
       <div className="flex items-start gap-4">
         <div className="flex flex-col items-center">
           <div
-            className={`h-10 w-10 shrink-0 rounded-full border-2 flex items-center justify-center text-sm font-semibold transition-all duration-300 ${complete ? "border-teal-500 bg-teal-500 text-white" : "border-teal-400 text-teal-600"
+            className={`h-10 w-10 shrink-0 rounded-full border-2 flex items-center justify-center text-sm font-semibold transition-all duration-300 ${complete ? "border border-gray-300 text-white bg-blue-600" : "border-blue-600 text-blue-600"
               }`}
             aria-hidden
           >
@@ -107,7 +107,7 @@ function Section({ index, title, subtitle, children, complete, collapsible = tru
         <div className="w-full">
           <header className="mb-4 flex items-start justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+              <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
               {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
             </div>
             {collapsible && (
@@ -141,7 +141,7 @@ interface BadgeProps {
 
 function Badge({ children }: BadgeProps) {
   return (
-    <span className="inline-flex items-center rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700">
+    <span className="inline-flex items-center rounded-full text-center border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600">
       {children}
     </span>
   );
@@ -169,18 +169,20 @@ function RadioCard({ checked, onChange, onClick, title, caption, right, disabled
       type="button"
       onClick={handleClick}
       disabled={disabled}
-      className={`w-full rounded-xl border p-4 text-left transition-all ${disabled ? 'cursor-not-allowed opacity-60' : 'hover:shadow-sm'} focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${checked ? "border-teal-500 bg-teal-50" : "border-slate-200 bg-white"
+      className={`w-full rounded-xl border p-4 text-left transition-all ${disabled ? 'cursor-not-allowed opacity-60' : 'hover:shadow-sm'} focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${checked ? "border-red-500 bg-red-50" : "border-slate-200 bg-white"
         }`}
       aria-pressed={!!checked}
       aria-disabled={disabled ? true : undefined}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <div className={`h-4 w-4 flex-none rounded-full border ${checked ? "border-teal-600 bg-teal-600" : "border-slate-400"}`} />
-            <p className="font-medium text-slate-900">{title}</p>
-          </div>
-          {caption && <p className="mt-1 text-sm text-slate-500">{caption}</p>}
+          <div className="flex items-start gap-2">
+            <div className={`h-4 w-4 mt-1 flex-none rounded-full border ${checked ? "border-red-600 bg-red-600" : "border-slate-400"}`} />
+            <div>
+              <p className="font-medium text-slate-900 mb-1">{title}</p>
+              {caption && <p className="mt-1 text-sm text-slate-500">{caption}</p>}
+            </div>
+          </div>          
         </div>
         {right}
       </div>
@@ -198,7 +200,7 @@ interface FieldProps {
 function Field({ label, children, required, hint }: FieldProps) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-slate-700">
+      <span className="mb-1 block text-sm font-medium text-slate-700">
         {label} {required && <span className="text-rose-500">*</span>}
       </span>
       {children}
@@ -1171,7 +1173,7 @@ export default function OnePageBookingCheckout() {
         {/* Page Header */}
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Book your course</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl mb-2">Book your course</h1>
             <p className="mt-1 text-slate-600">One‑page checkout. You'll be redirected only for the payment step.</p>
             {bookingLock && (
               <div className="mt-2 flex items-center gap-2 text-sm">
@@ -1202,7 +1204,7 @@ export default function OnePageBookingCheckout() {
               onToggle={() => setExpandedSections(prev => ({ ...prev, 1: !prev[1] }))}
               expandDisabled={!!bookingLock}
             >
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-2">
                 {Array.isArray(courses) && courses.map((c, index) => {
                   const isSelected = !!(selectedCourse?.id === c.id && selectedCourse?.course_name === c.course_name);
                   return (
@@ -1228,7 +1230,7 @@ export default function OnePageBookingCheckout() {
               onToggle={() => setExpandedSections(prev => ({ ...prev, 2: !prev[2] }))}
               expandDisabled={!sectionComplete[1] || !!bookingLock}
             >
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3">
                 {locations.map((l) => (
                   <RadioCard
                     key={l.id}
@@ -1253,14 +1255,14 @@ export default function OnePageBookingCheckout() {
               onToggle={() => setExpandedSections(prev => ({ ...prev, 3: !prev[3] }))}
               expandDisabled={!sectionComplete[2]}
             >
-              <div className="grid gap-6 md:grid-cols-3">
+              <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
                 {/* Calendar */}
                 <div className="md:col-span-2 rounded-xl border border-slate-200 bg-white p-4">
                   <div className="mb-3 flex items-center justify-between">
                     <p className="font-medium text-slate-900">Availability (next 6 weeks)</p>
                     <div className="flex items-center gap-3 text-xs">
-                      <span className="inline-block h-3 w-3 rounded-sm bg-emerald-500" /> <span>Available</span>
-                      <span className="inline-block h-3 w-3 rounded-sm bg-rose-500" /> <span>Fully booked</span>
+                      <span className="inline-block h-3 w-3 min-w-3 rounded-sm bg-emerald-500" /> <span>Available</span>
+                      <span className="inline-block h-3 w-3 min-w-3 rounded-sm bg-rose-500" /> <span>Fully booked</span>
                     </div>
                   </div>
 
@@ -1314,9 +1316,9 @@ export default function OnePageBookingCheckout() {
                   <p className="mb-2 font-medium text-slate-900">Attendees</p>
                   <p className="mb-3 text-xs text-slate-500">Visit anytime during the scheduled time window on your chosen day.</p>
                   <div className="flex items-center gap-3">
-                    <button type="button" className="h-9 w-9 rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50" onClick={() => setAttendees((n) => Math.max(1, n - 1))}>−</button>
+                    <button type="button" className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50" onClick={() => setAttendees((n) => Math.max(1, n - 1))}>−</button>
                     <input type="number" min={1} className="w-16 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm" value={attendees} onChange={(e) => setAttendees(Math.max(1, parseInt(e.target.value || "1", 10)))} />
-                    <button type="button" className="h-9 w-9 rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50" onClick={() => setAttendees((n) => n + 1)}>+</button>
+                    <button type="button" className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50" onClick={() => setAttendees((n) => n + 1)}>+</button>
                   </div>
                   <p className="mt-2 text-xs text-slate-500">{selectedDate ? "Spots available: " + (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? "—") : "Select a date to see availability."}</p>
                 </div>
@@ -1381,7 +1383,7 @@ export default function OnePageBookingCheckout() {
                         <Field label="First name" required>
                           <input
                             type="text"
-                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                             value={accountDetails.firstName}
                             onChange={(e) => setAccountDetails(prev => ({ ...prev, firstName: e.target.value }))}
                             placeholder="2-50 characters"
@@ -1390,7 +1392,7 @@ export default function OnePageBookingCheckout() {
                         <Field label="Surname" required>
                           <input
                             type="text"
-                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            className="mt-1 w-full rounded-sm  border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                             value={accountDetails.surname}
                             onChange={(e) => setAccountDetails(prev => ({ ...prev, surname: e.target.value }))}
                             placeholder="2-50 characters"
@@ -1399,7 +1401,7 @@ export default function OnePageBookingCheckout() {
                         <Field label="Email" required>
                           <input
                             type="email"
-                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                             value={accountDetails.email}
                             onChange={(e) => setAccountDetails(prev => ({ ...prev, email: e.target.value }))}
                             placeholder="you@example.com"
@@ -1408,7 +1410,7 @@ export default function OnePageBookingCheckout() {
                         <Field label="Confirm Email" required>
                           <input
                             type="email"
-                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                             value={accountDetails.confirmEmail}
                             onChange={(e) => setAccountDetails(prev => ({ ...prev, confirmEmail: e.target.value }))}
                             placeholder="Confirm email"
@@ -1417,7 +1419,7 @@ export default function OnePageBookingCheckout() {
                         <Field label="Password" required>
                           <input
                             type="password"
-                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                             value={accountDetails.password}
                             onChange={(e) => setAccountDetails(prev => ({ ...prev, password: e.target.value }))}
                             placeholder="Min 8 chars, uppercase, lowercase, number"
@@ -1426,7 +1428,7 @@ export default function OnePageBookingCheckout() {
                         <Field label="Verify Password" required>
                           <input
                             type="password"
-                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                             value={accountDetails.verifyPassword}
                             onChange={(e) => setAccountDetails(prev => ({ ...prev, verifyPassword: e.target.value }))}
                             placeholder="Confirm password"
@@ -1435,7 +1437,7 @@ export default function OnePageBookingCheckout() {
                         <Field label="Contact Number" required>
                           <input
                             type="tel"
-                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                             value={accountDetails.contactNumber1}
                             onChange={(e) => setAccountDetails(prev => ({ ...prev, contactNumber1: e.target.value }))}
                             placeholder="UK mobile number"
@@ -1444,7 +1446,7 @@ export default function OnePageBookingCheckout() {
                         <Field label="Contact Number 2">
                           <input
                             type="tel"
-                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                             value={accountDetails.contactNumber2}
                             onChange={(e) => setAccountDetails(prev => ({ ...prev, contactNumber2: e.target.value }))}
                             placeholder="Optional"
@@ -1456,7 +1458,7 @@ export default function OnePageBookingCheckout() {
                         <Field label="Address Line 1" required>
                           <input
                             type="text"
-                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                             value={accountDetails.addressLine1}
                             onChange={(e) => setAccountDetails(prev => ({ ...prev, addressLine1: e.target.value }))}
                             placeholder="1-255 characters"
@@ -1466,7 +1468,7 @@ export default function OnePageBookingCheckout() {
                           <Field label="Address Line 2">
                             <input
                               type="text"
-                              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                              className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                               value={accountDetails.addressLine2}
                               onChange={(e) => setAccountDetails(prev => ({ ...prev, addressLine2: e.target.value }))}
                               placeholder="Optional"
@@ -1475,7 +1477,7 @@ export default function OnePageBookingCheckout() {
                           <Field label="Address Line 3">
                             <input
                               type="text"
-                              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                              className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                               value={accountDetails.addressLine3}
                               onChange={(e) => setAccountDetails(prev => ({ ...prev, addressLine3: e.target.value }))}
                               placeholder="Optional"
@@ -1486,7 +1488,7 @@ export default function OnePageBookingCheckout() {
                           <Field label="Postcode" required>
                             <input
                               type="text"
-                              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                              className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                               value={accountDetails.postcode}
                               onChange={(e) => setAccountDetails(prev => ({ ...prev, postcode: e.target.value }))}
                               placeholder="UK postcode"
@@ -1495,7 +1497,7 @@ export default function OnePageBookingCheckout() {
                           <Field label="Contact Number 3">
                             <input
                               type="tel"
-                              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                              className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                               value={accountDetails.contactNumber3}
                               onChange={(e) => setAccountDetails(prev => ({ ...prev, contactNumber3: e.target.value }))}
                               placeholder="Optional"
@@ -1509,7 +1511,7 @@ export default function OnePageBookingCheckout() {
                           type="button"
                           onClick={handleRegister}
                           disabled={isRegistering}
-                          className={`w-full rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition ${isRegistering ? 'bg-teal-400 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-700'}`}
+                          className={`w-full cursor-pointer px-4 py-2.5 text-base radius20-left radius20-right-bottom text-center text-white transition ${isRegistering ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
                         >
                           {isRegistering ? 'Creating…' : 'Create Account'}
                         </button>
@@ -1531,7 +1533,7 @@ export default function OnePageBookingCheckout() {
                   )}
 
                   <div className="text-sm">
-                    <button type="button" onClick={() => setShowLogin((v) => !v)} className="font-medium text-teal-700 underline-offset-2 hover:underline">{showLogin ? "Hide" : "Have an account?"} Sign in</button>
+                    <button type="button" onClick={() => setShowLogin((v) => !v)} className="font-medium text-blue-700 underline-offset-2 hover:underline">{showLogin ? "Hide" : "Have an account?"} Sign in</button>
                   </div>
 
                   {showLogin && (
@@ -1539,7 +1541,7 @@ export default function OnePageBookingCheckout() {
                       <Field label="Email" required>
                         <input
                           type="email"
-                          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                          className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                           value={loginDetails.email}
                           onChange={(e) => setLoginDetails(prev => ({ ...prev, email: e.target.value }))}
                           placeholder="you@example.com"
@@ -1548,7 +1550,7 @@ export default function OnePageBookingCheckout() {
                       <Field label="Password" required>
                         <input
                           type="password"
-                          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                          className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                           value={loginDetails.password}
                           onChange={(e) => setLoginDetails(prev => ({ ...prev, password: e.target.value }))}
                           placeholder="••••••••"
@@ -1581,20 +1583,20 @@ export default function OnePageBookingCheckout() {
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="First name" required>
-                  <input type="text" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.firstName} onChange={(e) => setDetails((d) => ({ ...d, firstName: e.target.value }))} />
+                  <input type="text" className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.firstName} onChange={(e) => setDetails((d) => ({ ...d, firstName: e.target.value }))} />
                 </Field>
                 <Field label="Last name" required>
-                  <input type="text" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.lastName} onChange={(e) => setDetails((d) => ({ ...d, lastName: e.target.value }))} />
+                  <input type="text" className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.lastName} onChange={(e) => setDetails((d) => ({ ...d, lastName: e.target.value }))} />
                 </Field>
                 <Field label="Email" required>
-                  <input type="email" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.email} onChange={(e) => setDetails((d) => ({ ...d, email: e.target.value }))} placeholder="you@example.com" />
+                  <input type="email" className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.email} onChange={(e) => setDetails((d) => ({ ...d, email: e.target.value }))} placeholder="you@example.com" />
                 </Field>
                 <Field label="Phone">
-                  <input type="tel" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.phone} onChange={(e) => setDetails((d) => ({ ...d, phone: e.target.value }))} placeholder="Optional" />
+                  <input type="tel" className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.phone} onChange={(e) => setDetails((d) => ({ ...d, phone: e.target.value }))} placeholder="Optional" />
                 </Field>
                 <Field label="Type Of Vehicle Required" required>
                   <select
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                    className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                     value={details.vehicleType}
                     onChange={(e) => setDetails((d) => ({ ...d, vehicleType: e.target.value }))}
                   >
@@ -1606,7 +1608,7 @@ export default function OnePageBookingCheckout() {
                 </Field>
                 <Field label="Driving Licence Type" required>
                   <select
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                    className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                     value={details.licenseType}
                     onChange={(e) => setDetails((d) => ({ ...d, licenseType: e.target.value }))}
                   >
@@ -1619,7 +1621,7 @@ export default function OnePageBookingCheckout() {
                 <Field label="Driving Licence Number" required hint="Must be 16 characters long">
                   <input
                     type="text"
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                    className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                     value={details.licenseNumber}
                     onChange={(e) => setDetails((d) => ({ ...d, licenseNumber: e.target.value }))}
                     placeholder="Must be 16 characters long"
@@ -1629,7 +1631,7 @@ export default function OnePageBookingCheckout() {
                 <Field label="Theory Number (If Applicable)">
                   <input
                     type="text"
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                    className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                     value={details.theoryNumber}
                     onChange={(e) => setDetails((d) => ({ ...d, theoryNumber: e.target.value }))}
                     placeholder="Optional"
@@ -1637,7 +1639,7 @@ export default function OnePageBookingCheckout() {
                 </Field>
                 <div className="sm:col-span-2">
                   <Field label="Order notes">
-                    <textarea rows={3} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.notes} onChange={(e) => setDetails((d) => ({ ...d, notes: e.target.value }))} placeholder="Anything we should know?" />
+                    <textarea rows={3} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.notes} onChange={(e) => setDetails((d) => ({ ...d, notes: e.target.value }))} placeholder="Anything we should know?" />
                   </Field>
                 </div>
               </div>
@@ -1723,7 +1725,7 @@ export default function OnePageBookingCheckout() {
                       onClick={handlePay}
                       disabled={isPaying}
                       aria-busy={isPaying}
-                      className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${isPaying ? 'bg-teal-400 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-700'}`}
+                      className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${isPaying ? 'bg-teal-400 cursor-not-allowed' : 'bg-red-600 hover:bg-teal-700'}`}
                     >
                       {isPaying ? 'Processing…' : 'Proceed to payment'}
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -1740,10 +1742,10 @@ export default function OnePageBookingCheckout() {
           {/* Right: Sticky Order Summary */}
           <aside className="md:col-span-1">
             <div className="sticky top-6 space-y-4">
-              <div className="rounded-2xl border border-teal-200 bg-white p-5 shadow-sm">
+              <div className="rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-base font-semibold text-slate-900">Order summary</h3>
-                  <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-700">Live</span>
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">Live</span>
                 </div>
                 <dl className="space-y-2 text-sm">
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Course</dt><dd className="text-right text-slate-900">{selectedCourse?.course_name}</dd></div>
@@ -1794,7 +1796,7 @@ export default function OnePageBookingCheckout() {
               ))}
               <button 
                 type="submit" 
-                className="w-full bg-teal-600 text-white py-2 px-4 rounded-lg hover:bg-teal-700 transition"
+                className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition"
               >
                 Continue to Payment
               </button>

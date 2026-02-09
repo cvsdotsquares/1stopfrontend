@@ -151,8 +151,8 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-2xl">
+    <div className=" flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 login-bg">
+      <Card className="w-full max-w-2xl bg-white/90 border-0">
         <CardHeader>
           <CardTitle className="text-2xl text-center">Create Account</CardTitle>
           <CardDescription className="text-center">
@@ -163,9 +163,9 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Personal Details */}
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Personal Details</h3>
+              <h3 className="text-lg text-gray-900 font-bold mb-4">Personal Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="firstName">First Name *</Label>
                   <Input
                     id="firstName"
@@ -176,7 +176,7 @@ export default function RegisterPage() {
                   />
                   {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="surname">Surname *</Label>
                   <Input
                     id="surname"
@@ -190,7 +190,7 @@ export default function RegisterPage() {
               </div>
               
               <div className="space-y-4 mt-4">
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="addressLine1">Address Line 1 *</Label>
                   <Input
                     id="addressLine1"
@@ -201,7 +201,7 @@ export default function RegisterPage() {
                   />
                   {errors.addressLine1 && <p className="text-red-500 text-sm mt-1">{errors.addressLine1}</p>}
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="addressLine2">Address Line 2</Label>
                   <Input
                     id="addressLine2"
@@ -209,7 +209,7 @@ export default function RegisterPage() {
                     onChange={(e) => handleChange('addressLine2', e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="addressLine3">Address Line 3</Label>
                   <Input
                     id="addressLine3"
@@ -218,7 +218,7 @@ export default function RegisterPage() {
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="postcode">Postcode *</Label>
                     <Input
                       id="postcode"
@@ -229,7 +229,7 @@ export default function RegisterPage() {
                     />
                     {errors.postcode && <p className="text-red-500 text-sm mt-1">{errors.postcode}</p>}
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="contactNumber1">Contact Number 1 *</Label>
                     <Input
                       id="contactNumber1"
@@ -243,7 +243,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="contactNumber2">Contact Number 2</Label>
                     <Input
                       id="contactNumber2"
@@ -252,7 +252,7 @@ export default function RegisterPage() {
                       onChange={(e) => handleChange('contactNumber2', e.target.value)}
                     />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="contactNumber3">Contact Number 3</Label>
                     <Input
                       id="contactNumber3"
@@ -267,9 +267,9 @@ export default function RegisterPage() {
 
             {/* Login Details */}
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Login Details</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Login Details</h3>
               <div className="space-y-4">
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="email">Email *</Label>
                   <Input
                     id="email"
@@ -281,7 +281,7 @@ export default function RegisterPage() {
                   />
                   {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="confirmEmail">Confirm Email *</Label>
                   <Input
                     id="confirmEmail"
@@ -294,7 +294,7 @@ export default function RegisterPage() {
                   {errors.confirmEmail && <p className="text-red-500 text-sm mt-1">{errors.confirmEmail}</p>}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="password">Password *</Label>
                     <Input
                       id="password"
@@ -306,7 +306,7 @@ export default function RegisterPage() {
                     />
                     {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="verifyPassword">Verify Password *</Label>
                     <Input
                       id="verifyPassword"
@@ -324,7 +324,7 @@ export default function RegisterPage() {
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full radius20-left radius20-right-bottom text-center text-white hover:bg-red-500"
               disabled={registerMutation.isPending}
             >
               {registerMutation.isPending ? 'Creating Account...' : 'Create Account'}
@@ -334,7 +334,7 @@ export default function RegisterPage() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
-              <Link href="/auth/login" className="text-blue-600 hover:underline">
+              <Link href="/auth/login" className="text-blue-600 underline hover:text-red-600">
                 Sign in here
               </Link>
             </p>

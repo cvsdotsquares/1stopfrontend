@@ -37,8 +37,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
+    <div className="min-h-64 flex items-center justify-center bg-gray-50 py-12 lg:py-20 px-4 sm:px-6 lg:px-8 login-bg">
+      <Card className="w-full max-w-md bg-white/90 border-0">
         <CardHeader>
           <CardTitle className="text-2xl text-center">Sign In</CardTitle>
           <CardDescription className="text-center">
@@ -47,7 +47,7 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
+            <div className='space-y-2'>
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -58,7 +58,7 @@ export default function LoginPage() {
                 placeholder="your.email@example.com"
               />
             </div>
-            <div>
+            <div className='space-y-2'>
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
@@ -71,7 +71,7 @@ export default function LoginPage() {
             </div>
             <Button
               type="submit"
-              className="w-full"
+              className="w-full radius20-left radius20-right-bottom text-center text-white hover:bg-red-500"
               disabled={loginMutation.isPending}
             >
               {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
@@ -81,7 +81,7 @@ export default function LoginPage() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Don't have an account?{' '}
-              <Link href="/auth/register" className="text-blue-600 hover:underline">
+              <Link href="/auth/register" className="text-blue-600 underline hover:text-red-600">
                 Sign up here
               </Link>
             </p>
