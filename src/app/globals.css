@@ -241,6 +241,12 @@ body{
   font-size: 16px;
   font-weight: bold;
 }
+.login-bg {
+  background-image: url('/login.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center center;
+}
 
 
 
