@@ -38,10 +38,21 @@ export default function Home() {
 
   // Update document title and meta when page data loads
   useEffect(() => {
+    const stripHtml = (html: string) => {
+      return html
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/<[^>]*>/g, '')
+        .trim();
+    };
+
     if (pageContent?.meta_title) {
-      document.title = pageContent.meta_title;
+      document.title = stripHtml(pageContent.meta_title);
     } else if (pageContent?.page_title) {
-      document.title = pageContent.page_title;
+      document.title = stripHtml(pageContent.page_title);
     }
 
     if (pageContent?.meta_desc) {

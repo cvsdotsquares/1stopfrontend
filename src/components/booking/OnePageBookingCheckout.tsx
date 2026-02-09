@@ -612,6 +612,8 @@ export default function OnePageBookingCheckout() {
           const course = coursesData.find(c => c.id === parseInt(courseId));
           if (course) {
             setSelectedCourse(course);
+          } else {
+            setCourseLocationError('The selected course is not available for booking. Please choose from the available courses below.');
           }
         }
 
@@ -627,12 +629,22 @@ export default function OnePageBookingCheckout() {
               const locationsForCourse = await bookingApi.getLocationsByCourse(course.id);
               const locationExists = locationsForCourse.some(l => l.id === parseInt(locationIdParam));
               if (!locationExists) {
-                setCourseLocationError('Course is not active on the selected location');
+                setCourseLocationError('This course is not available at the selected location. Please choose a different location.');
               }
             } catch (err) {
               console.error('Failed to validate course/location:', err);
-              setCourseLocationError('Course is not active on the selected location');
+              setCourseLocationError('Unable to verify course availability. Please select a course and location from the options below.');
             }
+          }
+        }
+
+        // Validate location exists if only location_id is provided
+        if (locationIdParam && !courseId) {
+          const locationExists = await bookingApi.getLocationsByCourse(1).then(locs => 
+            locs.some(l => l.id === parseInt(locationIdParam))
+          ).catch(() => false);
+          if (!locationExists) {
+            setCourseLocationError('The selected location is not available for booking. Please choose from the available locations.');
           }
         }
 
