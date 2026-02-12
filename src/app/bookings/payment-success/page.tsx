@@ -10,8 +10,8 @@ function PaymentSuccessContent() {
   const [bookingDetails, setBookingDetails] = useState<any>(null);
 
   useEffect(() => {
-    const sessionId = searchParams.get('session_id');
-    const bookingRef = searchParams.get('booking_ref');
+    const sessionId = searchParams.get('payment_intent');
+    const bookingRef = searchParams.get('ref');
 
     if (!sessionId || !bookingRef) {
       setVerificationStatus('error');
@@ -22,9 +22,9 @@ function PaymentSuccessContent() {
     const verifyPayment = async () => {
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/webhook/stripe/verify?session_id=${sessionId}&booking_ref=${bookingRef}`
+          `${process.env.NEXT_PUBLIC_API_URL}/webhook/stripe/verify?payment_intent=${sessionId}&ref=${bookingRef}`
         );
-        
+
         if (response.ok) {
           const data = await response.json();
           setBookingDetails(data.data);
@@ -63,8 +63,8 @@ function PaymentSuccessContent() {
           </div>
           <h2 className="text-xl font-semibold text-slate-900 mb-2">Payment Verification Failed</h2>
           <p className="text-slate-600 mb-4">We couldn't verify your payment. Please contact support.</p>
-          <Link 
-            href="/contact-us" 
+          <Link
+            href="/contact-us"
             className="inline-block bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition"
           >
             Contact Support
@@ -139,8 +139,8 @@ function PaymentSuccessContent() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link 
-              href="/dashboard" 
+            <Link
+              href="/dashboard"
               className="inline-flex items-center justify-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-teal-700 transition"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,8 +148,8 @@ function PaymentSuccessContent() {
               </svg>
               View My Bookings
             </Link>
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="inline-flex items-center justify-center gap-2 bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-medium hover:bg-slate-300 transition"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
