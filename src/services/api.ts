@@ -1,5 +1,6 @@
 // services/api.ts
 import api from '@/lib/api';
+import { encryptPassword } from '@/lib/encryption';
 import {
   User,
   Course,
@@ -17,10 +18,33 @@ import {
 
 // Auth API
 export const authApi = {
+  checkEmail: async (email: string) => {
+    const response = await api.post<ApiResponse<any>>('/auth/check-email', { email });
+    return response.data;
+  },
+
+  sendOtp: async (email: string) => {
+    const response = await api.post<ApiResponse<any>>('/auth/send-otp', { email });
+    return response.data;
+  },
+
+  verifyOtp: async (email: string, otp: string) => {
+    const response = await api.post<ApiResponse<any>>('/auth/verify-otp', { email, otp });
+    return response.data;
+  },
+
+  setPassword: async (email: string, password: string) => {
+    const response = await api.post<ApiResponse<any>>('/auth/set-password', { 
+      email, 
+      password: encryptPassword(password) 
+    });
+    return response.data;
+  },
+
   login: async (email: string, password: string) => {
     const response = await api.post<ApiResponse<{ token: string; user: User }>>('/auth/login', {
       email,
-      password,
+      password: encryptPassword(password),
     });
     return response.data.data;
   },
@@ -33,7 +57,10 @@ export const authApi = {
     phone: string;
     date_of_birth?: string;
   }) => {
-    const response = await api.post<ApiResponse<{ token: string; user: User }>>('/auth/register', userData);
+    const response = await api.post<ApiResponse<{ token: string; user: User }>>('/auth/register', {
+      ...userData,
+      password: encryptPassword(userData.password)
+    });
     return response.data.data;
   },
 
@@ -49,8 +76,8 @@ export const authApi = {
 
   changePassword: async (currentPassword: string, newPassword: string) => {
     const response = await api.post<ApiResponse<any>>('/auth/change-password', {
-      currentPassword,
-      newPassword,
+      currentPassword: encryptPassword(currentPassword),
+      newPassword: encryptPassword(newPassword),
     });
     return response.data.data;
   },

@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function ForgotPasswordRedirect() {
+export default function AllBookingsRedirect() {
   const router = useRouter();
 
   useEffect(() => {

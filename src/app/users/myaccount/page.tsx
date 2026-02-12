@@ -1,12 +1,139 @@
-import { Metadata } from 'next';
-import Link from 'next/link';
+'use client';
 
-export const metadata: Metadata = {
-  title: 'My Account | 1Stop Instruction',
-  description: 'Manage your account, view bookings, and access your training records.',
-};
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useAuthStore } from '@/store/auth';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { encryptPassword } from '@/lib/encryption';
+
+interface UserProfile {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  address?: {
+    street?: string;
+    city?: string;
+    postcode?: string;
+    country?: string;
+  };
+  created_at: string;
+}
 
 export default function MyAccount() {
+  const { isAuthenticated, isLoading, token, logout } = useAuthStore();
+  const router = useRouter();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [formData, setFormData] = useState<Partial<UserProfile>>({});
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/auth/login');
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(result => {
+          if (result.success) {
+            setProfile(result.data);
+            setFormData(result.data);
+          } else {
+            toast.error('Failed to load profile');
+          }
+        })
+        .catch(() => toast.error('Error loading profile'))
+        .finally(() => setLoading(false));
+    }
+  }, [isAuthenticated, token]);
+
+  const handleSave = async () => {
+    // Validate UK phone number (must start with 07 and be exactly 11 digits)
+    if (formData.phone && !/^07\d{9}$/.test(formData.phone)) {
+      toast.error('Phone number must start with 07 and be exactly 11 digits');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/profile`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+      const result = await res.json();
+      if (result.success) {
+        setProfile(result.data);
+        setEditing(false);
+        toast.success('Profile updated successfully');
+      } else {
+        toast.error(result.message || 'Failed to update profile');
+      }
+    } catch {
+      toast.error('Error updating profile');
+    }
+  };
+
+  const handlePasswordUpdate = async () => {
+    if (!currentPassword) {
+      toast.error('Please enter your current password');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          currentPassword: encryptPassword(currentPassword),
+          newPassword: encryptPassword(newPassword)
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        toast.success('Password updated successfully');
+      } else {
+        toast.error(result.message || 'Failed to update password');
+      }
+    } catch {
+      toast.error('Error updating password');
+    }
+  };
+
+  if (isLoading || loading || !profile) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -33,26 +160,10 @@ export default function MyAccount() {
                 </li>
                 <li>
                   <Link
-                    href="/users/all-bookings"
+                    href="/dashboard"
                     className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                   >
-                    My Bookings
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/users/edit-profile"
-                    className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    Edit Profile
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/bookings/my-gift-vouchers"
-                    className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    Gift Vouchers
+                    Dashboard
                   </Link>
                 </li>
                 <li>
@@ -69,86 +180,128 @@ export default function MyAccount() {
 
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Account Summary */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Account Summary</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <h3 className="text-lg font-medium text-blue-900">Active Bookings</h3>
-                  <p className="text-2xl font-bold text-blue-600">2</p>
-                  <p className="text-sm text-blue-700">Upcoming courses</p>
-                </div>
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <h3 className="text-lg font-medium text-green-900">Completed</h3>
-                  <p className="text-2xl font-bold text-green-600">5</p>
-                  <p className="text-sm text-green-700">Training sessions</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Activity</h2>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between py-3 border-b border-gray-200">
+            {/* Profile Details */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Profile Information</CardTitle>
+                {!editing ? (
+                  <Button onClick={() => setEditing(true)} variant="outline">Edit Profile</Button>
+                ) : (
+                  <div className="space-x-2">
+                    <Button onClick={handleSave}>Save</Button>
+                    <Button onClick={() => { setEditing(false); setFormData(profile); }} variant="outline">Cancel</Button>
+                  </div>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="font-medium text-gray-900">CBT Training Completed</p>
-                    <p className="text-sm text-gray-500">East London Training Center</p>
+                    <Label>First Name</Label>
+                    <Input
+                      value={editing ? (formData.first_name || '') : (profile.first_name || '')}
+                      onChange={(e) => setFormData({...formData, first_name: e.target.value})}
+                      disabled={!editing}
+                    />
                   </div>
-                  <span className="text-sm text-gray-500">2 days ago</span>
-                </div>
-                <div className="flex items-center justify-between py-3 border-b border-gray-200">
                   <div>
-                    <p className="font-medium text-gray-900">Booking Confirmed</p>
-                    <p className="text-sm text-gray-500">Module 1 Test - December 15</p>
+                    <Label>Last Name</Label>
+                    <Input
+                      value={editing ? (formData.last_name || '') : (profile.last_name || '')}
+                      onChange={(e) => setFormData({...formData, last_name: e.target.value})}
+                      disabled={!editing}
+                    />
                   </div>
-                  <span className="text-sm text-gray-500">1 week ago</span>
-                </div>
-                <div className="flex items-center justify-between py-3">
                   <div>
-                    <p className="font-medium text-gray-900">Profile Updated</p>
-                    <p className="text-sm text-gray-500">Contact information changed</p>
+                    <Label>Email</Label>
+                    <Input value={profile.email || ''} disabled />
                   </div>
-                  <span className="text-sm text-gray-500">2 weeks ago</span>
+                  <div>
+                    <Label>Phone</Label>
+                    <Input
+                      value={editing ? (formData.phone || '') : (profile.phone || '')}
+                      maxLength={11}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      disabled={!editing}
+                    />
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Quick Actions */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Link
-                  href="/bookings"
-                  className="flex items-center p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group"
-                >
-                  <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="font-semibold">Address</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <Label>Street</Label>
+                      <Input
+                        value={editing ? (formData.address?.street || '') : (profile.address?.street || '')}
+                        onChange={(e) => setFormData({...formData, address: {...(formData.address || {}), street: e.target.value}})}
+                        disabled={!editing}
+                      />
+                    </div>
+                    <div>
+                      <Label>City</Label>
+                      <Input
+                        value={editing ? (formData.address?.city || '') : (profile.address?.city || '')}
+                        onChange={(e) => setFormData({...formData, address: {...(formData.address || {}), city: e.target.value}})}
+                        disabled={!editing}
+                      />
+                    </div>
+                    <div>
+                      <Label>Postcode</Label>
+                      <Input
+                        value={editing ? (formData.address?.postcode || '') : (profile.address?.postcode || '')}
+                        onChange={(e) => setFormData({...formData, address: {...(formData.address || {}), postcode: e.target.value}})}
+                        disabled={!editing}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label>Country</Label>
+                      <Input
+                        value={editing ? (formData.address?.country || '') : (profile.address?.country || '')}
+                        onChange={(e) => setFormData({...formData, address: {...(formData.address || {}), country: e.target.value}})}
+                        disabled={!editing}
+                      />
+                    </div>
                   </div>
-                  <div className="ml-4">
-                    <h3 className="font-medium text-gray-900">Book Training</h3>
-                    <p className="text-sm text-gray-500">Schedule new course</p>
-                  </div>
-                </Link>
+                </div>
+              </CardContent>
+            </Card>
 
-                <Link
-                  href="/bookings/create_voucher"
-                  className="flex items-center p-4 border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors group"
-                >
-                  <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200">
-                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                    </svg>
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="font-medium text-gray-900">Gift Voucher</h3>
-                    <p className="text-sm text-gray-500">Purchase gift voucher</p>
-                  </div>
-                </Link>
-              </div>
-            </div>
+            {/* Change Password */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Change Password</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Current Password</Label>
+                  <Input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password"
+                  />
+                </div>
+                <div>
+                  <Label>New Password</Label>
+                  <Input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password (min 8 characters)"
+                  />
+                </div>
+                <div>
+                  <Label>Confirm New Password</Label>
+                  <Input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                  />
+                </div>
+                <Button onClick={handlePasswordUpdate}>Update Password</Button>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

@@ -1,14 +1,24 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuthStore } from '@/store/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
+interface DashboardData {
+  user: { id: string; name: string; email: string };
+  stats: { totalBookings: number; completed: number; pending: number; totalSpent: number };
+  recentBookings: Array<{ id: string; courseTitle: string; date: string; status: string; amount: number }>;
+  upcomingCourses: Array<{ id: string; title: string; date: string; location: string }>;
+}
+
 export default function Dashboard() {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, token, logout } = useAuthStore();
   const router = useRouter();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -16,7 +26,49 @@ export default function Dashboard() {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(result => {
+          if (result.success === false || result.error) {
+            logout();
+            router.push('/auth/login');
+          } else {
+            const apiData = result.data || result;
+            setData({
+              user: apiData.user,
+              stats: {
+                totalBookings: apiData.stats.total_bookings,
+                completed: apiData.stats.completed_bookings,
+                pending: apiData.stats.pending_bookings,
+                totalSpent: apiData.stats.total_spent
+              },
+              recentBookings: (apiData.recent_bookings || []).map((b: any) => ({
+                id: b.id,
+                courseTitle: b.course_name,
+                date: b.event_date,
+                status: b.status,
+                amount: b.total_amount
+              })),
+              upcomingCourses: apiData.upcoming_courses || []
+            });
+          }
+        })
+        .catch(err => {
+          console.error('Dashboard fetch error:', err);
+          logout();
+          router.push('/auth/login');
+        })
+        .finally(() => setLoading(false));
+    } else if (!isLoading && !isAuthenticated) {
+      setLoading(false);
+    }
+  }, [isAuthenticated, token, isLoading, logout, router]);
+
+  if (isLoading || loading || !data) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
@@ -26,90 +78,91 @@ export default function Dashboard() {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">My Dashboard</h1>
-        <p className="text-gray-600 mt-2">Track your motorcycle training progress</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Welcome, {data.user.name}</h1>
+          <p className="text-gray-600 mt-2">{data.user.email}</p>
+        </div>
+        <Link href="/users/myaccount">
+          <Button>My Account</Button>
+        </Link>
       </div>
 
-      {/* Progress Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-600">My Bookings</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">Total Bookings</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2</div>
-            <p className="text-xs text-blue-600">1 upcoming</p>
+            <div className="text-2xl font-bold">{data.stats.totalBookings}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-600">Courses Completed</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">Completed</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1</div>
-            <p className="text-xs text-green-600">CBT completed</p>
+            <div className="text-2xl font-bold">{data.stats.completed}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-600">Next Course</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">Pending</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">DAS</div>
-            <p className="text-xs text-purple-600">Ready to book</p>
+            <div className="text-2xl font-bold">{data.stats.pending}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-gray-600">Total Spent</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">£{data.stats.totalSpent}</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick Actions */}
+      {/* Recent Bookings & Upcoming Courses */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
+            <CardTitle>Recent Bookings</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Button className="w-full justify-start">
-              Book New Course
-            </Button>
-            <Button variant="outline" className="w-full justify-start">
-              View My Bookings
-            </Button>
-            <Button variant="outline" className="w-full justify-start">
-              Update Profile
-            </Button>
+          <CardContent>
+            <div className="space-y-4">
+              {data.recentBookings.map(booking => (
+                <div key={booking.id} className="flex justify-between items-center border-b pb-2">
+                  <div>
+                    <p className="text-sm font-medium">{booking.courseTitle}</p>
+                    <p className="text-xs text-gray-500">{new Date(booking.date).toLocaleDateString()}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold">£{booking.amount}</p>
+                    <p className="text-xs text-gray-500">{booking.status}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>My Activity</CardTitle>
+            <CardTitle>Upcoming Courses</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">CBT course completed</p>
-                  <p className="text-xs text-gray-500">2 weeks ago</p>
+              {data.upcomingCourses.map(course => (
+                <div key={course.id} className="border-b pb-2">
+                  <p className="text-sm font-medium">{course.title}</p>
+                  <p className="text-xs text-gray-500">{new Date(course.date).toLocaleDateString()} - {course.location}</p>
                 </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">DAS course booked</p>
-                  <p className="text-xs text-gray-500">Next Monday</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Account created</p>
-                  <p className="text-xs text-gray-500">1 month ago</p>
-                </div>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
