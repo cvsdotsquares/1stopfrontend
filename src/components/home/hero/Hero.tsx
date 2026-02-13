@@ -140,6 +140,18 @@ export default function Hero({ data }: { data: HeroData }) {
     return `/bookings?${params.toString()}`;
   };
 
+  // Generate booking URL without date and event (for Find CBT Training)
+  const getBookingURLBasic = () => {
+    if (!nextCBT) return '/bookings';
+
+    const params = new URLSearchParams({
+      course_id: nextCBT.course_id.toString(),
+      location_id: nextCBT.location_id.toString()
+    });
+
+    return `/bookings?${params.toString()}`;
+  };
+
   return (
     <section className="relative w-full overflow-hidden">
       {/* Background Images */}
@@ -274,7 +286,7 @@ export default function Hero({ data }: { data: HeroData }) {
               </a>
 
               <a
-                href="/bookings?course_id=1&location_id=18"
+                href={getBookingURLBasic()}
                 className="min-w-[210px] radius20-left radius20-right-bottom text-base md:text-lg bg-white px-6 py-3 text-black text-center hover:bg-red-600 hover:text-white"
               >
                 {data.promotion.secondaryCta.text}

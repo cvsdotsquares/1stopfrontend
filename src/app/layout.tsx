@@ -25,9 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <script id="mcjs" dangerouslySetInnerHTML={{
-          __html: `!function(c,h,i,m,p){m=c.createElement(h),p=c.getElementsByTagName(h)[0],m.async=1,m.src=i,p.parentNode.insertBefore(m,p)}(document,"script","https://chimpstatic.com/mcjs-connected/js/users/5e0e93ccc447650b65ceb0476/b2f46dc6f97bd804124fbfd33.js");`
-        }} />
+        <script id="mcjs">!function(c,h,i,m,p){m=c.createElement(h),p=c.getElementsByTagName(h)[0],m.async=1,m.src=i,p.parentNode.insertBefore(m,p)}(document,"script","https://chimpstatic.com/mcjs-connected/js/users/5e0e93ccc447650b65ceb0476/b21db1bd9b38727da5e5dcbe7.js");</script>
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <QueryProvider>
