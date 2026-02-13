@@ -8,9 +8,10 @@ interface StripePaymentFormProps {
   onCancel: () => void;
   bookingRef: string;
   amount: number;
+  useInlinePayment?: boolean;
 }
 
-export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amount }: StripePaymentFormProps) {
+export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amount, useInlinePayment = false }: StripePaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -25,16 +26,33 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amo
     setIsProcessing(true);
 
     try {
-      const { error } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/bookings/payment-success?ref=${bookingRef}`,
-        },
-      });
+      if (useInlinePayment) {
+        // Inline payment - no redirect
+        const { error, paymentIntent } = await stripe.confirmPayment({
+          elements,
+          redirect: 'if_required',
+        });
 
-      if (error) {
-        toast.error(error.message || 'Payment failed');
-        setIsProcessing(false);
+        if (error) {
+          toast.error(error.message || 'Payment failed');
+          setIsProcessing(false);
+        } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+          toast.success('Payment successful!');
+          onSuccess();
+        }
+      } else {
+        // Original behavior - redirect to return_url
+        const { error } = await stripe.confirmPayment({
+          elements,
+          confirmParams: {
+            return_url: `${window.location.origin}/bookings/payment-success?ref=${bookingRef}`,
+          },
+        });
+
+        if (error) {
+          toast.error(error.message || 'Payment failed');
+          setIsProcessing(false);
+        }
       }
     } catch (err) {
       toast.error('Payment processing failed');
@@ -77,7 +95,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amo
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={() => {
+            onClick={useInlinePayment ? onCancel : () => {
               window.location.href = `/bookings/payment-cancel?ref=${bookingRef}`;
             }}
             disabled={isProcessing}

@@ -272,6 +272,7 @@ export default function GiftVoucherPage() {
                 }}
                 bookingRef={voucherRef}
                 amount={Math.round(total * 100)}
+                useInlinePayment={true}
               />
             </Elements>
           </div>
