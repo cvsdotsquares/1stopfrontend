@@ -1088,9 +1088,12 @@ export default function OnePageBookingCheckout() {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl mb-2">Book your course</h1>
             <p className="mt-1 text-slate-600">One‑page checkout. You'll be redirected only for the payment step.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge>Secure booking</Badge>
-            <Badge>Pay only at last step</Badge>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+            <a href="/gift-voucher" className="text-sm font-medium text-teal-700 hover:text-teal-800 underline-offset-2 hover:underline">Purchase Gift Voucher</a>
+            <div className="flex items-center gap-2">
+              <Badge>Secure booking</Badge>
+              <Badge>Pay only at last step</Badge>
+            </div>
           </div>
         </div>
 
