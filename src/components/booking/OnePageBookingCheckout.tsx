@@ -326,6 +326,7 @@ export default function OnePageBookingCheckout() {
   const [clientSecret, setClientSecret] = useState<string>('');
   const [bookingRef, setBookingRef] = useState<string>('');
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [bookingCreated, setBookingCreated] = useState(false);
 
   // WorldPay Form State
   const [paymentFormUrl, setPaymentFormUrl] = useState<string>('');
@@ -1042,10 +1043,11 @@ export default function OnePageBookingCheckout() {
       if (response.client_secret) {
         setClientSecret(response.client_secret);
         setBookingRef(response.booking_ref);
-        setShowPaymentForm(true);
+        setBookingCreated(true);
         toast.success(`Booking created! Reference: ${response.booking_ref}`);
       } else {
         toast.success(`Booking created! Reference: ${response.booking_ref}. (No payment required)`);
+        window.location.href = `/booking/success?ref=${response.booking_ref}`;
       }
     } catch (error: any) {
       const errMsg = error instanceof Error ? error.message : (error?.response?.data?.message ?? 'Unknown error');
@@ -1484,24 +1486,43 @@ export default function OnePageBookingCheckout() {
                 <label htmlFor="terms" className="text-sm text-slate-700">I agree to the <a className="text-teal-700 underline-offset-2 hover:underline" href="#">Terms & Conditions</a> and <a className="text-teal-700 underline-offset-2 hover:underline" href="#">Privacy Policy</a>.</label>
               </div>
 
-              <div className="mt-4 space-y-3">
-                <div className="grid gap-3 sm:flex sm:items-center sm:justify-between">
-                  <p className="text-sm text-slate-600">Review your booking details and proceed to payment.</p>
-                  <button
-                    type="button"
-                    onClick={handlePay}
-                    disabled={isPaying}
-                    aria-busy={isPaying}
-                    className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${isPaying ? 'bg-teal-400 cursor-not-allowed' : 'bg-red-600 hover:bg-teal-700'}`}
-                  >
-                    {isPaying ? 'Processing…' : 'Proceed to payment'}
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                      <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414-1.414L13.586 10 10.293 6.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                      <path fillRule="evenodd" d="M3 10a1 1 0 011-1h11a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </button>
+              {!bookingCreated ? (
+                <div className="mt-4 space-y-3">
+                  <div className="grid gap-3 sm:flex sm:items-center sm:justify-between">
+                    <p className="text-sm text-slate-600">Review your booking details and proceed to payment.</p>
+                    <button
+                      type="button"
+                      onClick={handlePay}
+                      disabled={isPaying}
+                      aria-busy={isPaying}
+                      className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${isPaying ? 'bg-teal-400 cursor-not-allowed' : 'bg-red-600 hover:bg-teal-700'}`}
+                    >
+                      {isPaying ? 'Processing…' : 'Create Booking'}
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                        <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414-1.414L13.586 10 10.293 6.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M3 10a1 1 0 011-1h11a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="mt-6">
+                  {clientSecret && (
+                    <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
+                      <StripePaymentForm
+                        onSuccess={() => {
+                          window.location.href = `/booking/success?ref=${bookingRef}`;
+                        }}
+                        onCancel={() => {
+                          window.location.href = `/bookings/payment-cancel?ref=${bookingRef}`;
+                        }}
+                        bookingRef={bookingRef}
+                        amount={Math.round(total * 100)}
+                      />
+                    </Elements>
+                  )}
+                </div>
+              )}
             </Section>
           </div>
 
@@ -1594,29 +1615,6 @@ export default function OnePageBookingCheckout() {
           <input key={key} type="hidden" name={key} value={value} />
         ))}
       </form>
-
-      {/* Stripe Payment Modal */}
-      {showPaymentForm && clientSecret && (
-        <div className="fixed inset-0 bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="p-8">
-              <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
-                <StripePaymentForm
-                  onSuccess={() => {
-                    window.location.href = `/booking/success?ref=${bookingRef}`;
-                  }}
-                  onCancel={() => {
-                    setShowPaymentForm(false);
-                    setClientSecret('');
-                  }}
-                  bookingRef={bookingRef}
-                  amount={Math.round(total * 100)}
-                />
-              </Elements>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
