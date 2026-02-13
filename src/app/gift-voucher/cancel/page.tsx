@@ -1,8 +1,9 @@
 "use client";
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Suspense } from 'react';
 
-export default function GiftVoucherCancelPage() {
+function CancelContent() {
   const searchParams = useSearchParams();
   const ref = searchParams.get('ref');
 
@@ -47,5 +48,13 @@ export default function GiftVoucherCancelPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function GiftVoucherCancelPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center">Loading...</div>}>
+      <CancelContent />
+    </Suspense>
   );
 }
