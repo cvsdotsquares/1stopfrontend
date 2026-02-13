@@ -34,6 +34,11 @@ interface CalendarCell {
 }
 
 // ---------- Small Pure Utilities (also used by tests) ----------
+// Helper function to format date as YYYY-MM-DD in local timezone
+function formatLocalDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 function generateCalendarWeeksFrom(startRefDate = new Date(), courseEvents: CourseEvent[] = [], monthOffset = 0) {
   const today = new Date(startRefDate);
   today.setHours(0, 0, 0, 0);
@@ -65,10 +70,10 @@ function generateCalendarWeeksFrom(startRefDate = new Date(), courseEvents: Cour
     const inCurrentMonth = d.getMonth() === baseDate.getMonth() && d.getFullYear() === baseDate.getFullYear();
 
     // Check if this date has a course event
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = formatLocalDate(d);
     const courseEvent = courseEvents.find(event => {
-      const eventDate = new Date(event.date).toISOString().split('T')[0];
-      return eventDate === dateStr;
+      const eventDate = new Date(event.date);
+      return formatLocalDate(eventDate) === dateStr;
     });
 
     const available = !inPast && inCurrentMonth && courseEvent ? courseEvent.available && courseEvent.available_spaces > 0 : false;
@@ -1252,9 +1257,8 @@ export default function OnePageBookingCheckout() {
                     <span><strong>Date:</strong> {selectedDate.toLocaleDateString()}</span>
                     <span><strong>Time window:</strong> {(() => {
                       const selectedEvent = courseEvents.find(event => {
-                        const eventDate = new Date(event.date).toISOString().split('T')[0];
-                        const selectedDateStr = selectedDate.toISOString().split('T')[0];
-                        return eventDate === selectedDateStr;
+                        const eventDate = new Date(event.date);
+                        return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
                       });
                       return selectedEvent ? `${selectedEvent.event_start_time}–${selectedEvent.event_end_time}` : '07:00–15:00';
                     })()}</span>
@@ -1409,9 +1413,8 @@ export default function OnePageBookingCheckout() {
                     <li><span className="text-slate-500">Date:</span> {selectedDate ? selectedDate.toLocaleDateString() : "—"}</li>
                     <li><span className="text-slate-500">Time window:</span> {selectedDate ? (() => {
                       const selectedEvent = courseEvents.find(event => {
-                        const eventDate = new Date(event.date).toISOString().split('T')[0];
-                        const selectedDateStr = selectedDate.toISOString().split('T')[0];
-                        return eventDate === selectedDateStr;
+                        const eventDate = new Date(event.date);
+                        return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
                       });
                       return selectedEvent ? `${selectedEvent.event_start_time}–${selectedEvent.event_end_time}` : '07:00–15:00';
                     })() : "—"}</li>
@@ -1516,9 +1519,8 @@ export default function OnePageBookingCheckout() {
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Date</dt><dd className="text-right text-slate-900">{selectedDate ? selectedDate.toLocaleDateString() : "—"}</dd></div>
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Time window</dt><dd className="text-right text-slate-900">{selectedDate ? (() => {
                     const selectedEvent = courseEvents.find(event => {
-                      const eventDate = new Date(event.date).toISOString().split('T')[0];
-                      const selectedDateStr = selectedDate.toISOString().split('T')[0];
-                      return eventDate === selectedDateStr;
+                      const eventDate = new Date(event.date);
+                      return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
                     });
                     return selectedEvent ? `${selectedEvent.event_start_time}–${selectedEvent.event_end_time}` : '07:00–15:00';
                   })() : "—"}</dd></div>
