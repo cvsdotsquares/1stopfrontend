@@ -335,9 +335,7 @@ export default function OnePageBookingCheckout() {
 
   // Auto-submit form when fields are ready
   useEffect(() => {
-    console.log('Payment Effect Triggered:', { url: paymentFormUrl, fields: Object.keys(paymentFormFields).length, formRef: !!paymentFormRef.current });
     if (paymentFormUrl && Object.keys(paymentFormFields).length > 0 && paymentFormRef.current) {
-      console.log('Submitting Payment Form...');
       paymentFormRef.current.submit();
     }
   }, [paymentFormUrl, paymentFormFields]);

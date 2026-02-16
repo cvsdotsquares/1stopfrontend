@@ -12,6 +12,7 @@ interface DashboardData {
   stats: { totalBookings: number; completed: number; pending: number; totalSpent: number };
   recentBookings: Array<{ id: string; courseTitle: string; date: string; status: string; amount: number }>;
   upcomingCourses: Array<{ id: string; title: string; date: string; location: string }>;
+  giftVouchers: Array<{ id: number; voucherRef: string; value: number; courseName: string; recipientName: string; validTill: string; status: string }>;
 }
 
 export default function Dashboard() {
@@ -53,7 +54,21 @@ export default function Dashboard() {
                 status: b.status,
                 amount: b.total_amount
               })),
-              upcomingCourses: apiData.upcoming_courses || []
+              upcomingCourses: (apiData.upcoming_courses || []).map((c: any) => ({
+                id: c.booking_id,
+                title: c.course_name,
+                date: c.event_date,
+                location: `${c.location_name || ''}, ${c.postcode || ''}`.trim().replace(/^,\s*|,\s*$/g, '')
+              })),
+              giftVouchers: (apiData.gift_vouchers || []).map((v: any) => ({
+                id: v.id,
+                voucherRef: v.voucher_ref,
+                value: v.voucher_value,
+                courseName: v.course_name,
+                recipientName: v.recipient_name,
+                validTill: v.valid_till,
+                status: v.status
+              }))
             });
           }
         })
@@ -128,7 +143,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Bookings & Upcoming Courses */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <Card>
           <CardHeader>
             <CardTitle>Recent Bookings</CardTitle>
@@ -167,6 +182,31 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Gift Vouchers */}
+      {data.giftVouchers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Gift Vouchers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {data.giftVouchers.map(voucher => (
+                <div key={voucher.id} className="flex justify-between items-center border-b pb-2">
+                  <div>
+                    <p className="text-sm font-medium">{voucher.voucherRef}</p>
+                    <p className="text-xs text-gray-500">{voucher.courseName} - {voucher.recipientName}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold">£{voucher.value}</p>
+                    <p className="text-xs text-gray-500">Valid till: {new Date(voucher.validTill).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
