@@ -49,17 +49,11 @@ export const authApi = {
     return response.data.data;
   },
 
-  register: async (userData: {
-    first_name: string;
-    last_name: string;
-    email: string;
-    password: string;
-    phone: string;
-    date_of_birth?: string;
-  }) => {
+  register: async (userData: any) => {
     const response = await api.post<ApiResponse<{ token: string; user: User }>>('/auth/register', {
       ...userData,
-      password: encryptPassword(userData.password)
+      password: encryptPassword(userData.password),
+      verifyPassword: encryptPassword(userData.verifyPassword)
     });
     return response.data.data;
   },
