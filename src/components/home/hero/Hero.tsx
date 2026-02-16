@@ -142,9 +142,11 @@ export default function Hero({ data }: { data: HeroData }) {
 
   return (
     <section className="relative w-full overflow-hidden">
+      <div className="relative flex flex-wrap lg:flex-nowrap">
       {/* Background Images */}
       {hasMultipleImages ? (
-        <div className="h-[600px] md:h-[700px] relative inset-0">
+        <div className="min-h-[300px] md:min-h-[400px] lg:min-h-[700px] relative inset-0 w-full lg:w-2/3">
+          <div className="inset-0 bg-black/50" />
           {data.backgroundImages.map((image, index) => (
             <div
               key={index}
@@ -164,19 +166,18 @@ export default function Hero({ data }: { data: HeroData }) {
         />
       )}
       {/* Dark overlay */}
-      <div className="absolute top-1 right-0 py-2">
-      <div className=" inset-0 bg-black/50" />
+      <div className="bg-blue-600 py-6 px-2 md:px-9  w-full lg:w-1/3">
+      
 
       {/* Right-side content */}
-      <div className="relative z-10 flex h-full items-start justify-end ">
+      <div className="relative z-10 flex h-full items-start justify-center">
         <div className="w-11/12 md:w-full sm:max-w-[562px]">
 
           {/* CBT floating card */}
-          <div className="mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center radius20-left radius20-left-bottom">
+          <div className="mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center rounded-lg">
             <div className="text26 text-xl font-semibold text-red-600">
               Our Next Available CBT Course Is {getDateDisplay()}
             </div>
-
             <a
               href={getBookingURL()}
               className="mt-3 radius20-left radius20-right-bottom inline-block bg-red-600 px-10 py-3 text-base md:text-2xl text-white hover:bg-red-700"
@@ -186,10 +187,10 @@ export default function Hero({ data }: { data: HeroData }) {
           </div>
 
           {/* Purple panel */}
-          <div className="bg-blue-600/50 py-6 px-4 md:px-10 md:py-10 text-white radius20-left radius20-left-bottom">
+          <div className="pt-6 md:py-10 text-white">
 
             {/* Search */}
-            <div className="mb-6 md:mb-12">
+            <div className="mb-6 md:mb-5">
               <p className="mb-3">
                 {data.search.title}
               </p>
@@ -265,7 +266,7 @@ export default function Hero({ data }: { data: HeroData }) {
               </span>
             </p>
 
-            <div className="mt-4 md:mt-10 flex gap-3 md:gap-4 flex-wrap md:flex-nowrap">
+            <div className="mt-4 md:mt-10 flex gap-3 md:gap-4 flex-wrap ">
               <a
                 href={data.promotion.primaryCta.link}
                 className="min-w-[210px] radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-base md:text-lg text-center text-white hover:bg-red-500"
@@ -277,12 +278,13 @@ export default function Hero({ data }: { data: HeroData }) {
                 href="/bookings?course_id=1&location_id=18"
                 className="min-w-[210px] radius20-left radius20-right-bottom text-base md:text-lg bg-white px-6 py-3 text-black text-center hover:bg-red-600 hover:text-white"
               >
-                {data.promotion.secondaryCta.text}
+                Find a CBT Training
               </a>
             </div>
           </div>
 
         </div>
+      </div>
       </div>
       </div>
       {/* Bottom banner */}
