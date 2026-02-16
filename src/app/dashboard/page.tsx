@@ -149,7 +149,7 @@ export default function Dashboard() {
             <CardTitle>Recent Bookings</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-80 overflow-y-auto">
               {data.recentBookings.map(booking => (
                 <div key={booking.id} className="flex justify-between items-center border-b pb-2">
                   <div>
@@ -171,7 +171,7 @@ export default function Dashboard() {
             <CardTitle>Upcoming Courses</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-80 overflow-y-auto">
               {data.upcomingCourses.map(course => (
                 <div key={course.id} className="border-b pb-2">
                   <p className="text-sm font-medium">{course.title}</p>
@@ -190,7 +190,7 @@ export default function Dashboard() {
             <CardTitle>Gift Vouchers</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-80 overflow-y-auto">
               {data.giftVouchers.map(voucher => (
                 <div key={voucher.id} className="flex justify-between items-center border-b pb-2">
                   <div>
