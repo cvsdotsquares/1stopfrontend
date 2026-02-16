@@ -4,8 +4,14 @@ import { bookingApi, type Course, type Location, type Settings, type VehicleType
 import { authApi } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
 import { toast } from 'sonner';
+import AttendeeForm from './AttendeeForm';
+import CryptoJS from 'crypto-js';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import StripePaymentForm from './StripePaymentForm';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
 /**
  * One‑Page Booking Checkout – Dynamic API Integration
@@ -28,34 +34,55 @@ interface CalendarCell {
 }
 
 // ---------- Small Pure Utilities (also used by tests) ----------
-function generateCalendarWeeksFrom(startRefDate = new Date(), courseEvents: CourseEvent[] = []) {
+// Helper function to format date as YYYY-MM-DD in local timezone
+function formatLocalDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function generateCalendarWeeksFrom(startRefDate = new Date(), courseEvents: CourseEvent[] = [], monthOffset = 0) {
   const today = new Date(startRefDate);
   today.setHours(0, 0, 0, 0);
 
-  const start = new Date(today);
+  // Calculate the start date based on month offset
+  const baseDate = new Date(today);
+  baseDate.setMonth(baseDate.getMonth() + monthOffset);
+  baseDate.setDate(1); // Start from first day of the month
+
+  // Get the last day of the month
+  const lastDay = new Date(baseDate);
+  lastDay.setMonth(lastDay.getMonth() + 1);
+  lastDay.setDate(0);
+
+  const start = new Date(baseDate);
   start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // Monday start
 
-  const days = 7 * 6; // 6 weeks
-  const cells: CalendarCell[] = Array.from({ length: days }, (_, i) => {
+  // Calculate end to include padding for complete weeks
+  const end = new Date(lastDay);
+  const daysToAdd = (7 - ((end.getDay() + 6) % 7) - 1) % 7;
+  end.setDate(end.getDate() + daysToAdd);
+
+  const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+  const cells: CalendarCell[] = Array.from({ length: daysDiff }, (_, i) => {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
     const inPast = d < today;
+    const inCurrentMonth = d.getMonth() === baseDate.getMonth() && d.getFullYear() === baseDate.getFullYear();
 
     // Check if this date has a course event
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = formatLocalDate(d);
     const courseEvent = courseEvents.find(event => {
-      // Convert the backend date format to just date string for comparison
-      const eventDate = new Date(event.date).toISOString().split('T')[0];
-      return eventDate === dateStr;
+      const eventDate = new Date(event.date);
+      return formatLocalDate(eventDate) === dateStr;
     });
 
-    const available = !inPast && courseEvent ? courseEvent.available && courseEvent.available_spaces > 0 : false;
+    const available = !inPast && inCurrentMonth && courseEvent ? courseEvent.available && courseEvent.available_spaces > 0 : false;
     const spots = courseEvent?.available_spaces || 0;
 
     return {
       date: d,
-      available,
-      spots,
+      available: inCurrentMonth ? available : false,
+      spots: inCurrentMonth ? spots : 0,
       courseEventId: courseEvent?.course_event_id
     };
   });
@@ -73,8 +100,8 @@ function computeTotals(unitPrice: string | number | undefined, attendees: string
 }
 
 // ---------- Hook wrapper for calendar ----------
-function useCalendarWeeks(courseEvents: CourseEvent[]) {
-  return useMemo(() => generateCalendarWeeksFrom(new Date(), courseEvents), [courseEvents]);
+function useCalendarWeeks(courseEvents: CourseEvent[], monthOffset: number) {
+  return useMemo(() => generateCalendarWeeksFrom(new Date(), courseEvents, monthOffset), [courseEvents, monthOffset]);
 }
 
 // ---------- Small UI Helpers ----------
@@ -182,7 +209,7 @@ function RadioCard({ checked, onChange, onClick, title, caption, right, disabled
               <p className="font-medium text-slate-900 mb-1">{title}</p>
               {caption && <p className="mt-1 text-sm text-slate-500">{caption}</p>}
             </div>
-          </div>          
+          </div>
         </div>
         {right}
       </div>
@@ -240,40 +267,66 @@ export default function OnePageBookingCheckout() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedCourseEventId, setSelectedCourseEventId] = useState<number | null>(null);
   const [attendees, setAttendees] = useState(1);
-  const [createAccount, setCreateAccount] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
-  const [copyToSection5, setCopyToSection5] = useState(false);
   const [confirmPhotocard, setConfirmPhotocard] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+
+  // Promo code state
+  const [promoCode, setPromoCode] = useState('');
+  const [promoData, setPromoData] = useState<any>(null);
+  const [isValidatingPromo, setIsValidatingPromo] = useState(false);
+
+  // Photocard confirmation per attendee
+  const [photocardConfirmed, setPhotocardConfirmed] = useState<boolean[]>([]);
+  const [licenseValidated, setLicenseValidated] = useState<boolean[]>([]);
+  const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
+
+  // Attendee details - array for multiple attendees
+  const [attendeeDetails, setAttendeeDetails] = useState<Array<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    confirmEmail: string;
+    phone: string;
+    alternativePhone: string;
+    vehicleType: string;
+    licenseType: string;
+    licenseNumber: string;
+    theoryNumber: string;
+    notes: string;
+    registerAsUser: boolean;
+    password: string;
+    confirmPassword: string;
+  }>>([{
+    firstName: user?.first_name || "",
+    lastName: user?.last_name || "",
+    email: user?.email || "",
+    confirmEmail: "",
+    phone: user?.phone || "",
+    alternativePhone: "",
+    vehicleType: "",
+    licenseType: "",
+    licenseNumber: "",
+    theoryNumber: "",
+    notes: "",
+    registerAsUser: false,
+    password: "",
+    confirmPassword: "",
+  }]);
 
   // Booking Flow State
   const [ipBlocked, setIpBlocked] = useState(false);
   const [blockMessage, setBlockMessage] = useState('');
-  const [bookingLock, setBookingLock] = useState<{ lock_id: string, expires_at: string, event_id: string } | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState<number>(0);
-
-  // When a lock is held, collapse sections 1 & 2 and disable changes; restore previous expansion when lock is released
-  const prevExpandedRef = useRef<Record<number, boolean> | null>(null);
-  // Temporary holder for a restored location id (applied after locations fetch completes)
-  const restoredLocationIdRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (bookingLock) {
-      setExpandedSections(prev => {
-        // save current state and collapse course/location
-        prevExpandedRef.current = prev;
-        return { ...prev, 1: false, 2: false };
-      });
-    } else if (prevExpandedRef.current) {
-      setExpandedSections(prev => ({ ...prev, ...prevExpandedRef.current! }));
-      prevExpandedRef.current = null;
-    }
-  }, [bookingLock]);
   const [userIP, setUserIP] = useState<string>('');
 
   // UI submit states
-  const [isLocking, setIsLocking] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false);
+
+  // Stripe payment state
+  const [clientSecret, setClientSecret] = useState<string>('');
+  const [bookingRef, setBookingRef] = useState<string>('');
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [bookingCreated, setBookingCreated] = useState(false);
 
   // WorldPay Form State
   const [paymentFormUrl, setPaymentFormUrl] = useState<string>('');
@@ -282,9 +335,7 @@ export default function OnePageBookingCheckout() {
 
   // Auto-submit form when fields are ready
   useEffect(() => {
-    console.log('Payment Effect Triggered:', { url: paymentFormUrl, fields: Object.keys(paymentFormFields).length, formRef: !!paymentFormRef.current });
     if (paymentFormUrl && Object.keys(paymentFormFields).length > 0 && paymentFormRef.current) {
-      console.log('Submitting Payment Form...');
       paymentFormRef.current.submit();
     }
   }, [paymentFormUrl, paymentFormFields]);
@@ -295,50 +346,6 @@ export default function OnePageBookingCheckout() {
     password: "",
   });
 
-  // Account creation details
-  const [accountDetails, setAccountDetails] = useState({
-    firstName: "",
-    surname: "",
-    email: "",
-    confirmEmail: "",
-    password: "",
-    verifyPassword: "",
-    contactNumber1: "",
-    addressLine1: "",
-    postcode: "",
-    addressLine2: "",
-    addressLine3: "",
-    contactNumber2: "",
-    contactNumber3: "",
-  });
-
-  // Personal details - pre-fill if user is logged in
-  const [details, setDetails] = useState({
-    firstName: user?.first_name || "",
-    lastName: user?.last_name || "",
-    email: user?.email || "",
-    phone: user?.phone || "",
-    notes: "",
-    password: "",
-    vehicleType: "",
-    licenseType: "",
-    licenseNumber: "",
-    theoryNumber: "",
-  });
-
-  // Update details when user changes or when copying from account creation
-  useEffect(() => {
-    if (user) {
-      setDetails(prev => ({
-        ...prev,
-        firstName: user.first_name || "",
-        lastName: user.last_name || "",
-        email: user.email || "",
-        phone: user.phone || "",
-      }));
-    }
-  }, [user]);
-
   // Section expansion state
   const [expandedSections, setExpandedSections] = useState<Record<number, boolean>>({
     1: true, // Always start with section 1 expanded
@@ -346,17 +353,42 @@ export default function OnePageBookingCheckout() {
     3: false,
     4: false,
     5: false,
-    6: false,
   });
+
+  // Attendee form expansion state - only one attendee form expanded at a time
+  const [expandedAttendeeIndex, setExpandedAttendeeIndex] = useState(0);
+
+  // Check if an attendee form is complete (all required fields filled)
+  const isAttendeeComplete = (attendee: typeof attendeeDetails[0]) => {
+    const ukMobileRegex = /^(?:(?:\+44\s?7|07)\d{9})$/;
+
+    const basicFieldsComplete =
+      attendee.firstName.trim() !== '' &&
+      attendee.lastName.trim() !== '' &&
+      attendee.email.trim() !== '' &&
+      attendee.confirmEmail.trim() !== '' &&
+      attendee.email === attendee.confirmEmail &&
+      attendee.phone.trim() !== '' &&
+      ukMobileRegex.test(attendee.phone.replace(/\s/g, '')) &&
+      attendee.licenseNumber.trim().length === 16;
+
+    if (!basicFieldsComplete) return false;
+
+    // If registering as user, check password fields
+    if (attendee.registerAsUser) {
+      return attendee.password.length >= 8 && attendee.password === attendee.confirmPassword;
+    }
+
+    return true;
+  };
 
   // Section completion validation
   const sectionComplete: Record<number, boolean> = {
     1: !!selectedCourse,
     2: !!locationId,
     3: !!selectedDate && attendees > 0,
-    4: true, // Account section is always optional/complete
-    5: !!details.firstName && !!details.lastName && !!details.email,
-    6: false, // Final section never auto-completes
+    4: attendeeDetails.slice(0, attendees).every(a => isAttendeeComplete(a)) && photocardConfirmed.slice(0, attendees).every(c => c),
+    5: false, // Final section never auto-completes
   };
 
   // Check if all previous sections are complete
@@ -397,69 +429,129 @@ export default function OnePageBookingCheckout() {
   }, [sectionComplete[3]]);
 
   useEffect(() => {
-    if (allPreviousSectionsComplete(5) && !expandedSections[5]) {
+    if (sectionComplete[4] && !expandedSections[5] && photocardConfirmed.slice(0, attendees).every(c => c)) {
       setExpandedSections(prev => ({ ...prev, 5: true }));
       setTimeout(() => {
         document.getElementById('section-5')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 150);
     }
-  }, [sectionComplete[1], sectionComplete[2], sectionComplete[3], sectionComplete[4]]);
+  }, [sectionComplete[4], photocardConfirmed, attendees]);
 
+  // Collapse first attendee when photocard is confirmed
   useEffect(() => {
-    if (sectionComplete[5] && !expandedSections[6]) {
-      setExpandedSections(prev => ({ ...prev, 6: true }));
-      setTimeout(() => {
-        document.getElementById('section-6')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 150);
+    if (confirmPhotocard && expandedAttendeeIndex === 0 && attendees === 1) {
+      setExpandedAttendeeIndex(-1);
     }
-  }, [sectionComplete[5]]);
+  }, [confirmPhotocard, attendees]);
 
-  // Copy account details to section 5 when checkbox is checked
+  // Auto-expand next attendee when photocard confirmed
   useEffect(() => {
-    if (copyToSection5 && createAccount) {
-      setDetails(prev => ({
-        ...prev,
-        firstName: accountDetails.firstName,
-        lastName: accountDetails.surname,
-        email: accountDetails.email,
-        phone: accountDetails.contactNumber1,
-      }));
+    if (attendees <= 1) return;
+
+    const currentIndex = expandedAttendeeIndex;
+    if (currentIndex >= 0 && currentIndex < attendees && photocardConfirmed[currentIndex]) {
+      if (currentIndex < attendees - 1 && !photocardConfirmed[currentIndex + 1]) {
+        setExpandedAttendeeIndex(currentIndex + 1);
+      }
     }
-  }, [copyToSection5, accountDetails, createAccount]);
+  }, [photocardConfirmed, attendees]);
+
+  // Auto-expand next attendee form when current is completed (skip first if photocard confirmed)
+  useEffect(() => {
+    if (attendees <= 1 || !photocardConfirmed.slice(0, attendees).every(c => c)) return;
+
+    const currentAttendee = attendeeDetails[expandedAttendeeIndex];
+    if (currentAttendee && isAttendeeComplete(currentAttendee)) {
+      if (expandedAttendeeIndex < attendees - 1) {
+        setExpandedAttendeeIndex(expandedAttendeeIndex + 1);
+      }
+    }
+  }, [attendeeDetails, expandedAttendeeIndex, attendees, photocardConfirmed]);
+
+  // Update attendeeDetails array when attendees count changes
+  useEffect(() => {
+    setAttendeeDetails(prev => {
+      const newDetails = [...prev];
+      if (attendees > prev.length) {
+        // Add new attendees
+        for (let i = prev.length; i < attendees; i++) {
+          newDetails.push({
+            firstName: "",
+            lastName: "",
+            email: "",
+            confirmEmail: "",
+            phone: "",
+            alternativePhone: "",
+            vehicleType: "",
+            licenseType: "",
+            licenseNumber: "",
+            theoryNumber: "",
+            notes: "",
+            registerAsUser: false,
+            password: "",
+            confirmPassword: "",
+          });
+        }
+      } else if (attendees < prev.length) {
+        // Remove excess attendees
+        newDetails.splice(attendees);
+        // Reset expanded index if it's out of bounds
+        if (expandedAttendeeIndex >= attendees) {
+          setExpandedAttendeeIndex(Math.max(0, attendees - 1));
+        }
+      }
+      return newDetails;
+    });
+
+    // Initialize photocard confirmations
+    setPhotocardConfirmed(prev => {
+      const newConfirmed = [...prev];
+      if (attendees > prev.length) {
+        for (let i = prev.length; i < attendees; i++) {
+          newConfirmed.push(false);
+        }
+      } else if (attendees < prev.length) {
+        newConfirmed.splice(attendees);
+      }
+      return newConfirmed;
+    });
+
+    // Initialize license validation
+    setLicenseValidated(prev => {
+      const newValidated = [...prev];
+      if (attendees > prev.length) {
+        for (let i = prev.length; i < attendees; i++) {
+          newValidated.push(false);
+        }
+      } else if (attendees < prev.length) {
+        newValidated.splice(attendees);
+      }
+      return newValidated;
+    });
+  }, [attendees]);
 
   // Save sanitized form data to localStorage whenever it changes (DO NOT store sensitive fields like passwords)
   useEffect(() => {
-    if (selectedCourse || locationId || selectedDate || details.firstName) {
+    if (selectedCourse || locationId || selectedDate || attendeeDetails[0]?.firstName) {
       const formData = {
-        // store only identifiers and minimal display name for the selected course
         selectedCourseId: selectedCourse?.id ?? null,
         selectedCourseName: selectedCourse?.course_name ?? null,
         locationId,
         selectedDate: selectedDate?.toISOString(),
         selectedCourseEventId,
         attendees,
-        // store only non-sensitive details
-        details: {
-          firstName: details.firstName,
-          lastName: details.lastName,
-          email: details.email,
-          phone: details.phone,
-          notes: details.notes,
-          vehicleType: details.vehicleType,
-          licenseType: details.licenseType,
-          licenseNumber: details.licenseNumber,
-          theoryNumber: details.theoryNumber,
-        },
-        // store account fields but omit passwords and verification fields
-        accountDetails: {
-          firstName: accountDetails.firstName,
-          surname: accountDetails.surname,
-          email: accountDetails.email,
-          contactNumber1: accountDetails.contactNumber1,
-          addressLine1: accountDetails.addressLine1,
-          postcode: accountDetails.postcode,
-        },
-        createAccount,
+        attendeeDetails: attendeeDetails.map(a => ({
+          firstName: a.firstName,
+          lastName: a.lastName,
+          email: a.email,
+          phone: a.phone,
+          vehicleType: a.vehicleType,
+          licenseType: a.licenseType,
+          licenseNumber: a.licenseNumber,
+          theoryNumber: a.theoryNumber,
+          notes: a.notes,
+          registerAsUser: a.registerAsUser,
+        })),
         confirmPhotocard,
         acceptTerms,
       };
@@ -470,7 +562,7 @@ export default function OnePageBookingCheckout() {
         console.warn('Failed to save booking_form_data', e);
       }
     }
-  }, [selectedCourse, locationId, selectedDate, selectedCourseEventId, attendees, details, accountDetails, createAccount, confirmPhotocard, acceptTerms]);
+  }, [selectedCourse, locationId, selectedDate, selectedCourseEventId, attendees, attendeeDetails, confirmPhotocard, acceptTerms]);
 
   // Load settings and license types when needed (step 5) — memoized to avoid redundant calls while user types
   const step5FetchedRef = useRef<{ selectedCourseId?: number | null; locationId?: number | null; selectedDateISO?: string | null; attendees?: number } | null>(null);
@@ -510,11 +602,11 @@ export default function OnePageBookingCheckout() {
         setAvailableVehicleTypes(vehicleTypesData);
 
         // Default to first license/vehicle type if user hasn't chosen one yet
-        setDetails(prev => ({
-          ...prev,
-          licenseType: prev.licenseType || (licenseTypesData && licenseTypesData.length > 0 ? String(licenseTypesData[0].id) : ''),
-          vehicleType: prev.vehicleType || (vehicleTypesData && Object.keys(vehicleTypesData).length > 0 ? Object.keys(vehicleTypesData)[0] : ''),
-        }));
+        setAttendeeDetails(prev => prev.map((attendee, idx) => ({
+          ...attendee,
+          licenseType: attendee.licenseType || (licenseTypesData && licenseTypesData.length > 0 ? String(licenseTypesData[0].id) : ''),
+          vehicleType: attendee.vehicleType || (vehicleTypesData && Object.keys(vehicleTypesData).length > 0 ? Object.keys(vehicleTypesData)[0] : ''),
+        })));
 
         step5FetchedRef.current = current;
       } catch (err) {
@@ -537,60 +629,6 @@ export default function OnePageBookingCheckout() {
         const locationIdParam = urlParams.get('location_id');
         const dateParam = urlParams.get('date');
         const courseEventId = urlParams.get('course_event_id');
-
-        // Check for existing booking lock first
-        const savedLock = localStorage.getItem('booking_lock');
-        const savedFormData = localStorage.getItem('booking_form_data');
-
-        if (savedLock) {
-          const lockInfo = JSON.parse(savedLock);
-          const expiry = new Date(lockInfo.expires_at).getTime();
-          const now = new Date().getTime();
-
-          if (expiry > now) {
-            // Lock is still valid, restore state
-            setBookingLock(lockInfo);
-            setTimeRemaining(Math.max(0, expiry - now));
-
-            if (savedFormData) {
-              try {
-                const formData = JSON.parse(savedFormData);
-
-                // Rehydrate selectedCourse with minimal shape (full object will be available after courses load)
-                if (formData.selectedCourseId) {
-                  setSelectedCourse({ id: formData.selectedCourseId, course_name: formData.selectedCourseName } as Course);
-                }
-
-                setLocationId(formData.locationId ?? null);
-                // Store the restored location id so we can re-apply it after locations are loaded
-                restoredLocationIdRef.current = formData.locationId ?? null;
-                setSelectedDate(formData.selectedDate ? new Date(formData.selectedDate) : null);
-                setSelectedCourseEventId(formData.selectedCourseEventId ?? null);
-                setAttendees(formData.attendees ?? 1);
-
-                if (formData.details) {
-                  setDetails(prev => ({ ...prev, ...formData.details, password: "" }));
-                }
-
-                if (formData.accountDetails) {
-                  setAccountDetails(prev => ({ ...prev, ...formData.accountDetails, password: "", verifyPassword: "" }));
-                }
-
-                setCreateAccount(!!formData.createAccount);
-                setConfirmPhotocard(!!formData.confirmPhotocard);
-                setAcceptTerms(!!formData.acceptTerms);
-              } catch (e) {
-                console.warn('Failed to parse saved booking_form_data', e);
-              }
-            }
-
-            toast.info('Previous booking session restored. Complete payment to secure your booking.');
-          } else {
-            // Lock expired, clear storage
-            localStorage.removeItem('booking_lock');
-            localStorage.removeItem('booking_form_data');
-          }
-        }
 
         // Get user IP
         const ip = await fetch('/api/get-ip').then(r => r.json()).then(d => d.ip).catch(() => '127.0.0.1');
@@ -642,7 +680,7 @@ export default function OnePageBookingCheckout() {
 
         // Validate location exists if only location_id is provided
         if (locationIdParam && !courseId) {
-          const locationExists = await bookingApi.getLocationsByCourse(1).then(locs => 
+          const locationExists = await bookingApi.getLocationsByCourse(1).then(locs =>
             locs.some(l => l.id === parseInt(locationIdParam))
           ).catch(() => false);
           if (!locationExists) {
@@ -669,24 +707,10 @@ export default function OnePageBookingCheckout() {
     initializeBooking();
   }, []);
 
-  // Sync booking lock and form data across tabs
+  // Sync form data across tabs
   useEffect(() => {
     function handleStorageEvent(e: StorageEvent) {
       try {
-        if (e.key === 'booking_lock') {
-          if (!e.newValue) {
-            // lock removed in another tab
-            setBookingLock(null);
-            setTimeRemaining(0);
-            toast.info('Booking lock removed in another tab');
-          } else {
-            const lockInfo = JSON.parse(e.newValue);
-            setBookingLock(lockInfo);
-            const expiry = new Date(lockInfo.expires_at).getTime();
-            setTimeRemaining(Math.max(0, expiry - Date.now()));
-          }
-        }
-
         if (e.key === 'booking_form_data' && e.newValue) {
           const formData = JSON.parse(e.newValue);
 
@@ -699,10 +723,14 @@ export default function OnePageBookingCheckout() {
           setSelectedCourseEventId(formData.selectedCourseEventId ?? null);
           setAttendees(formData.attendees ?? 1);
 
-          if (formData.details) setDetails(prev => ({ ...prev, ...formData.details, password: "" }));
-          if (formData.accountDetails) setAccountDetails(prev => ({ ...prev, ...formData.accountDetails, password: "", verifyPassword: "" }));
-
-          setCreateAccount(!!formData.createAccount);
+          if (formData.attendeeDetails) {
+            setAttendeeDetails(formData.attendeeDetails.map((a: any) => ({
+              ...a,
+              confirmEmail: "",
+              password: "",
+              confirmPassword: "",
+            })));
+          }
           setConfirmPhotocard(!!formData.confirmPhotocard);
           setAcceptTerms(!!formData.acceptTerms);
         }
@@ -727,21 +755,10 @@ export default function OnePageBookingCheckout() {
       try {
         const locationsData = await bookingApi.getLocationsByCourse(selectedCourse.id);
         setLocations(locationsData);
-        // If we have a restored location id (from restored storage), prefer and apply it
-        if (restoredLocationIdRef.current != null) {
-          const restored = restoredLocationIdRef.current;
-          if (locationsData.some(l => l.id === restored)) {
-            setLocationId(restored);
-          } else {
-            setLocationId(null);
-          }
-          restoredLocationIdRef.current = null;
-        } else {
-          // Don't auto-select first location - let user choose
-          // Preserve current selection if it's still valid for the new course
-          if (!locationsData.some(l => l.id === locationId)) {
-            setLocationId(null);
-          }
+        // Don't auto-select first location - let user choose
+        // Preserve current selection if it's still valid for the new course
+        if (!locationsData.some(l => l.id === locationId)) {
+          setLocationId(null);
         }
       } catch (err) {
         console.error('Failed to load locations:', err);
@@ -782,8 +799,24 @@ export default function OnePageBookingCheckout() {
 
       try {
         const response = await bookingApi.getCourseAvailability(selectedCourse.id, locationId);
-        setCourseEvents(response.data.availability);
+        const availability = response.data.availability;
+        setCourseEvents(availability);
         availabilityFetchedRef.current = { courseId: selectedCourse.id, locationId };
+
+        // Auto-select first available date
+        if (availability.length > 0 && !selectedDate) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const nextAvailable = availability.find(event => {
+            const eventDate = new Date(event.date);
+            eventDate.setHours(0, 0, 0, 0);
+            return event.available && event.available_spaces > 0 && eventDate >= today;
+          });
+          if (nextAvailable) {
+            setSelectedDate(new Date(nextAvailable.date));
+            setSelectedCourseEventId(nextAvailable.course_event_id);
+          }
+        }
       } catch (err) {
         console.error('Failed to load availability:', err);
         setCourseEvents([]);
@@ -794,7 +827,7 @@ export default function OnePageBookingCheckout() {
     loadAvailability();
   }, [selectedCourse, locationId]);
 
-  const weeks = useCalendarWeeks(courseEvents);
+  const weeks = useCalendarWeeks(courseEvents, calendarMonthOffset);
 
   const currentLocation = useMemo(
     () => locations.find((l) => l.id === locationId) || locations[0],
@@ -802,20 +835,25 @@ export default function OnePageBookingCheckout() {
   );
 
   // Calculate pricing when details change
+  const pricingDeps = useMemo(
+    () => attendeeDetails.slice(0, attendees).map(a => `${a.vehicleType}-${a.licenseType}`).join(','),
+    [attendeeDetails, attendees]
+  );
+
   useEffect(() => {
     const calculatePricing = async () => {
-      if (!selectedCourseEventId || !details.vehicleType || !details.licenseType) {
+      if (!selectedCourseEventId || !attendeeDetails[0]?.vehicleType || !attendeeDetails[0]?.licenseType) {
         setPricing(null);
         return;
       }
 
       try {
-        const attendees = [{
-          vehicle_type: Number(details.vehicleType),
-          license_type: details.licenseType
-        }];
+        const attendeesArray = attendeeDetails.slice(0, attendees).map(a => ({
+          vehicle_type: Number(a.vehicleType),
+          license_type: a.licenseType
+        }));
 
-        const pricingResult = await bookingApi.calculatePrice(selectedCourseEventId, attendees);
+        const pricingResult = await bookingApi.calculatePrice(selectedCourseEventId, attendeesArray);
         setPricing(pricingResult.pricing_breakdown);
       } catch (error) {
         console.error('Failed to calculate pricing:', error);
@@ -824,48 +862,12 @@ export default function OnePageBookingCheckout() {
     };
 
     calculatePricing();
-  }, [selectedCourseEventId, details.vehicleType, details.licenseType]);
+  }, [selectedCourseEventId, attendees, pricingDeps]);
 
   const subtotal = pricing?.final_totals?.subtotal || 0;
   const vat = pricing?.final_totals?.vat || 0;
-  const total = pricing?.final_totals?.final_amount || 0;
-
-  const handleRegister = async () => {
-    // Basic client-side validation
-    if (!accountDetails.firstName || !accountDetails.surname || !accountDetails.email) {
-      toast.error('Please complete name and email to create an account');
-      return;
-    }
-    if (accountDetails.email !== accountDetails.confirmEmail) {
-      toast.error('Email and confirmation do not match');
-      return;
-    }
-    if (!accountDetails.password || accountDetails.password.length < 8) {
-      toast.error('Password must be at least 8 characters');
-      return;
-    }
-    if (accountDetails.password !== accountDetails.verifyPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-
-    setIsRegistering(true);
-    try {
-      const { token, user } = await authApi.register({
-        first_name: accountDetails.firstName,
-        last_name: accountDetails.surname,
-        email: accountDetails.email,
-        password: accountDetails.password,
-        phone: accountDetails.contactNumber1,
-      });
-      login(token, user);
-      toast.success('Account created successfully!');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Registration failed');
-    } finally {
-      setIsRegistering(false);
-    }
-  };
+  const discount = promoData?.valid ? promoData.discount_amount : 0;
+  const total = (pricing?.final_totals?.final_amount || 0) - discount;
 
   const handleLogin = async () => {
     try {
@@ -878,162 +880,84 @@ export default function OnePageBookingCheckout() {
     }
   };
 
-  // Countdown timer effect
-  const cleanupCalledRef = React.useRef(false);
-
-  useEffect(() => {
-    if (!bookingLock) return;
-
-    // reset cleanup guard when a new lock is created
-    cleanupCalledRef.current = false;
-
-    const interval = setInterval(() => {
-      const now = new Date().getTime();
-      const expiry = new Date(bookingLock.expires_at).getTime();
-      const remaining = Math.max(0, expiry - now);
-
-      setTimeRemaining(remaining);
-
-      if (remaining <= 0 && !cleanupCalledRef.current) {
-        cleanupCalledRef.current = true; // ensure we call cleanup only once
-
-        // Clear lock locally
-        setBookingLock(null);
-        localStorage.removeItem('booking_lock');
-        localStorage.removeItem('booking_form_data');
-
-        // Call cleanup API via bookingApi (POST expecting user_id & ip_address)
-        // For anonymous users pass 0 so backend can cleanup guest prebookings correctly
-        bookingApi.cleanupPrebookings(user?.id ?? 0, userIP).catch((err) => {
-          console.error('cleanupPrebookings failed', err);
-        });
-
-        toast.error('Booking lock expired. Please try again.');
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [bookingLock, user, userIP]);
-
-  const formatTime = (ms: number) => {
-    if (!ms || ms <= 0) return '0:00';
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  const checkBlacklisted = async (licenseNumber: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`${BASE_URL}/helper/check-blacklisted`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ license_number: licenseNumber })
+      });
+      const data = await response.json();
+      return data.success && data.is_blacklisted;
+    } catch (error) {
+      console.error('Failed to check blacklist:', error);
+      return false;
+    }
   };
 
-  const handleBookNow = async () => {
-    if (!selectedCourseEventId || !userIP) {
-      toast.error('Missing required booking information');
+  const handlePhotocardChange = async (index: number, confirmed: boolean) => {
+    setPhotocardConfirmed(prev => {
+      const newConfirmed = [...prev];
+      newConfirmed[index] = confirmed;
+      return newConfirmed;
+    });
+
+    // If this is the last attendee and photocard is confirmed, expand section 5
+    if (confirmed && index === attendees - 1) {
+      setTimeout(() => {
+        setExpandedSections(prev => ({ ...prev, 5: true }));
+        setTimeout(() => {
+          document.getElementById('section-5')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+      }, 100);
+    }
+  };
+
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) {
+      toast.error('Please enter a promo code');
       return;
     }
 
-    // Validate required checkboxes
-    if (!confirmPhotocard) {
-      toast.error('Please confirm you can present your photocard driving licence');
-      return;
-    }
-    if (!acceptTerms) {
-      toast.error('Please accept the Terms & Conditions');
+    if (!selectedCourse || !locationId) {
+      toast.error('Please select a course and location first');
       return;
     }
 
-    setIsLocking(true);
+    setIsValidatingPromo(true);
     try {
-      // Check availability first
-      const availability = await fetch(`${BASE_URL}/booking/course-availability/${selectedCourseEventId}`)
-        .then(r => r.json());
-
-      if (availability.available_spaces < attendees) {
-        toast.error('Not enough spaces available');
-        return;
-      }
-
-      // Lock spaces (include user_id; 0 if guest)
-      const lockResponse = await fetch(`${BASE_URL}/booking/lock-spaces`, {
+      const response = await fetch(`${BASE_URL}/booking/promo-codes/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          event_id: selectedCourseEventId.toString(),
-          space_count: attendees,
-          ip_address: userIP,
-          user_id: (user?.id ?? 0)
-        })
-      }).then(r => r.json());
-
-      if (!lockResponse.success) {
-        toast.error('Failed to lock booking spaces');
-        return;
-      }
-
-      // Log IP activity
-      await fetch(`${BASE_URL}/booking/log-ip-activity`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ip_address: userIP,
-          lock_session_id: lockResponse.lock_id,
-          booking_status: 'pending'
+          promo_code: promoCode.trim(),
+          course_id: selectedCourse.id,
+          location_id: locationId,
+          attendees_count: attendees
         })
       });
 
-      // Store lock info and form data
-      const tenMinutes = 10 * 60 * 1000;
-      const expiry = new Date().getTime() + tenMinutes;
-      const lockInfo = {
-        lock_id: lockResponse.lock_id,
-        expires_at: new Date(expiry).toISOString(),
-        event_id: selectedCourseEventId.toString()
-      };
+      const data = await response.json();
 
-      const formData = {
-        selectedCourseId: selectedCourse?.id ?? null,
-        selectedCourseName: selectedCourse?.course_name ?? null,
-        locationId,
-        selectedDate: selectedDate?.toISOString(),
-        selectedCourseEventId,
-        attendees,
-        details: {
-          firstName: details.firstName,
-          lastName: details.lastName,
-          email: details.email,
-          phone: details.phone,
-          notes: details.notes,
-          vehicleType: details.vehicleType,
-          licenseType: details.licenseType,
-          licenseNumber: details.licenseNumber,
-          theoryNumber: details.theoryNumber,
-        },
-        accountDetails: {
-          firstName: accountDetails.firstName,
-          surname: accountDetails.surname,
-          email: accountDetails.email,
-          contactNumber1: accountDetails.contactNumber1,
-          addressLine1: accountDetails.addressLine1,
-          postcode: accountDetails.postcode,
-        },
-        createAccount,
-        confirmPhotocard,
-        acceptTerms,
-      };
-
-      setBookingLock(lockInfo);
-      localStorage.setItem('booking_lock', JSON.stringify(lockInfo));
-      try {
-        localStorage.setItem('booking_form_data', JSON.stringify(formData));
-      } catch (e) {
-        console.warn('Failed to save booking_form_data', e);
+      if (data.success && data.data.valid) {
+        setPromoData(data.data);
+        toast.success(data.data.description || 'Promo code applied successfully!');
+      } else {
+        setPromoData(null);
+        toast.error(data.message || 'Invalid promo code');
       }
-
-      setTimeRemaining(tenMinutes);
-
-      toast.success('Spaces locked! Complete payment within 10 minutes.');
-
     } catch (error) {
-      toast.error('Failed to lock booking spaces');
+      setPromoData(null);
+      toast.error('Failed to validate promo code');
     } finally {
-      setIsLocking(false);
+      setIsValidatingPromo(false);
     }
+  };
+
+  const handleRemovePromo = () => {
+    setPromoCode('');
+    setPromoData(null);
+    toast.info('Promo code removed');
   };
 
   async function handlePay() {
@@ -1042,48 +966,36 @@ export default function OnePageBookingCheckout() {
     if (!locationId) missing.push("Location");
     if (!selectedDate) missing.push("Date");
     if (!selectedCourseEventId) missing.push("Course event");
-    if (!details.firstName) missing.push("First name");
-    if (!details.lastName) missing.push("Last name");
-    if (!details.email) missing.push("Email");
     if (attendees < 1) missing.push("Number of attendees");
-    if (createAccount) {
-      if (!accountDetails.password) missing.push("Password (for account)");
-      if (accountDetails.password !== accountDetails.verifyPassword) {
-        toast.error('Account password and verification do not match');
-        return;
-      }
-      if (accountDetails.email !== accountDetails.confirmEmail) {
-        toast.error('Account email and confirmation do not match');
-        return;
-      }
-    }
 
-    // Licence number must be exactly 16 characters
-    if (!details.licenseNumber || details.licenseNumber.length !== 16) missing.push("Driving licence number (16 characters)");
+    // Validate all attendees
+    for (let idx = 0; idx < attendeeDetails.slice(0, attendees).length; idx++) {
+      const attendee = attendeeDetails[idx];
+      if (!attendee.firstName) missing.push(`Attendee ${idx + 1}: First name`);
+      if (!attendee.lastName) missing.push(`Attendee ${idx + 1}: Last name`);
+      if (!attendee.email) missing.push(`Attendee ${idx + 1}: Email`);
+      if (!attendee.licenseNumber || attendee.licenseNumber.length !== 16) missing.push(`Attendee ${idx + 1}: Driving licence number (16 characters)`);
 
-    if (!bookingLock) missing.push("Booking lock (click Book Now first)");
-    if (!confirmPhotocard) missing.push("Photocard confirmation");
-    if (!acceptTerms) missing.push("Terms & Conditions acceptance");
-
-    // Verify booking lock hasn't expired
-    if (bookingLock) {
-      try {
-        const expiry = new Date(bookingLock.expires_at).getTime();
-        if (Date.now() > expiry) {
-          // Clear stale lock and prompt user to re-lock
-          setBookingLock(null);
-          localStorage.removeItem('booking_lock');
-          localStorage.removeItem('booking_form_data');
-          toast.error('Booking lock expired. Please click Book Now to re-lock your spaces.');
+      if (attendee.registerAsUser) {
+        if (!attendee.password || attendee.password.length < 8) missing.push(`Attendee ${idx + 1}: Password (min 8 characters)`);
+        if (attendee.password !== attendee.confirmPassword) {
+          toast.error(`Attendee ${idx + 1}: Passwords do not match`);
           return;
         }
-      } catch (e) {
-        // If parsing fails, remove stale data to be safe
-        setBookingLock(null);
-        localStorage.removeItem('booking_lock');
-        localStorage.removeItem('booking_form_data');
+      }
+
+      // Check if license is blacklisted
+      if (attendee.licenseNumber && attendee.licenseNumber.length === 16) {
+        const isBlacklisted = await checkBlacklisted(attendee.licenseNumber);
+        if (isBlacklisted) {
+          toast.error(`Attendee ${idx + 1}: This driving licence number is not allowed to book`);
+          return;
+        }
       }
     }
+
+    if (!photocardConfirmed.slice(0, attendees).every(c => c)) missing.push("Photocard confirmation for all attendees");
+    if (!acceptTerms) missing.push("Terms & Conditions acceptance");
 
     if (missing.length) {
       toast.error("Please complete: " + missing.join(", "));
@@ -1092,66 +1004,52 @@ export default function OnePageBookingCheckout() {
 
     setIsPaying(true);
     try {
+      // Encrypt passwords using AES
+      const encryptPassword = (password: string) => {
+        const key = process.env.NEXT_PUBLIC_ENCRYPTION_KEY;
+        if (!key) throw new Error('Encryption key not configured');
+        return CryptoJS.AES.encrypt(password, key).toString();
+      };
+
       const bookingData = {
         course_id: selectedCourse!.id,
         course_event_id: selectedCourseEventId,
         location_id: locationId,
         selected_date: selectedDate!.toISOString().split('T')[0],
-        attendees_count: attendees,
-        lock_id: bookingLock!.lock_id,
-        user_details: {
-          first_name: details.firstName,
-          sur_name: details.lastName,
-          email: details.email,
-          contact1: details.phone,
-        },
-        attendees: [{
-          first_name: details.firstName,
-          sur_name: details.lastName,
-          contact1: details.phone,
-          contact2: "",
-          email: details.email,
-          vehicle_type: Number(details.vehicleType) || 1,
-          license_type: Number(details.licenseType) || 1,
-          license_number: details.licenseNumber,
-          theory_number: details.theoryNumber,
-          notes: details.notes,
-          primary: true,
-        }],
-        create_account: createAccount,
-        password: accountDetails.password,
+        promo_code: promoData?.valid ? promoCode.trim() : undefined,
+        attendees: attendeeDetails.slice(0, attendees).map((attendee) => ({
+          first_name: attendee.firstName,
+          sur_name: attendee.lastName,
+          email: attendee.email,
+          contact1: attendee.phone,
+          contact2: attendee.alternativePhone || undefined,
+          license_number: attendee.licenseNumber,
+          license_type: Number(attendee.licenseType) || 1,
+          vehicle_type: Number(attendee.vehicleType) || 0,
+          theory_number: attendee.theoryNumber || undefined,
+          password: attendee.registerAsUser && attendee.password ? encryptPassword(attendee.password) : undefined,
+          notes: attendee.notes || undefined,
+        })),
+        photocard_confirmed: photocardConfirmed.slice(0, attendees).every(c => c),
+        terms_agreed: acceptTerms,
       };
 
-      const response = await bookingApi.createBookingWithAttendees(bookingData);
+      const response = await bookingApi.createBookingWithAttendeesNew(bookingData);
 
-      // Clear localStorage on successful booking
-      localStorage.removeItem('booking_lock');
       localStorage.removeItem('booking_form_data');
 
-      if (response.payment_data) {
-        console.log('Payment Data Received:', response.payment_data);
-        console.log('Payment URL:', response.payment_data.url);
-        console.log('Payment Fields:', response.payment_data.fields);
-        toast.success(`Booking created! Reference: ${response.booking_ref}. Redirecting to payment gateway…`);
-        setPaymentFormUrl(response.payment_data.url);
-        setPaymentFormFields(response.payment_data.fields);
+      if (response.client_secret) {
+        setClientSecret(response.client_secret);
+        setBookingRef(response.booking_ref);
+        setBookingCreated(true);
+        toast.success(`Booking created! Reference: ${response.booking_ref}`);
       } else {
-        console.warn('No payment data in response:', response);
-        toast.success(`Booking created! Reference: ${response.booking_ref}. (No payment session generated)`);
+        toast.success(`Booking created! Reference: ${response.booking_ref}. (No payment required)`);
+        window.location.href = `/booking/success?ref=${response.booking_ref}`;
       }
-      // Here you would redirect to payment with response.payment_token
     } catch (error: any) {
       const errMsg = error instanceof Error ? error.message : (error?.response?.data?.message ?? 'Unknown error');
-      const responseMsg = (error?.response?.data?.message ?? '').toString().toLowerCase();
-      if (responseMsg.includes('lock') || responseMsg.includes('expired')) {
-        toast.error('Booking failed: booking lock invalid or expired. Please click Book Now to re-lock your spaces.');
-        // Clear local lock to force user to re-lock
-        setBookingLock(null);
-        localStorage.removeItem('booking_lock');
-        localStorage.removeItem('booking_form_data');
-      } else {
-        toast.error(`Booking failed: ${errMsg}`);
-      }
+      toast.error(`Booking failed: ${errMsg}`);
     } finally {
       setIsPaying(false);
     }
@@ -1187,18 +1085,13 @@ export default function OnePageBookingCheckout() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl mb-2">Book your course</h1>
             <p className="mt-1 text-slate-600">One‑page checkout. You'll be redirected only for the payment step.</p>
-            {bookingLock && (
-              <div className="mt-2 flex items-center gap-2 text-sm">
-                <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                <span className="text-orange-600 font-medium">
-                  Spaces locked - Complete payment in {formatTime(timeRemaining)}
-                </span>
-              </div>
-            )}
           </div>
-          <div className="flex items-center gap-2">
-            <Badge>Secure booking</Badge>
-            <Badge>Pay only at last step</Badge>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+            <a href="/gift-voucher" className="text-sm font-medium text-teal-700 hover:text-teal-800 underline-offset-2 hover:underline">Purchase Gift Voucher</a>
+            <div className="flex items-center gap-2">
+              <Badge>Secure booking</Badge>
+              <Badge>Pay only at last step</Badge>
+            </div>
           </div>
         </div>
 
@@ -1214,7 +1107,6 @@ export default function OnePageBookingCheckout() {
               complete={sectionComplete[1]}
               open={expandedSections[1]}
               onToggle={() => setExpandedSections(prev => ({ ...prev, 1: !prev[1] }))}
-              expandDisabled={!!bookingLock}
             >
               <div className="grid gap-3 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-2">
                 {Array.isArray(courses) && courses.map((c, index) => {
@@ -1225,7 +1117,6 @@ export default function OnePageBookingCheckout() {
                       checked={isSelected}
                       onChange={() => setSelectedCourse(c)}
                       title={c.course_name}
-                      disabled={!!bookingLock}
                     />
                   );
                 })}
@@ -1240,7 +1131,7 @@ export default function OnePageBookingCheckout() {
               complete={sectionComplete[2]}
               open={expandedSections[2]}
               onToggle={() => setExpandedSections(prev => ({ ...prev, 2: !prev[2] }))}
-              expandDisabled={!sectionComplete[1] || !!bookingLock}
+              expandDisabled={!sectionComplete[1]}
             >
               <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3">
                 {locations.map((l) => (
@@ -1251,7 +1142,6 @@ export default function OnePageBookingCheckout() {
                     onChange={() => setLocationId(l.id)}
                     title={l.location_name}
                     caption={`${l.address1}, ${l.postcode}`}
-                    disabled={!!bookingLock}
                   />
                 ))}
               </div>
@@ -1267,73 +1157,100 @@ export default function OnePageBookingCheckout() {
               onToggle={() => setExpandedSections(prev => ({ ...prev, 3: !prev[3] }))}
               expandDisabled={!sectionComplete[2]}
             >
-              <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
-                {/* Calendar */}
-                <div className="md:col-span-2 rounded-xl border border-slate-200 bg-white p-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <p className="font-medium text-slate-900">Availability (next 6 weeks)</p>
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="inline-block h-3 w-3 min-w-3 rounded-sm bg-emerald-500" /> <span>Available</span>
-                      <span className="inline-block h-3 w-3 min-w-3 rounded-sm bg-rose-500" /> <span>Fully booked</span>
-                    </div>
+              {/* Calendar */}
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="font-medium text-slate-900">Availability (next 3 months)</p>
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="inline-block h-3 w-3 min-w-3 rounded-sm bg-emerald-500" /> <span>Available</span>
+                    <span className="inline-block h-3 w-3 min-w-3 rounded-sm bg-rose-500" /> <span>Fully booked</span>
                   </div>
+                </div>
 
-                  {courseEvents.length === 0 ? (
-                    <div className="text-center py-8 text-slate-500">
-                      <p className="mb-2">No availability found for this course and location.</p>
-                      <p className="text-sm">Please try selecting a different course or location.</p>
+                {/* Navigation buttons */}
+                <div className="mb-3 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setCalendarMonthOffset(Math.max(0, calendarMonthOffset - 1))}
+                    disabled={calendarMonthOffset === 0}
+                    className="px-3 py-1.5 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    ← {(() => {
+                      const prevMonth = new Date();
+                      prevMonth.setMonth(prevMonth.getMonth() + calendarMonthOffset - 1);
+                      return prevMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+                    })()}
+                  </button>
+                  <span className="text-sm font-semibold text-slate-900">
+                    {(() => {
+                      const currentMonth = new Date();
+                      currentMonth.setMonth(currentMonth.getMonth() + calendarMonthOffset);
+                      return currentMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+                    })()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCalendarMonthOffset(calendarMonthOffset + 1)}
+                    disabled={calendarMonthOffset >= 2}
+                    className="px-3 py-1.5 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {(() => {
+                      const nextMonth = new Date();
+                      nextMonth.setMonth(nextMonth.getMonth() + calendarMonthOffset + 1);
+                      return nextMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+                    })()} →
+                  </button>
+                </div>
+
+                {courseEvents.length === 0 ? (
+                  <div className="text-center py-8 text-slate-500">
+                    <p className="mb-2">No availability found for this course and location.</p>
+                    <p className="text-sm">Please try selecting a different course or location.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-slate-500">
+                      {"Mon Tue Wed Thu Fri Sat Sun".split(" ").map((d) => (
+                        <div key={d} className="py-1">{d}</div>
+                      ))}
                     </div>
-                  ) : (
-                    <>
-                      <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-slate-500">
-                        {"Mon Tue Wed Thu Fri Sat Sun".split(" ").map((d) => (
-                          <div key={d} className="py-1">{d}</div>
-                        ))}
-                      </div>
 
-                      <div className="mt-1 grid grid-cols-7 gap-1">
-                        {weeks.flat().map((cell, idx) => {
-                          const isSelected = selectedDate && new Date(selectedDate).toDateString() === cell.date.toDateString();
-                          const isToday = new Date().toDateString() === cell.date.toDateString();
+                    <div className="mt-1 grid grid-cols-7 gap-1">
+                      {weeks.flat().map((cell, idx) => {
+                        const isSelected = selectedDate && new Date(selectedDate).toDateString() === cell.date.toDateString();
+                        const isToday = new Date().toDateString() === cell.date.toDateString();
+                        const currentMonth = new Date();
+                        currentMonth.setMonth(currentMonth.getMonth() + calendarMonthOffset);
+                        const inCurrentMonth = cell.date.getMonth() === currentMonth.getMonth() && cell.date.getFullYear() === currentMonth.getFullYear();
 
-                          return (
-                            <button
-                              key={idx}
-                              type="button"
-                              disabled={!cell.available}
-                              onClick={() => {
-                                setSelectedDate(cell.date);
-                                setSelectedCourseEventId(cell.courseEventId || null);
-                              }}
-                              title={cell.available ? `${cell.spots} spots left` : "Not available"}
-                              className={`aspect-square rounded-lg border text-sm tabular-nums transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${cell.available
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            disabled={!cell.available || !inCurrentMonth}
+                            onClick={() => {
+                              setSelectedDate(cell.date);
+                              setSelectedCourseEventId(cell.courseEventId || null);
+                            }}
+                            title={cell.available && inCurrentMonth ? `${cell.spots} spots left` : "Not available"}
+                            className={`aspect-square rounded-lg border text-sm tabular-nums transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
+                              !inCurrentMonth
+                                ? "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed"
+                                : cell.available
                                 ? isSelected
                                   ? "border-emerald-600 bg-emerald-600 text-white font-semibold"
                                   : "border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600"
                                 : "border-red-300 bg-red-50 text-red-500 cursor-not-allowed"
-                                } ${isToday ? "ring-2 ring-teal-400" : ""}`}
-                            >
-                              <div>{cell.date.getDate()}</div>
-                              <div className="text-[10px]">{cell.available ? `${cell.spots}×` : "—"}</div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Attendees */}
-                <div className="rounded-xl border border-slate-200 bg-white p-4">
-                  <p className="mb-2 font-medium text-slate-900">Attendees</p>
-                  <p className="mb-3 text-xs text-slate-500">Visit anytime during the scheduled time window on your chosen day.</p>
-                  <div className="flex items-center gap-3">
-                    <button type="button" className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50" onClick={() => setAttendees((n) => Math.max(1, n - 1))}>−</button>
-                    <input type="number" min={1} className="w-16 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm" value={attendees} onChange={(e) => setAttendees(Math.max(1, parseInt(e.target.value || "1", 10)))} />
-                    <button type="button" className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50" onClick={() => setAttendees((n) => n + 1)}>+</button>
-                  </div>
-                  <p className="mt-2 text-xs text-slate-500">{selectedDate ? "Spots available: " + (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? "—") : "Select a date to see availability."}</p>
-                </div>
+                              } ${isToday && inCurrentMonth ? "ring-2 ring-teal-400" : ""}`}
+                          >
+                            <div>{cell.date.getDate()}</div>
+                            <div className="text-[10px]">{inCurrentMonth && cell.available ? `${cell.spots}×` : inCurrentMonth ? "—" : ""}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Selected summary */}
@@ -1343,9 +1260,8 @@ export default function OnePageBookingCheckout() {
                     <span><strong>Date:</strong> {selectedDate.toLocaleDateString()}</span>
                     <span><strong>Time window:</strong> {(() => {
                       const selectedEvent = courseEvents.find(event => {
-                        const eventDate = new Date(event.date).toISOString().split('T')[0];
-                        const selectedDateStr = selectedDate.toISOString().split('T')[0];
-                        return eventDate === selectedDateStr;
+                        const eventDate = new Date(event.date);
+                        return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
                       });
                       return selectedEvent ? `${selectedEvent.event_start_time}–${selectedEvent.event_end_time}` : '07:00–15:00';
                     })()}</span>
@@ -1358,18 +1274,68 @@ export default function OnePageBookingCheckout() {
               </div>
             </Section>
 
-            {/* Step 4: Account / Login (optional) */}
+            {/* Step 4: Your Details (All Attendees) */}
             <Section
               index={4}
-              title="Account (optional)"
-              subtitle={isAuthenticated ? "You're logged in and ready to book." : "Booking as a guest is allowed. Create an account only if you want."}
+              title="Your details"
+              subtitle="Fill in details for all attendees. We'll email booking confirmation and joining instructions."
               complete={sectionComplete[4]}
               open={expandedSections[4]}
               onToggle={() => setExpandedSections(prev => ({ ...prev, 4: !prev[4] }))}
               expandDisabled={!sectionComplete[3]}
             >
-              {isAuthenticated ? (
-                <div className="rounded-lg bg-green-50 p-4">
+              {!isAuthenticated && (
+                <div className="mb-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowLogin((v) => !v)}
+                    className="text-sm font-medium text-blue-700 underline-offset-2 hover:underline"
+                  >
+                    {showLogin ? "Hide" : "Already have an account?"} Sign in
+                  </button>
+
+                  {showLogin && (
+                    <div className="grid gap-4 sm:grid-cols-2 mt-4 p-4 bg-white rounded-lg border border-slate-200">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          Email <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="email"
+                          className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                          value={loginDetails.email}
+                          onChange={(e) => setLoginDetails(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder="you@example.com"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          Password <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="password"
+                          className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                          value={loginDetails.password}
+                          onChange={(e) => setLoginDetails(prev => ({ ...prev, password: e.target.value }))}
+                          placeholder="••••••••"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <button
+                          type="button"
+                          onClick={handleLogin}
+                          className="w-full px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition"
+                        >
+                          Sign in
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {isAuthenticated && (
+                <div className="mb-6 rounded-lg bg-green-50 p-4">
                   <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center">
                       <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -1382,297 +1348,64 @@ export default function OnePageBookingCheckout() {
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <input id="createAccount" type="checkbox" className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" checked={createAccount} onChange={(e) => setCreateAccount(e.target.checked)} />
-                    <label htmlFor="createAccount" className="text-sm text-slate-700">Create an account for faster checkout next time</label>
-                  </div>
-
-                  {createAccount && (
-                    <div className="space-y-4">
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <Field label="First name" required>
-                          <input
-                            type="text"
-                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                            value={accountDetails.firstName}
-                            onChange={(e) => setAccountDetails(prev => ({ ...prev, firstName: e.target.value }))}
-                            placeholder="2-50 characters"
-                          />
-                        </Field>
-                        <Field label="Surname" required>
-                          <input
-                            type="text"
-                            className="mt-1 w-full rounded-sm  border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                            value={accountDetails.surname}
-                            onChange={(e) => setAccountDetails(prev => ({ ...prev, surname: e.target.value }))}
-                            placeholder="2-50 characters"
-                          />
-                        </Field>
-                        <Field label="Email" required>
-                          <input
-                            type="email"
-                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                            value={accountDetails.email}
-                            onChange={(e) => setAccountDetails(prev => ({ ...prev, email: e.target.value }))}
-                            placeholder="you@example.com"
-                          />
-                        </Field>
-                        <Field label="Confirm Email" required>
-                          <input
-                            type="email"
-                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                            value={accountDetails.confirmEmail}
-                            onChange={(e) => setAccountDetails(prev => ({ ...prev, confirmEmail: e.target.value }))}
-                            placeholder="Confirm email"
-                          />
-                        </Field>
-                        <Field label="Password" required>
-                          <input
-                            type="password"
-                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                            value={accountDetails.password}
-                            onChange={(e) => setAccountDetails(prev => ({ ...prev, password: e.target.value }))}
-                            placeholder="Min 8 chars, uppercase, lowercase, number"
-                          />
-                        </Field>
-                        <Field label="Verify Password" required>
-                          <input
-                            type="password"
-                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                            value={accountDetails.verifyPassword}
-                            onChange={(e) => setAccountDetails(prev => ({ ...prev, verifyPassword: e.target.value }))}
-                            placeholder="Confirm password"
-                          />
-                        </Field>
-                        <Field label="Contact Number" required>
-                          <input
-                            type="tel"
-                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                            value={accountDetails.contactNumber1}
-                            onChange={(e) => setAccountDetails(prev => ({ ...prev, contactNumber1: e.target.value }))}
-                            placeholder="UK mobile number"
-                          />
-                        </Field>
-                        <Field label="Contact Number 2">
-                          <input
-                            type="tel"
-                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                            value={accountDetails.contactNumber2}
-                            onChange={(e) => setAccountDetails(prev => ({ ...prev, contactNumber2: e.target.value }))}
-                            placeholder="Optional"
-                          />
-                        </Field>
-                      </div>
-
-                      <div className="space-y-4">
-                        <Field label="Address Line 1" required>
-                          <input
-                            type="text"
-                            className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                            value={accountDetails.addressLine1}
-                            onChange={(e) => setAccountDetails(prev => ({ ...prev, addressLine1: e.target.value }))}
-                            placeholder="1-255 characters"
-                          />
-                        </Field>
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          <Field label="Address Line 2">
-                            <input
-                              type="text"
-                              className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                              value={accountDetails.addressLine2}
-                              onChange={(e) => setAccountDetails(prev => ({ ...prev, addressLine2: e.target.value }))}
-                              placeholder="Optional"
-                            />
-                          </Field>
-                          <Field label="Address Line 3">
-                            <input
-                              type="text"
-                              className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                              value={accountDetails.addressLine3}
-                              onChange={(e) => setAccountDetails(prev => ({ ...prev, addressLine3: e.target.value }))}
-                              placeholder="Optional"
-                            />
-                          </Field>
-                        </div>
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          <Field label="Postcode" required>
-                            <input
-                              type="text"
-                              className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                              value={accountDetails.postcode}
-                              onChange={(e) => setAccountDetails(prev => ({ ...prev, postcode: e.target.value }))}
-                              placeholder="UK postcode"
-                            />
-                          </Field>
-                          <Field label="Contact Number 3">
-                            <input
-                              type="tel"
-                              className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                              value={accountDetails.contactNumber3}
-                              onChange={(e) => setAccountDetails(prev => ({ ...prev, contactNumber3: e.target.value }))}
-                              placeholder="Optional"
-                            />
-                          </Field>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <button
-                          type="button"
-                          onClick={handleRegister}
-                          disabled={isRegistering}
-                          className={`w-full cursor-pointer px-4 py-2.5 text-base radius20-left radius20-right-bottom text-center text-white transition ${isRegistering ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
-                        >
-                          {isRegistering ? 'Creating…' : 'Create Account'}
-                        </button>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <input
-                          id="copyToSection5"
-                          type="checkbox"
-                          className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                          checked={copyToSection5}
-                          onChange={(e) => setCopyToSection5(e.target.checked)}
-                        />
-                        <label htmlFor="copyToSection5" className="text-sm text-slate-700">
-                          Copy these details to the booking form below
-                        </label>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="text-sm">
-                    <button type="button" onClick={() => setShowLogin((v) => !v)} className="font-medium text-blue-700 underline-offset-2 hover:underline">{showLogin ? "Hide" : "Have an account?"} Sign in</button>
-                  </div>
-
-                  {showLogin && (
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <Field label="Email" required>
-                        <input
-                          type="email"
-                          className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                          value={loginDetails.email}
-                          onChange={(e) => setLoginDetails(prev => ({ ...prev, email: e.target.value }))}
-                          placeholder="you@example.com"
-                        />
-                      </Field>
-                      <Field label="Password" required>
-                        <input
-                          type="password"
-                          className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                          value={loginDetails.password}
-                          onChange={(e) => setLoginDetails(prev => ({ ...prev, password: e.target.value }))}
-                          placeholder="••••••••"
-                        />
-                      </Field>
-                      <div className="sm:col-span-2">
-                        <button
-                          type="button"
-                          onClick={handleLogin}
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-                        >
-                          Sign in
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
               )}
+
+              <div className="space-y-4">
+                {attendeeDetails.slice(0, attendees).map((attendee, index) => {
+                  // Check if this attendee's email is used by another attendee
+                  const duplicateEmailIndex = attendee.email.trim()
+                    ? attendeeDetails.slice(0, attendees).findIndex((a, i) =>
+                        i !== index && a.email.trim().toLowerCase() === attendee.email.trim().toLowerCase()
+                      )
+                    : -1;
+
+                  // Check if this attendee's license number is used by another attendee
+                  const duplicateLicenseIndex = attendee.licenseNumber.trim()
+                    ? attendeeDetails.slice(0, attendees).findIndex((a, i) =>
+                        i !== index && a.licenseNumber.trim().toUpperCase() === attendee.licenseNumber.trim().toUpperCase()
+                      )
+                    : -1;
+
+                  return (
+                    <AttendeeForm
+                      key={index}
+                      index={index}
+                      attendee={attendee}
+                      onChange={(field, value) => {
+                        setAttendeeDetails(prev => {
+                          const newDetails = [...prev];
+                          newDetails[index] = { ...newDetails[index], [field]: value };
+                          return newDetails;
+                        });
+                      }}
+                      availableVehicleTypes={availableVehicleTypes}
+                      licenseTypes={licenseTypes}
+                      totalAttendees={attendees}
+                      isExpanded={expandedAttendeeIndex === index}
+                      onToggle={() => {
+                        setExpandedAttendeeIndex(index);
+                      }}
+                      isComplete={isAttendeeComplete(attendee)}
+                      photocardConfirmed={photocardConfirmed[index] || false}
+                      onPhotocardChange={(confirmed) => handlePhotocardChange(index, confirmed)}
+                      licenseValidated={licenseValidated[index] || false}
+                      duplicateEmailIndex={duplicateEmailIndex >= 0 ? duplicateEmailIndex : null}
+                      duplicateLicenseIndex={duplicateLicenseIndex >= 0 ? duplicateLicenseIndex : null}
+                    />
+                  );
+                })}
+              </div>
             </Section>
 
-            {/* Step 5: Personal Details */}
+            {/* Step 5: Review & Pay */}
             <Section
               index={5}
-              title="Your details"
-              subtitle="We'll email your booking confirmation and joining instructions."
+              title="Review & proceed to payment"
+              subtitle="You'll be redirected to the secure payment page."
               complete={sectionComplete[5]}
               open={expandedSections[5]}
               onToggle={() => setExpandedSections(prev => ({ ...prev, 5: !prev[5] }))}
-              expandDisabled={!allPreviousSectionsComplete(5)}
-            >
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="First name" required>
-                  <input type="text" className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.firstName} onChange={(e) => setDetails((d) => ({ ...d, firstName: e.target.value }))} />
-                </Field>
-                <Field label="Last name" required>
-                  <input type="text" className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.lastName} onChange={(e) => setDetails((d) => ({ ...d, lastName: e.target.value }))} />
-                </Field>
-                <Field label="Email" required>
-                  <input type="email" className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.email} onChange={(e) => setDetails((d) => ({ ...d, email: e.target.value }))} placeholder="you@example.com" />
-                </Field>
-                <Field label="Phone">
-                  <input type="tel" className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.phone} onChange={(e) => setDetails((d) => ({ ...d, phone: e.target.value }))} placeholder="Optional" />
-                </Field>
-                <Field label="Type Of Vehicle Required" required>
-                  <select
-                    className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                    value={details.vehicleType}
-                    onChange={(e) => setDetails((d) => ({ ...d, vehicleType: e.target.value }))}
-                  >
-                    <option value="">Select vehicle type</option>
-                    {Object.entries(availableVehicleTypes).map(([key, description]) => (
-                      <option key={key} value={key}>{description}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Driving Licence Type" required>
-                  <select
-                    className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                    value={details.licenseType}
-                    onChange={(e) => setDetails((d) => ({ ...d, licenseType: e.target.value }))}
-                  >
-                    <option value="">Select license type</option>
-                    {licenseTypes.map((license) => (
-                      <option key={license.id} value={license.id}>{license.licence_type}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Driving Licence Number" required hint="Must be 16 characters long">
-                  <input
-                    type="text"
-                    className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                    value={details.licenseNumber}
-                    onChange={(e) => setDetails((d) => ({ ...d, licenseNumber: e.target.value }))}
-                    placeholder="Must be 16 characters long"
-                    maxLength={16}
-                  />
-                </Field>
-                <Field label="Theory Number (If Applicable)">
-                  <input
-                    type="text"
-                    className="mt-1 w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                    value={details.theoryNumber}
-                    onChange={(e) => setDetails((d) => ({ ...d, theoryNumber: e.target.value }))}
-                    placeholder="Optional"
-                  />
-                </Field>
-                <div className="sm:col-span-2">
-                  <Field label="Order notes">
-                    <textarea rows={3} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30" value={details.notes} onChange={(e) => setDetails((d) => ({ ...d, notes: e.target.value }))} placeholder="Anything we should know?" />
-                  </Field>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-start gap-3">
-                <input id="confirmPhotocard" type="checkbox" className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" checked={confirmPhotocard} onChange={(e) => setConfirmPhotocard(e.target.checked)} />
-                <label htmlFor="confirmPhotocard" className="text-sm text-slate-700">
-                  Please tick to confirm that the person attending the course above will be able to present their photocard driving licence on the day of the course.
-                </label>
-              </div>
-            </Section>
-
-            {/* Step 6: Review & Pay */}
-            <Section
-              index={6}
-              title="Review & proceed to payment"
-              subtitle="You'll be redirected to the secure payment page."
-              complete={sectionComplete[6]}
-              open={expandedSections[6]}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 6: !prev[6] }))}
-              expandDisabled={!sectionComplete[5]}
+              expandDisabled={!sectionComplete[4]}
             >
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -1683,13 +1416,12 @@ export default function OnePageBookingCheckout() {
                     <li><span className="text-slate-500">Date:</span> {selectedDate ? selectedDate.toLocaleDateString() : "—"}</li>
                     <li><span className="text-slate-500">Time window:</span> {selectedDate ? (() => {
                       const selectedEvent = courseEvents.find(event => {
-                        const eventDate = new Date(event.date).toISOString().split('T')[0];
-                        const selectedDateStr = selectedDate.toISOString().split('T')[0];
-                        return eventDate === selectedDateStr;
+                        const eventDate = new Date(event.date);
+                        return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
                       });
                       return selectedEvent ? `${selectedEvent.event_start_time}–${selectedEvent.event_end_time}` : '07:00–15:00';
                     })() : "—"}</li>
-                    <li><span className="text-slate-500">Attendee:</span> {details.firstName && details.lastName ? `${details.firstName} ${details.lastName}` : "—"}</li>
+                    <li><span className="text-slate-500">Attendees:</span> {attendees} attendee(s)</li>
                   </ul>
                 </div>
 
@@ -1699,7 +1431,53 @@ export default function OnePageBookingCheckout() {
                     <div className="flex items-center justify-between"><span className="text-slate-600">Attendees</span><span className="font-medium text-slate-900">{attendees}</span></div>
                     <div className="flex items-center justify-between"><span className="text-slate-600">Course fee</span><span className="font-medium text-slate-900"><Money value={subtotal} /></span></div>
                     <div className="flex items-center justify-between"><span className="text-slate-600">VAT (20%)</span><span className="font-medium text-slate-900"><Money value={vat} /></span></div>
+                    {promoData?.valid && (
+                      <div className="flex items-center justify-between text-green-600">
+                        <span>Discount ({promoData.discount_type})</span>
+                        <span className="font-medium">-<Money value={discount} /></span>
+                      </div>
+                    )}
                     <div className="mt-2 border-t pt-2 text-base font-semibold text-slate-900 flex items-center justify-between"><span>Total</span><span><Money value={total} /></span></div>
+                  </div>
+
+                  {/* Promo Code Section */}
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-xs font-medium text-slate-700 mb-2">Have a promo code?</p>
+                    {!promoData?.valid ? (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={promoCode}
+                          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                          placeholder="Enter code"
+                          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleApplyPromo}
+                          disabled={isValidatingPromo || !promoCode.trim()}
+                          className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isValidatingPromo ? 'Checking...' : 'Apply'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <svg className="h-4 w-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-sm font-medium text-green-700">{promoCode}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemovePromo}
+                          className="text-xs text-red-600 hover:text-red-700 font-medium"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1709,29 +1487,10 @@ export default function OnePageBookingCheckout() {
                 <label htmlFor="terms" className="text-sm text-slate-700">I agree to the <a className="text-teal-700 underline-offset-2 hover:underline" href="#">Terms & Conditions</a> and <a className="text-teal-700 underline-offset-2 hover:underline" href="#">Privacy Policy</a>.</label>
               </div>
 
-              <div className="mt-4 space-y-3">
-                {!bookingLock ? (
+              {!bookingCreated ? (
+                <div className="mt-4 space-y-3">
                   <div className="grid gap-3 sm:flex sm:items-center sm:justify-between">
-                    <p className="text-sm text-slate-600">Click "Book Now" to lock your spaces, then proceed to payment.</p>
-                    <button
-                      type="button"
-                      onClick={handleBookNow}
-                      disabled={isLocking}
-                      aria-busy={isLocking}
-                      className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-orange-500/40 ${isLocking ? 'bg-orange-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700'}`}
-                    >
-                      {isLocking ? 'Locking…' : 'Book Now (Lock Spaces)'}
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="grid gap-3 sm:flex sm:items-center sm:justify-between">
-                    <div className="text-sm">
-                      <p className="text-slate-600">Spaces locked! Complete payment within:</p>
-                      <p className="font-mono text-lg font-bold text-orange-600">{formatTime(timeRemaining)}</p>
-                    </div>
+                    <p className="text-sm text-slate-600">Review your booking details and proceed to payment.</p>
                     <button
                       type="button"
                       onClick={handlePay}
@@ -1739,15 +1498,32 @@ export default function OnePageBookingCheckout() {
                       aria-busy={isPaying}
                       className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${isPaying ? 'bg-teal-400 cursor-not-allowed' : 'bg-red-600 hover:bg-teal-700'}`}
                     >
-                      {isPaying ? 'Processing…' : 'Proceed to payment'}
+                      {isPaying ? 'Processing…' : 'Create Booking'}
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
                         <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414-1.414L13.586 10 10.293 6.707a1 1 0 010-1.414z" clipRule="evenodd" />
                         <path fillRule="evenodd" d="M3 10a1 1 0 011-1h11a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
                       </svg>
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="mt-6">
+                  {clientSecret && (
+                    <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
+                      <StripePaymentForm
+                        onSuccess={() => {
+                          window.location.href = `/booking/success?ref=${bookingRef}`;
+                        }}
+                        onCancel={() => {
+                          window.location.href = `/bookings/payment-cancel?ref=${bookingRef}`;
+                        }}
+                        bookingRef={bookingRef}
+                        amount={Math.round(total * 100)}
+                      />
+                    </Elements>
+                  )}
+                </div>
+              )}
             </Section>
           </div>
 
@@ -1765,9 +1541,8 @@ export default function OnePageBookingCheckout() {
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Date</dt><dd className="text-right text-slate-900">{selectedDate ? selectedDate.toLocaleDateString() : "—"}</dd></div>
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Time window</dt><dd className="text-right text-slate-900">{selectedDate ? (() => {
                     const selectedEvent = courseEvents.find(event => {
-                      const eventDate = new Date(event.date).toISOString().split('T')[0];
-                      const selectedDateStr = selectedDate.toISOString().split('T')[0];
-                      return eventDate === selectedDateStr;
+                      const eventDate = new Date(event.date);
+                      return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
                     });
                     return selectedEvent ? `${selectedEvent.event_start_time}–${selectedEvent.event_end_time}` : '07:00–15:00';
                   })() : "—"}</dd></div>
@@ -1778,6 +1553,24 @@ export default function OnePageBookingCheckout() {
                   <div className="flex items-center justify-between"><span className="text-slate-600">VAT</span><span className="font-medium text-slate-900"><Money value={vat} /></span></div>
                   <div className="mt-2 flex items-center justify-between text-base font-semibold text-slate-900"><span>Total</span><span><Money value={total} /></span></div>
                 </div>
+              </div>
+
+              {/* Attendees */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h4 className="mb-2 text-sm font-semibold text-slate-900">Attendees</h4>
+                <p className="mb-3 text-xs text-slate-500">Visit anytime during the scheduled time window on your chosen day.</p>
+                <div className="flex items-center justify-center gap-3">
+                  <button type="button" disabled={attendees <= 1} className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => setAttendees((n) => Math.max(1, n - 1))}>−</button>
+                  <input type="number" min={1} max={selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1} className="w-16 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm" value={attendees} onChange={(e) => {
+                    const maxSpots = selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1;
+                    setAttendees(Math.max(1, Math.min(maxSpots, parseInt(e.target.value || "1", 10))));
+                  }} />
+                  <button type="button" disabled={attendees >= (selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1)} className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => {
+                    const maxSpots = selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1;
+                    setAttendees((n) => Math.min(maxSpots, n + 1));
+                  }}>+</button>
+                </div>
+                <p className="mt-2 text-xs text-slate-500 text-center">{selectedDate ? "Spots available: " + (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? "—") : "Select a date to see availability."}</p>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -1806,8 +1599,8 @@ export default function OnePageBookingCheckout() {
               {Object.entries(paymentFormFields).map(([key, value]) => (
                 <input key={key} type="hidden" name={key} value={value} />
               ))}
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition"
               >
                 Continue to Payment

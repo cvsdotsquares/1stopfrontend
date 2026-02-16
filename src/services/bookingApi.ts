@@ -117,6 +117,7 @@ export interface BookingResponse {
   vat: number;
   total_amount: number;
   payment_token: string;
+  client_secret?: string;
   payment_data?: {
     url: string;
     fields: Record<string, string>;
@@ -260,6 +261,13 @@ class BookingApiService {
 
   async createBookingWithAttendees(bookingData: BookingRequest): Promise<BookingResponse> {
     return this.fetchApi<BookingResponse>('/booking/create-with-attendees', {
+      method: 'POST',
+      body: JSON.stringify(bookingData),
+    });
+  }
+
+  async createBookingWithAttendeesNew(bookingData: any): Promise<BookingResponse> {
+    return this.fetchApi<BookingResponse>('/booking-flow/create-booking-with-attendees', {
       method: 'POST',
       body: JSON.stringify(bookingData),
     });

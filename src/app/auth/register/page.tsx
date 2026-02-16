@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { authApi } from '@/services/api';
+import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +13,14 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 
 export default function RegisterPage() {
+  const routerNav = useRouter();
+  const { isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      routerNav.push('/dashboard');
+    }
+  }, [isAuthenticated, routerNav]);
   const [formData, setFormData] = useState({
     firstName: '',
     surname: '',
@@ -42,7 +51,7 @@ export default function RegisterPage() {
     }),
     onSuccess: () => {
       toast.success('Registration successful! Please login.');
-      router.push('/auth/login');
+      routerNav.push('/auth/login');
     },
     onError: (error: any) => {
       if (error.response?.data?.errors) {
