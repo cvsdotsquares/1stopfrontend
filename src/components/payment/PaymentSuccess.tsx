@@ -7,14 +7,30 @@ export default function PaymentSuccess() {
   const searchParams = useSearchParams();
   const [bookingRef, setBookingRef] = useState('');
   const [transactionId, setTransactionId] = useState('');
+  const [amountPaid, setAmountPaid] = useState('');
+  const [paymentStatus, setPaymentStatus] = useState('');
 
   useEffect(() => {
     // Get payment details from URL params
-    const cartId = searchParams.get('cartId') || '';
-    const transId = searchParams.get('transId') || '';
-    
-    setBookingRef(cartId);
-    setTransactionId(transId);
+    const ref = searchParams.get('ref') || '';
+    const paymentIntent = searchParams.get('payment_intent') || '';
+    const redirectStatus = searchParams.get('redirect_status') || '';
+
+    setBookingRef(ref);
+    setTransactionId(paymentIntent);
+    setPaymentStatus(redirectStatus);
+
+    // Fetch booking details to get amount
+    if (ref) {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/bookings/${ref}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.data) {
+            setAmountPaid(data.data.total_amount || data.data.payment_due || '');
+          }
+        })
+        .catch(err => console.error('Failed to fetch booking details:', err));
+    }
 
     // Clear any stored booking data
     localStorage.removeItem('booking_lock');
@@ -47,10 +63,22 @@ export default function PaymentSuccess() {
                   <span className="text-slate-500">Booking Reference:</span>
                   <span className="font-medium text-slate-900">{bookingRef}</span>
                 </div>
+                {amountPaid && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Amount Paid:</span>
+                    <span className="font-medium text-slate-900">£{amountPaid}</span>
+                  </div>
+                )}
+                {paymentStatus && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Payment Status:</span>
+                    <span className="font-medium text-green-600 capitalize">{paymentStatus}</span>
+                  </div>
+                )}
                 {transactionId && (
                   <div className="flex justify-between">
                     <span className="text-slate-500">Transaction ID:</span>
-                    <span className="font-medium text-slate-900">{transactionId}</span>
+                    <span className="font-medium text-slate-900 text-xs">{transactionId}</span>
                   </div>
                 )}
               </div>
@@ -69,14 +97,14 @@ export default function PaymentSuccess() {
 
           {/* Actions */}
           <div className="space-y-3">
-            <Link 
-              href="/bookings" 
+            <Link
+              href="/bookings"
               className="w-full inline-flex items-center justify-center px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition"
             >
               View My Bookings
             </Link>
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="w-full inline-flex items-center justify-center px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition"
             >
               Back to Home
