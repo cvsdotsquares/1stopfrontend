@@ -16,15 +16,28 @@ export default function PaymentSuccess() {
     const paymentIntent = searchParams.get('payment_intent') || '';
     const redirectStatus = searchParams.get('redirect_status') || '';
 
-    setBookingRef(ref);
     setTransactionId(paymentIntent);
     setPaymentStatus(redirectStatus);
 
-    // Fetch booking details to get amount
-    if (ref) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/bookings/${ref}`)
+    // If we have payment_intent but no ref, fetch booking details from payment intent
+    if (paymentIntent && !ref) {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/booking-flow/payment-details/${paymentIntent}`)
         .then(res => res.json())
         .then(data => {
+          console.log('Payment details:', data);
+          if (data.success && data.data) {
+            setBookingRef(data.data.booking_ref || data.data.temp_ref || '');
+            setAmountPaid(data.data.total_amount || data.data.payment_due || '');
+          }
+        })
+        .catch(err => console.error('Failed to fetch payment details:', err));
+    } else if (ref) {
+      setBookingRef(ref);
+      // Fetch booking details to get amount
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/booking-flow/booking-details/${ref}`)
+        .then(res => res.json())
+        .then(data => {
+          console.log('Booking details:', data);
           if (data.success && data.data) {
             setAmountPaid(data.data.total_amount || data.data.payment_due || '');
           }

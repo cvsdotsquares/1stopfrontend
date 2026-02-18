@@ -1084,12 +1084,12 @@ export default function OnePageBookingCheckout() {
 
       if (response.client_secret) {
         setClientSecret(response.client_secret);
-        setBookingRef(response.temp_ref);
+        setBookingRef(response.booking_ref);
         setBookingCreated(true);
-        toast.success(`Booking created! Reference: ${response.temp_ref}`);
+        toast.success(`Booking created! Reference: ${response.booking_ref}`);
       } else {
-        toast.success(`Booking created! Reference: ${response.temp_ref}. (No payment required)`);
-        window.location.href = `/booking/success?ref=${response.temp_ref}`;
+        toast.success(`Booking created! Reference: ${response.booking_ref}. (No payment required)`);
+        window.location.href = `/booking/success?ref=${response.booking_ref}`;
       }
     } catch (error: any) {
       const errMsg = error instanceof Error ? error.message : (error?.response?.data?.message ?? 'Unknown error');
