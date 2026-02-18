@@ -334,18 +334,23 @@ export default function AttendeeForm({
             className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
               duplicateLicenseIndex !== null
                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                : licenseValidated && attendee.licenseNumber.length === 16
-                ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
+                : attendee.licenseNumber.length === 16
+                ? /^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber)
+                  ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
+                  : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
                 : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
             }`}
             value={attendee.licenseNumber}
-            onChange={(e) => onChange('licenseNumber', e.target.value)}
+            onChange={(e) => onChange('licenseNumber', e.target.value.toUpperCase())}
             placeholder="Must be 16 characters long"
             maxLength={16}
           />
           <p className="mt-1 text-xs text-slate-500">Must be 16 characters long</p>
           {duplicateLicenseIndex !== null && (
             <p className="mt-1 text-xs text-red-500">This driving licence number is already used by Attendee {duplicateLicenseIndex + 1}</p>
+          )}
+          {attendee.licenseNumber.length === 16 && !/^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber) && (
+            <p className="mt-1 text-xs text-red-500">Invalid Licence Number.</p>
           )}
         </div>
 

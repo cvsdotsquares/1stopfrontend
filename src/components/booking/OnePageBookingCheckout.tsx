@@ -365,6 +365,7 @@ export default function OnePageBookingCheckout() {
   // Check if an attendee form is complete (all required fields filled)
   const isAttendeeComplete = (attendee: typeof attendeeDetails[0]) => {
     const ukMobileRegex = /^(?:(?:\+44\s?7|07)\d{9})$/;
+    const licenseRegex = /^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/;
 
     const basicFieldsComplete =
       attendee.firstName.trim() !== '' &&
@@ -375,7 +376,8 @@ export default function OnePageBookingCheckout() {
       attendee.email === attendee.confirmEmail &&
       attendee.phone.trim() !== '' &&
       ukMobileRegex.test(attendee.phone.replace(/\s/g, '')) &&
-      attendee.licenseNumber.trim().length === 16;
+      attendee.licenseNumber.trim().length === 16 &&
+      licenseRegex.test(attendee.licenseNumber);
 
     if (!basicFieldsComplete) return false;
 
@@ -1007,7 +1009,12 @@ export default function OnePageBookingCheckout() {
       if (!attendee.lastName) missing.push(`Attendee ${idx + 1}: Last name`);
       if (!attendee.dateOfBirth) missing.push(`Attendee ${idx + 1}: Date of Birth`);
       if (!attendee.email) missing.push(`Attendee ${idx + 1}: Email`);
-      if (!attendee.licenseNumber || attendee.licenseNumber.length !== 16) missing.push(`Attendee ${idx + 1}: Driving licence number (16 characters)`);
+      if (!attendee.licenseNumber || attendee.licenseNumber.length !== 16) {
+        missing.push(`Attendee ${idx + 1}: Driving licence number (16 characters)`);
+      } else if (!/^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber)) {
+        toast.error(`Attendee ${idx + 1}: Invalid Licence Number.`);
+        return;
+      }
 
       // Validate age on course date
       if (attendee.dateOfBirth && selectedDate) {
