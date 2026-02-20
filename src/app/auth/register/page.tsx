@@ -133,7 +133,7 @@ export default function RegisterPage() {
     
     // Password validation
     if (!formData.password.trim()) {
-      newErrors.password = 'Password is required';
+      newErrors.password = 'Password cannot be empty or contain only spaces';
     } else {
       if (formData.password.length < 8) {
         newErrors.password = 'Password must be at least 8 characters long';
@@ -142,7 +142,7 @@ export default function RegisterPage() {
       }
     }
     
-    if (!formData.verifyPassword.trim()) newErrors.verifyPassword = 'Password verification is required';
+    if (!formData.verifyPassword.trim()) newErrors.verifyPassword = 'Password cannot be empty or contain only spaces';
     
     if (formData.email && formData.confirmEmail && formData.email !== formData.confirmEmail) {
       newErrors.confirmEmail = 'Emails do not match';

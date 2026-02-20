@@ -18,12 +18,14 @@ type LoginStep = 'email' | 'password' | 'otp' | 'set-password';
 export default function LoginPage() {
   const router = useRouter();
   const { isAuthenticated, login } = useAuthStore();
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    // Only redirect if authenticated and not in the process of logging in
+    if (isAuthenticated && !isLoggingIn) {
       router.push('/dashboard');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, isLoggingIn]);
 
   const [step, setStep] = useState<LoginStep>('email');
   const [email, setEmail] = useState('');
@@ -50,7 +52,7 @@ export default function LoginPage() {
         setStep('password');
       }
     },
-    onError: () => toast.error('Failed to check email'),
+    onError: () => toast.error('Email not found'),
   });
 
   const sendOtpMutation = useMutation({
@@ -83,9 +85,12 @@ export default function LoginPage() {
   const loginMutation = useMutation({
     mutationFn: () => authApi.login(email, password),
     onSuccess: (data) => {
+      setIsLoggingIn(true);
       login(data.token, data.user);
       toast.success('Login successful!');
-      router.push('/dashboard');
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 100);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Login failed');
@@ -109,8 +114,16 @@ export default function LoginPage() {
 
   const handleSetPasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!password.trim() || !confirmPassword.trim()) {
+      toast.error('Password cannot be empty or contain only spaces');
+      return;
+    }
     if (password !== confirmPassword) {
       toast.error('Passwords do not match');
+      return;
+    }
+    if (password.length < 8) {
+      toast.error('Password must be at least 8 characters');
       return;
     }
     setPasswordMutation.mutate();

@@ -366,6 +366,7 @@ export default function OnePageBookingCheckout() {
   const isAttendeeComplete = (attendee: typeof attendeeDetails[0]) => {
     const ukMobileRegex = /^(?:(?:\+44\s?7|07)\d{9})$/;
     const licenseRegex = /^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/;
+    const isOtherLicense = attendee.licenseType === '4';
 
     const basicFieldsComplete =
       attendee.firstName.trim() !== '' &&
@@ -375,11 +376,15 @@ export default function OnePageBookingCheckout() {
       attendee.confirmEmail.trim() !== '' &&
       attendee.email === attendee.confirmEmail &&
       attendee.phone.trim() !== '' &&
-      ukMobileRegex.test(attendee.phone.replace(/\s/g, '')) &&
-      attendee.licenseNumber.trim().length === 16 &&
-      licenseRegex.test(attendee.licenseNumber);
+      ukMobileRegex.test(attendee.phone.replace(/\s/g, ''));
 
-    if (!basicFieldsComplete) return false;
+    // License number validation - skip if license type is 4
+    const licenseComplete = isOtherLicense || (
+      attendee.licenseNumber.trim().length === 16 &&
+      licenseRegex.test(attendee.licenseNumber)
+    );
+
+    if (!basicFieldsComplete || !licenseComplete) return false;
 
     // If registering as user, check password fields
     if (attendee.registerAsUser) {
@@ -474,6 +479,13 @@ export default function OnePageBookingCheckout() {
       }
     }
   }, [attendeeDetails, expandedAttendeeIndex, attendees, photocardConfirmed]);
+
+  // Reset attendees to 1 when date changes
+  useEffect(() => {
+    if (selectedDate) {
+      setAttendees(1);
+    }
+  }, [selectedDate]);
 
   // Update attendeeDetails array when attendees count changes
   useEffect(() => {
@@ -1009,11 +1021,21 @@ export default function OnePageBookingCheckout() {
       if (!attendee.lastName) missing.push(`Attendee ${idx + 1}: Last name`);
       if (!attendee.dateOfBirth) missing.push(`Attendee ${idx + 1}: Date of Birth`);
       if (!attendee.email) missing.push(`Attendee ${idx + 1}: Email`);
-      if (!attendee.licenseNumber || attendee.licenseNumber.length !== 16) {
-        missing.push(`Attendee ${idx + 1}: Driving licence number (16 characters)`);
-      } else if (!/^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber)) {
-        toast.error(`Attendee ${idx + 1}: Invalid Licence Number.`);
+      if (!attendee.confirmEmail) missing.push(`Attendee ${idx + 1}: Confirm Email`);
+      if (attendee.email && attendee.confirmEmail && attendee.email !== attendee.confirmEmail) {
+        toast.error(`Attendee ${idx + 1}: Emails do not match`);
         return;
+      }
+      
+      // License number validation - skip if license type is 4 (Other/No Licence)
+      const isOtherLicense = attendee.licenseType === '4';
+      if (!isOtherLicense) {
+        if (!attendee.licenseNumber || attendee.licenseNumber.length !== 16) {
+          missing.push(`Attendee ${idx + 1}: Driving licence number (16 characters)`);
+        } else if (!/^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber)) {
+          toast.error(`Attendee ${idx + 1}: Invalid Licence Number.`);
+          return;
+        }
       }
 
       // Validate age on course date
@@ -1026,15 +1048,19 @@ export default function OnePageBookingCheckout() {
       }
 
       if (attendee.registerAsUser) {
-        if (!attendee.password || attendee.password.length < 8) missing.push(`Attendee ${idx + 1}: Password (min 8 characters)`);
+        if (!attendee.password.trim()) {
+          toast.error(`Attendee ${idx + 1}: Password cannot be empty or contain only spaces`);
+          return;
+        }
+        if (attendee.password.length < 8) missing.push(`Attendee ${idx + 1}: Password (min 8 characters)`);
         if (attendee.password !== attendee.confirmPassword) {
           toast.error(`Attendee ${idx + 1}: Passwords do not match`);
           return;
         }
       }
 
-      // Check if license is blacklisted
-      if (attendee.licenseNumber && attendee.licenseNumber.length === 16) {
+      // Check if license is blacklisted (skip if license type is 4)
+      if (!isOtherLicense && attendee.licenseNumber && attendee.licenseNumber.length === 16) {
         const isBlacklisted = await checkBlacklisted(attendee.licenseNumber);
         if (isBlacklisted) {
           toast.error(`Attendee ${idx + 1}: This driving licence number is not allowed to book`);

@@ -327,7 +327,7 @@ export default function AttendeeForm({
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            Driving Licence Number <span className="text-rose-500">*</span>
+            Driving Licence Number {attendee.licenseType !== '4' && <span className="text-rose-500">*</span>}
           </label>
           <input
             type="text"
@@ -342,10 +342,11 @@ export default function AttendeeForm({
             }`}
             value={attendee.licenseNumber}
             onChange={(e) => onChange('licenseNumber', e.target.value.toUpperCase())}
-            placeholder="Must be 16 characters long"
+            placeholder={attendee.licenseType === '4' ? 'Not required for this license type' : 'Must be 16 characters long'}
             maxLength={16}
+            disabled={attendee.licenseType === '4'}
           />
-          <p className="mt-1 text-xs text-slate-500">Must be 16 characters long</p>
+          <p className="mt-1 text-xs text-slate-500">{attendee.licenseType === '4' ? 'Not required for Other/No Licence' : 'Must be 16 characters long'}</p>
           {duplicateLicenseIndex !== null && (
             <p className="mt-1 text-xs text-red-500">This driving licence number is already used by Attendee {duplicateLicenseIndex + 1}</p>
           )}
