@@ -151,11 +151,19 @@ export function HtmlMobileNavigationItem({
     3: "border-l border-gray-400 pl-2"
   };
 
+  // Safety checks - support both data structures
+  const title = item?.link_title || item?.page_title;
+  const slug = item?.slug || item?.page_slug;
+  
+  if (!item || !title) {
+    return null;
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between">
         <Link 
-          href={`/${item.slug}`}
+          href={slug ? `/${slug}` : '#'}
           className={cn(
             "py-2 hover:text-blue-600 block flex-1",
             levelStyles[level as keyof typeof levelStyles] || levelStyles[3],
@@ -163,7 +171,7 @@ export function HtmlMobileNavigationItem({
           )}
           onClick={onClose}
         >
-          {item.link_title}
+          {title}
         </Link>
         
         {hasChildren && (

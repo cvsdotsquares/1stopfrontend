@@ -5,6 +5,7 @@ interface AttendeeFormProps {
   attendee: {
     firstName: string;
     lastName: string;
+    dateOfBirth: string;
     email: string;
     confirmEmail: string;
     phone: string;
@@ -15,6 +16,7 @@ interface AttendeeFormProps {
     theoryNumber: string;
     notes: string;
     registerAsUser: boolean;
+    isPrimaryUser: boolean;
     password: string;
     confirmPassword: string;
   };
@@ -30,6 +32,7 @@ interface AttendeeFormProps {
   licenseValidated: boolean;
   duplicateEmailIndex: number | null;
   duplicateLicenseIndex: number | null;
+  selectedDate: Date | null;
 }
 
 export default function AttendeeForm({
@@ -47,7 +50,68 @@ export default function AttendeeForm({
   licenseValidated,
   duplicateEmailIndex,
   duplicateLicenseIndex,
+  selectedDate,
 }: AttendeeFormProps) {
+  const [ageWarning, setAgeWarning] = React.useState<string | null>(null);
+
+  // Calculate age on course date
+  const calculateAge = (dob: string, courseDate: Date): number => {
+    const [day, month, year] = dob.split('/').map(Number);
+    if (!day || !month || !year) return -1;
+    const birthDate = new Date(year, month - 1, day);
+    let age = courseDate.getFullYear() - birthDate.getFullYear();
+    const monthDiff = courseDate.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && courseDate.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // Validate date of birth
+  const handleDobChange = (value: string) => {
+    onChange('dateOfBirth', value);
+    setAgeWarning(null);
+
+    if (value.length === 10 && selectedDate) {
+      const age = calculateAge(value, selectedDate);
+      if (age < 16) {
+        setAgeWarning('You must be at least 16 years of age on the day of your course in order to proceed with your booking.');
+      } else if (age === 16) {
+        setAgeWarning('As you are 16, only Automatic or Own Vehicle can be selected.');
+        // Clear vehicle type if it's not allowed for 16-year-olds
+        if (attendee.vehicleType) {
+          const desc = availableVehicleTypes[attendee.vehicleType]?.toLowerCase() || '';
+          if (!desc.includes('automatic') && !desc.includes('own vehicle')) {
+            onChange('vehicleType', '');
+          }
+        }
+      }
+    }
+  };
+
+  // Check if a vehicle type is disabled
+  const isVehicleTypeDisabled = (key: string, description: string) => {
+    if (!attendee.dateOfBirth || !selectedDate) return false;
+    const age = calculateAge(attendee.dateOfBirth, selectedDate);
+    if (age === 16) {
+      const desc = description.toLowerCase();
+      return !desc.includes('automatic') && !desc.includes('own vehicle');
+    }
+    return false;
+  };
+
+  // Get all vehicle types with disabled status
+  const getAllVehicleTypesWithStatus = () => {
+    const entries = Object.entries(availableVehicleTypes);
+    entries.sort(([, a], [, b]) => {
+      const aIsAuto = a.toLowerCase().includes('automatic');
+      const bIsAuto = b.toLowerCase().includes('automatic');
+      if (aIsAuto && !bIsAuto) return -1;
+      if (!aIsAuto && bIsAuto) return 1;
+      return 0;
+    });
+    return entries;
+  };
   return (
     <div className="border border-slate-200 rounded-xl bg-slate-50 overflow-hidden">
       <button
@@ -107,6 +171,37 @@ export default function AttendeeForm({
             value={attendee.lastName}
             onChange={(e) => onChange('lastName', e.target.value)}
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Date of Birth <span className="text-rose-500">*</span>
+          </label>
+          <input
+            type="text"
+            className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
+              ageWarning && ageWarning.includes('must be at least 16')
+                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+                : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
+            }`}
+            value={attendee.dateOfBirth}
+            onChange={(e) => {
+              let value = e.target.value.replace(/[^0-9]/g, '');
+              if (value.length >= 2) value = value.slice(0, 2) + '/' + value.slice(2);
+              if (value.length >= 5) value = value.slice(0, 5) + '/' + value.slice(5, 9);
+              handleDobChange(value);
+            }}
+            placeholder="DD/MM/YYYY"
+            maxLength={10}
+          />
+          <p className="mt-1 text-xs text-slate-500">Format: DD/MM/YYYY</p>
+          {ageWarning && (
+            <p className={`mt-1 text-xs ${
+              ageWarning.includes('must be at least 16') ? 'text-red-500' : 'text-amber-600'
+            }`}>
+              {ageWarning}
+            </p>
+          )}
         </div>
 
         <div>
@@ -203,9 +298,14 @@ export default function AttendeeForm({
             onChange={(e) => onChange('vehicleType', e.target.value)}
           >
             <option value="">Select vehicle type</option>
-            {Object.entries(availableVehicleTypes).map(([key, description]) => (
-              <option key={key} value={key}>{description}</option>
-            ))}
+            {getAllVehicleTypesWithStatus().map(([key, description]) => {
+              const disabled = isVehicleTypeDisabled(key, description);
+              return (
+                <option key={key} value={key} disabled={disabled}>
+                  {description}{disabled ? ' (Not available for 16-year-olds)' : ''}
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -227,25 +327,31 @@ export default function AttendeeForm({
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            Driving Licence Number <span className="text-rose-500">*</span>
+            Driving Licence Number {attendee.licenseType !== '4' && <span className="text-rose-500">*</span>}
           </label>
           <input
             type="text"
             className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
               duplicateLicenseIndex !== null
                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                : licenseValidated && attendee.licenseNumber.length === 16
-                ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
+                : attendee.licenseNumber.length === 16
+                ? /^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber)
+                  ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
+                  : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
                 : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
             }`}
             value={attendee.licenseNumber}
-            onChange={(e) => onChange('licenseNumber', e.target.value)}
-            placeholder="Must be 16 characters long"
+            onChange={(e) => onChange('licenseNumber', e.target.value.toUpperCase())}
+            placeholder={attendee.licenseType === '4' ? 'Not required for this license type' : 'Must be 16 characters long'}
             maxLength={16}
+            disabled={attendee.licenseType === '4'}
           />
-          <p className="mt-1 text-xs text-slate-500">Must be 16 characters long</p>
+          <p className="mt-1 text-xs text-slate-500">{attendee.licenseType === '4' ? 'Not required for Other/No Licence' : 'Must be 16 characters long'}</p>
           {duplicateLicenseIndex !== null && (
             <p className="mt-1 text-xs text-red-500">This driving licence number is already used by Attendee {duplicateLicenseIndex + 1}</p>
+          )}
+          {attendee.licenseNumber.length === 16 && !/^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber) && (
+            <p className="mt-1 text-xs text-red-500">Invalid Licence Number.</p>
           )}
         </div>
 
@@ -289,6 +395,21 @@ export default function AttendeeForm({
             Register as a user for faster checkout next time
           </label>
         </div>
+
+        {totalAttendees > 1 && (
+          <div className="flex items-start gap-3 mt-3">
+            <input
+              id={`isPrimaryUser-${index}`}
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+              checked={attendee.isPrimaryUser}
+              onChange={(e) => onChange('isPrimaryUser', e.target.checked)}
+            />
+            <label htmlFor={`isPrimaryUser-${index}`} className="text-sm text-slate-700">
+              Set as Primary User (main leader for all attendees)
+            </label>
+          </div>
+        )}
 
         {attendee.registerAsUser && (
           <div className="grid gap-4 sm:grid-cols-2 mt-4">

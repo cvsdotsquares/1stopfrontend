@@ -285,6 +285,7 @@ export default function OnePageBookingCheckout() {
   const [attendeeDetails, setAttendeeDetails] = useState<Array<{
     firstName: string;
     lastName: string;
+    dateOfBirth: string;
     email: string;
     confirmEmail: string;
     phone: string;
@@ -295,11 +296,13 @@ export default function OnePageBookingCheckout() {
     theoryNumber: string;
     notes: string;
     registerAsUser: boolean;
+    isPrimaryUser: boolean;
     password: string;
     confirmPassword: string;
   }>>([{
     firstName: user?.first_name || "",
     lastName: user?.last_name || "",
+    dateOfBirth: "",
     email: user?.email || "",
     confirmEmail: "",
     phone: user?.phone || "",
@@ -310,6 +313,7 @@ export default function OnePageBookingCheckout() {
     theoryNumber: "",
     notes: "",
     registerAsUser: false,
+    isPrimaryUser: false,
     password: "",
     confirmPassword: "",
   }]);
@@ -361,18 +365,26 @@ export default function OnePageBookingCheckout() {
   // Check if an attendee form is complete (all required fields filled)
   const isAttendeeComplete = (attendee: typeof attendeeDetails[0]) => {
     const ukMobileRegex = /^(?:(?:\+44\s?7|07)\d{9})$/;
+    const licenseRegex = /^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/;
+    const isOtherLicense = attendee.licenseType === '4';
 
     const basicFieldsComplete =
       attendee.firstName.trim() !== '' &&
       attendee.lastName.trim() !== '' &&
+      attendee.dateOfBirth.trim() !== '' &&
       attendee.email.trim() !== '' &&
       attendee.confirmEmail.trim() !== '' &&
       attendee.email === attendee.confirmEmail &&
       attendee.phone.trim() !== '' &&
-      ukMobileRegex.test(attendee.phone.replace(/\s/g, '')) &&
-      attendee.licenseNumber.trim().length === 16;
+      ukMobileRegex.test(attendee.phone.replace(/\s/g, ''));
 
-    if (!basicFieldsComplete) return false;
+    // License number validation - skip if license type is 4
+    const licenseComplete = isOtherLicense || (
+      attendee.licenseNumber.trim().length === 16 &&
+      licenseRegex.test(attendee.licenseNumber)
+    );
+
+    if (!basicFieldsComplete || !licenseComplete) return false;
 
     // If registering as user, check password fields
     if (attendee.registerAsUser) {
@@ -468,6 +480,13 @@ export default function OnePageBookingCheckout() {
     }
   }, [attendeeDetails, expandedAttendeeIndex, attendees, photocardConfirmed]);
 
+  // Reset attendees to 1 when date changes
+  useEffect(() => {
+    if (selectedDate) {
+      setAttendees(1);
+    }
+  }, [selectedDate]);
+
   // Update attendeeDetails array when attendees count changes
   useEffect(() => {
     setAttendeeDetails(prev => {
@@ -478,6 +497,7 @@ export default function OnePageBookingCheckout() {
           newDetails.push({
             firstName: "",
             lastName: "",
+            dateOfBirth: "",
             email: "",
             confirmEmail: "",
             phone: "",
@@ -488,6 +508,7 @@ export default function OnePageBookingCheckout() {
             theoryNumber: "",
             notes: "",
             registerAsUser: false,
+            isPrimaryUser: false,
             password: "",
             confirmPassword: "",
           });
@@ -602,11 +623,23 @@ export default function OnePageBookingCheckout() {
         setAvailableVehicleTypes(vehicleTypesData);
 
         // Default to first license/vehicle type if user hasn't chosen one yet
-        setAttendeeDetails(prev => prev.map((attendee, idx) => ({
-          ...attendee,
-          licenseType: attendee.licenseType || (licenseTypesData && licenseTypesData.length > 0 ? String(licenseTypesData[0].id) : ''),
-          vehicleType: attendee.vehicleType || (vehicleTypesData && Object.keys(vehicleTypesData).length > 0 ? Object.keys(vehicleTypesData)[0] : ''),
-        })));
+        setAttendeeDetails(prev => prev.map((attendee, idx) => {
+          // Find first automatic vehicle type
+          const sortedVehicles = Object.entries(vehicleTypesData).sort(([, a], [, b]) => {
+            const aIsAuto = a.toLowerCase().includes('automatic');
+            const bIsAuto = b.toLowerCase().includes('automatic');
+            if (aIsAuto && !bIsAuto) return -1;
+            if (!aIsAuto && bIsAuto) return 1;
+            return 0;
+          });
+          const defaultVehicleType = sortedVehicles.length > 0 ? sortedVehicles[0][0] : '';
+
+          return {
+            ...attendee,
+            licenseType: attendee.licenseType || (licenseTypesData && licenseTypesData.length > 0 ? String(licenseTypesData[0].id) : ''),
+            vehicleType: attendee.vehicleType || defaultVehicleType,
+          };
+        }));
 
         step5FetchedRef.current = current;
       } catch (err) {
@@ -968,24 +1001,66 @@ export default function OnePageBookingCheckout() {
     if (!selectedCourseEventId) missing.push("Course event");
     if (attendees < 1) missing.push("Number of attendees");
 
+    // Calculate age on course date
+    const calculateAge = (dob: string, courseDate: Date): number => {
+      const [day, month, year] = dob.split('/').map(Number);
+      if (!day || !month || !year) return -1;
+      const birthDate = new Date(year, month - 1, day);
+      let age = courseDate.getFullYear() - birthDate.getFullYear();
+      const monthDiff = courseDate.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && courseDate.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age;
+    };
+
     // Validate all attendees
     for (let idx = 0; idx < attendeeDetails.slice(0, attendees).length; idx++) {
       const attendee = attendeeDetails[idx];
       if (!attendee.firstName) missing.push(`Attendee ${idx + 1}: First name`);
       if (!attendee.lastName) missing.push(`Attendee ${idx + 1}: Last name`);
+      if (!attendee.dateOfBirth) missing.push(`Attendee ${idx + 1}: Date of Birth`);
       if (!attendee.email) missing.push(`Attendee ${idx + 1}: Email`);
-      if (!attendee.licenseNumber || attendee.licenseNumber.length !== 16) missing.push(`Attendee ${idx + 1}: Driving licence number (16 characters)`);
+      if (!attendee.confirmEmail) missing.push(`Attendee ${idx + 1}: Confirm Email`);
+      if (attendee.email && attendee.confirmEmail && attendee.email !== attendee.confirmEmail) {
+        toast.error(`Attendee ${idx + 1}: Emails do not match`);
+        return;
+      }
+      
+      // License number validation - skip if license type is 4 (Other/No Licence)
+      const isOtherLicense = attendee.licenseType === '4';
+      if (!isOtherLicense) {
+        if (!attendee.licenseNumber || attendee.licenseNumber.length !== 16) {
+          missing.push(`Attendee ${idx + 1}: Driving licence number (16 characters)`);
+        } else if (!/^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber)) {
+          toast.error(`Attendee ${idx + 1}: Invalid Licence Number.`);
+          return;
+        }
+      }
+
+      // Validate age on course date
+      if (attendee.dateOfBirth && selectedDate) {
+        const age = calculateAge(attendee.dateOfBirth, selectedDate);
+        if (age < 16) {
+          alert(`Attendee ${idx + 1}: You must be at least 16 years of age on the day of your course in order to proceed with your booking.`);
+          return;
+        }
+      }
 
       if (attendee.registerAsUser) {
-        if (!attendee.password || attendee.password.length < 8) missing.push(`Attendee ${idx + 1}: Password (min 8 characters)`);
+        if (!attendee.password.trim()) {
+          toast.error(`Attendee ${idx + 1}: Password cannot be empty or contain only spaces`);
+          return;
+        }
+        if (attendee.password.length < 8) missing.push(`Attendee ${idx + 1}: Password (min 8 characters)`);
         if (attendee.password !== attendee.confirmPassword) {
           toast.error(`Attendee ${idx + 1}: Passwords do not match`);
           return;
         }
       }
 
-      // Check if license is blacklisted
-      if (attendee.licenseNumber && attendee.licenseNumber.length === 16) {
+      // Check if license is blacklisted (skip if license type is 4)
+      if (!isOtherLicense && attendee.licenseNumber && attendee.licenseNumber.length === 16) {
         const isBlacklisted = await checkBlacklisted(attendee.licenseNumber);
         if (isBlacklisted) {
           toast.error(`Attendee ${idx + 1}: This driving licence number is not allowed to book`);
@@ -1020,6 +1095,7 @@ export default function OnePageBookingCheckout() {
         attendees: attendeeDetails.slice(0, attendees).map((attendee) => ({
           first_name: attendee.firstName,
           sur_name: attendee.lastName,
+          date_of_birth: attendee.dateOfBirth,
           email: attendee.email,
           contact1: attendee.phone,
           contact2: attendee.alternativePhone || undefined,
@@ -1028,6 +1104,7 @@ export default function OnePageBookingCheckout() {
           vehicle_type: Number(attendee.vehicleType) || 0,
           theory_number: attendee.theoryNumber || undefined,
           password: attendee.registerAsUser && attendee.password ? encryptPassword(attendee.password) : undefined,
+          is_primary_user: attendee.isPrimaryUser || false,
           notes: attendee.notes || undefined,
         })),
         photocard_confirmed: photocardConfirmed.slice(0, attendees).every(c => c),
@@ -1274,10 +1351,10 @@ export default function OnePageBookingCheckout() {
               </div>
             </Section>
 
-            {/* Step 4: Your Details (All Attendees) */}
+            {/* Step 4: Attendees Details (All Attendees) */}
             <Section
               index={4}
-              title="Your details"
+              title="Attendees Details"
               subtitle="Fill in details for all attendees. We'll email booking confirmation and joining instructions."
               complete={sectionComplete[4]}
               open={expandedSections[4]}
@@ -1374,6 +1451,30 @@ export default function OnePageBookingCheckout() {
                       onChange={(field, value) => {
                         setAttendeeDetails(prev => {
                           const newDetails = [...prev];
+                          // If setting isPrimaryUser to true, unset it for all others
+                          if (field === 'isPrimaryUser' && value === true) {
+                            const previousPrimaryIndex = newDetails.findIndex((a, i) => i !== index && a.isPrimaryUser);
+                            if (previousPrimaryIndex !== -1) {
+                              toast.warning(`Attendee ${index + 1} is now the Primary User. Attendee ${previousPrimaryIndex + 1} is no longer considered as Primary.`);
+                            }
+                            newDetails.forEach((a, i) => {
+                              if (i !== index) a.isPrimaryUser = false;
+                            });
+                          }
+                          // Auto-select first automatic vehicle if vehicle type is empty
+                          if (field === 'vehicleType' && !value && Object.keys(availableVehicleTypes).length > 0) {
+                            const sortedVehicles = Object.entries(availableVehicleTypes).sort(([, a], [, b]) => {
+                              const aIsAuto = a.toLowerCase().includes('automatic');
+                              const bIsAuto = b.toLowerCase().includes('automatic');
+                              if (aIsAuto && !bIsAuto) return -1;
+                              if (!aIsAuto && bIsAuto) return 1;
+                              return 0;
+                            });
+                            if (sortedVehicles.length > 0) {
+                              newDetails[index] = { ...newDetails[index], vehicleType: sortedVehicles[0][0] };
+                              return newDetails;
+                            }
+                          }
                           newDetails[index] = { ...newDetails[index], [field]: value };
                           return newDetails;
                         });
@@ -1391,6 +1492,7 @@ export default function OnePageBookingCheckout() {
                       licenseValidated={licenseValidated[index] || false}
                       duplicateEmailIndex={duplicateEmailIndex >= 0 ? duplicateEmailIndex : null}
                       duplicateLicenseIndex={duplicateLicenseIndex >= 0 ? duplicateLicenseIndex : null}
+                      selectedDate={selectedDate}
                     />
                   );
                 })}
@@ -1570,7 +1672,7 @@ export default function OnePageBookingCheckout() {
                     setAttendees((n) => Math.min(maxSpots, n + 1));
                   }}>+</button>
                 </div>
-                <p className="mt-2 text-xs text-slate-500 text-center">{selectedDate ? "Spots available: " + (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? "—") : "Select a date to see availability."}</p>
+                <p className="mt-2 text-xs text-slate-500 text-center">{selectedDate ? "Spaces Available: " + (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? "—") : "Select a date to see availability."}</p>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

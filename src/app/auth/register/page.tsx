@@ -43,11 +43,19 @@ export default function RegisterPage() {
 
   const registerMutation = useMutation({
     mutationFn: () => authApi.register({
-      first_name: formData.firstName,
-      last_name: formData.surname,
+      firstName: formData.firstName,
+      surname: formData.surname,
+      addressLine1: formData.addressLine1,
+      addressLine2: formData.addressLine2,
+      addressLine3: formData.addressLine3,
+      postcode: formData.postcode,
+      contactNumber1: formData.contactNumber1,
+      contactNumber2: formData.contactNumber2,
+      contactNumber3: formData.contactNumber3,
       email: formData.email,
+      confirmEmail: formData.confirmEmail,
       password: formData.password,
-      phone: formData.contactNumber1
+      verifyPassword: formData.verifyPassword
     }),
     onSuccess: () => {
       toast.success('Registration successful! Please login.');
@@ -125,7 +133,7 @@ export default function RegisterPage() {
     
     // Password validation
     if (!formData.password.trim()) {
-      newErrors.password = 'Password is required';
+      newErrors.password = 'Password cannot be empty or contain only spaces';
     } else {
       if (formData.password.length < 8) {
         newErrors.password = 'Password must be at least 8 characters long';
@@ -134,7 +142,7 @@ export default function RegisterPage() {
       }
     }
     
-    if (!formData.verifyPassword.trim()) newErrors.verifyPassword = 'Password verification is required';
+    if (!formData.verifyPassword.trim()) newErrors.verifyPassword = 'Password cannot be empty or contain only spaces';
     
     if (formData.email && formData.confirmEmail && formData.email !== formData.confirmEmail) {
       newErrors.confirmEmail = 'Emails do not match';

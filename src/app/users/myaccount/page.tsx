@@ -17,6 +17,8 @@ interface UserProfile {
   last_name: string;
   email: string;
   phone: string;
+  phone2?: string;
+  phone3?: string;
   address?: {
     street?: string;
     city?: string;
@@ -27,7 +29,7 @@ interface UserProfile {
 }
 
 export default function MyAccount() {
-  const { isAuthenticated, isLoading, token, logout } = useAuthStore();
+  const { isAuthenticated, isLoading, token, logout, setUser } = useAuthStore();
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,6 +84,8 @@ export default function MyAccount() {
       if (result.success) {
         setProfile(result.data);
         setEditing(false);
+        // Update Zustand store to reflect changes in Header and other components
+        setUser(result.data);
         toast.success('Profile updated successfully');
       } else {
         toast.error(result.message || 'Failed to update profile');
@@ -92,8 +96,12 @@ export default function MyAccount() {
   };
 
   const handlePasswordUpdate = async () => {
-    if (!currentPassword) {
-      toast.error('Please enter your current password');
+    if (!currentPassword.trim()) {
+      toast.error('Password cannot be empty or contain only spaces');
+      return;
+    }
+    if (!newPassword.trim()) {
+      toast.error('Password cannot be empty or contain only spaces');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -167,12 +175,15 @@ export default function MyAccount() {
                   </Link>
                 </li>
                 <li>
-                  <Link
-                    href="/users/logout"
-                    className="block px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  <button
+                    onClick={() => {
+                      logout();
+                      router.push('/');
+                    }}
+                    className="block w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
                   >
                     Logout
-                  </Link>
+                  </button>
                 </li>
               </ul>
             </nav>
@@ -221,6 +232,24 @@ export default function MyAccount() {
                       value={editing ? (formData.phone || '') : (profile.phone || '')}
                       maxLength={11}
                       onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      disabled={!editing}
+                    />
+                  </div>
+                  <div>
+                    <Label>Alternative Phone 2</Label>
+                    <Input
+                      value={editing ? (formData.phone2 || '') : (profile.phone2 || '')}
+                      maxLength={11}
+                      onChange={(e) => setFormData({...formData, phone2: e.target.value})}
+                      disabled={!editing}
+                    />
+                  </div>
+                  <div>
+                    <Label>Alternative Phone 3</Label>
+                    <Input
+                      value={editing ? (formData.phone3 || '') : (profile.phone3 || '')}
+                      maxLength={11}
+                      onChange={(e) => setFormData({...formData, phone3: e.target.value})}
                       disabled={!editing}
                     />
                   </div>
