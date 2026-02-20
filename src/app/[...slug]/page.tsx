@@ -148,7 +148,7 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
                 <div className="absolute inset-0 bg-black/40" />
               </div>
             )}
-            <div className="relative container mx-auto px-4 py-16">
+            <div className="relative max-w-[1400px] mx-auto px-4 py-8">
               <h1 className="text-4xl md:text-5xl font-bold mb-4">{page.link_title || page.page_title}</h1>
               {page.overlay_caption == 1 && page.overlay_caption_text && (
                 <p className="text-xl md:text-2xl text-gray-200 max-w-2xl" dangerouslySetInnerHTML={{ __html: page.overlay_caption_text }} />
@@ -162,7 +162,7 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
         page.dynamic_sections.map((s) => {
           if (s.make_cta == 1) {
             return (
-              <div className="bg-gray-100 pt-8 md:pt-16" key={`section-${s.id}`}>
+              <div className="bg-gray-100 py-8 md:py-16 px-6" key={`section-${s.id}`}>
                 <div className="max-w-[1400px] mx-auto">
                   <div className="[&_h2]:text-black [&_h2]:mb-5 [&_h2]:text-3xl text-gray-500 [&_a]:underline [&_a:hover]:text-red-500 [&_div]:p-5 [&_div]:bg-blue-100 [&_div]:text-blue-600 [&_div]:border-l-2 [&_div]:border-blue-600">
                     <h2 className="text-center">{s.section_title}</h2>
@@ -182,7 +182,7 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
           }
 
           return (
-            <div className="pt-8 md:pt-16" key={`section-${s.id}`}>
+            <div className="py-8 md:py-10 px-6" key={`section-${s.id}`}>
               <div className="max-w-[1400px] mx-auto">
                 <div className="[&_h2]:text-black [&_h2]:mb-5 [&_h2]:text-3xl text-gray-500 [&_a]:underline [&_a:hover]:text-red-500 [&_div]:p-5 [&_div]:bg-blue-100  [&_div]:text-blue-600 [&_div]:border-l-2 [&_div]:border-blue-600">
                   <h2>{s.section_title}</h2>
@@ -198,7 +198,7 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
       {/* Fallback content */}
       {(!Array.isArray(page.dynamic_sections) || page.dynamic_sections.length === 0) &&
         page.page_content && (
-          <section className="mb-8 container mx-auto px-4 py-8 md:py-16 max-w-[1400px]">
+          <section className="mb-8 px-4 py-8 md:py-16 max-w-[1400px] mx-auto">
             <PageContent content={page.page_content} />
           </section>
       )}

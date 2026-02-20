@@ -105,7 +105,7 @@ export default function Search({ placeholder = "Search...", className }: SearchP
           open ? "opacity-100 scale-100 visible" : "opacity-0 scale-95 invisible pointer-events-none"
         )}
       >
-        <div className="flex items-center gap-2 px-3 py-2 border-b">
+        <div className="flex items-center gap-2 px-3 py-2">
           <SearchIcon className="h-4 w-4 text-gray-400" />
           <input
             ref={inputRef}

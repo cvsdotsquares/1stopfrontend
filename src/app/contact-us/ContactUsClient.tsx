@@ -290,9 +290,9 @@ export default function ContactUsClient({
           </div>
 
           {selectedOffice ? (
-            <div className="p-6 rounded bg-gray-50" dangerouslySetInnerHTML={{ __html: selectedOffice.content || "" }} />
+            <div className="p-6 rounded bg-gray-50  [&_table]:table [&_table]:w-full [&_table]:border [&_table]:border-gray-300 [&_td]:p-3 [&_table]:mb-3" dangerouslySetInnerHTML={{ __html: selectedOffice.content || "" }} />
           ) : (
-            <div className="p-6 rounded bg-gray-50">
+            <div className="p-6 rounded bg-gray-50 [&_table]:table [&_table]:w-full [&_table]:border [&_table]:border-gray-300">
               <h3 className="font-semibold mb-2">All offices</h3>
               <ul className="list-disc pl-5">
                 {offices.map((o) => (
