@@ -107,7 +107,6 @@ export default function Dashboard() {
               stats: {
                 totalBookings: apiData.stats.total_bookings,
                 completed: apiData.stats.completed_bookings,
-                pending: apiData.stats.pending_bookings,
                 totalSpent: apiData.stats.total_spent
               },
               recentBookings: (apiData.recent_bookings || []).map((b: any) => ({
@@ -173,7 +172,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-gray-600">Total Bookings</CardTitle>
@@ -189,15 +188,6 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.stats.completed}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-600">Pending</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.stats.pending}</div>
           </CardContent>
         </Card>
 
