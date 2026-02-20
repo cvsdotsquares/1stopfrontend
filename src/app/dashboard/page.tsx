@@ -14,7 +14,7 @@ interface DashboardData {
     id: string;
     courseTitle: string;
     date: string;
-    status: string;
+    status: number;
     amount: number;
     locationName: string;
     address1: string;
@@ -107,6 +107,7 @@ export default function Dashboard() {
               stats: {
                 totalBookings: apiData.stats.total_bookings,
                 completed: apiData.stats.completed_bookings,
+                pending: apiData.stats.pending_bookings,
                 totalSpent: apiData.stats.total_spent
               },
               recentBookings: (apiData.recent_bookings || []).map((b: any) => ({
