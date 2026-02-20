@@ -110,10 +110,10 @@ export default function AccreditationsSection({ data }: { data?: AccreditationsD
     <section className="bg-white py-16">
       <div className="mx-auto max-w-[1400px] px-6">
         {/* Title */}
-        <h2 className="mb-12 text-center" dangerouslySetInnerHTML={{ __html: displayData.title }}/>
+        <h2 className="mb-4 md:mb-12 text-center" dangerouslySetInnerHTML={{ __html: displayData.title }}/>
 
         {/* Logos Grid */}
-        <div className="mb-16 grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-6">
+        <div className="mb-16 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
           {displayData.logos
             .sort((a, b) => (a.position || 0) - (b.position || 0))
             .map((logo) => (

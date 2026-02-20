@@ -207,7 +207,7 @@ export default function MyAccount() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>First Name</Label>
+                    <Label className='mb-1'>First Name</Label>
                     <Input
                       value={editing ? (formData.first_name || '') : (profile.first_name || '')}
                       onChange={(e) => setFormData({...formData, first_name: e.target.value})}
@@ -215,7 +215,7 @@ export default function MyAccount() {
                     />
                   </div>
                   <div>
-                    <Label>Last Name</Label>
+                    <Label className='mb-1'>Last Name</Label>
                     <Input
                       value={editing ? (formData.last_name || '') : (profile.last_name || '')}
                       onChange={(e) => setFormData({...formData, last_name: e.target.value})}
@@ -223,11 +223,11 @@ export default function MyAccount() {
                     />
                   </div>
                   <div>
-                    <Label>Email</Label>
+                    <Label className='mb-1'>Email</Label>
                     <Input value={profile.email || ''} disabled />
                   </div>
                   <div>
-                    <Label>Phone</Label>
+                    <Label className='mb-1'>Phone</Label>
                     <Input
                       value={editing ? (formData.phone || '') : (profile.phone || '')}
                       maxLength={11}
@@ -236,7 +236,7 @@ export default function MyAccount() {
                     />
                   </div>
                   <div>
-                    <Label>Alternative Phone 2</Label>
+                    <Label className='mb-1'>Alternative Phone 2</Label>
                     <Input
                       value={editing ? (formData.phone2 || '') : (profile.phone2 || '')}
                       maxLength={11}
@@ -245,7 +245,7 @@ export default function MyAccount() {
                     />
                   </div>
                   <div>
-                    <Label>Alternative Phone 3</Label>
+                    <Label className='mb-1'>Alternative Phone 3</Label>
                     <Input
                       value={editing ? (formData.phone3 || '') : (profile.phone3 || '')}
                       maxLength={11}
@@ -259,7 +259,7 @@ export default function MyAccount() {
                   <h3 className="font-semibold">Address</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
-                      <Label>Street</Label>
+                      <Label className='mb-1'>Street</Label>
                       <Input
                         value={editing ? (formData.address?.street || '') : (profile.address?.street || '')}
                         onChange={(e) => setFormData({...formData, address: {...(formData.address || {}), street: e.target.value}})}
@@ -267,7 +267,7 @@ export default function MyAccount() {
                       />
                     </div>
                     <div>
-                      <Label>City</Label>
+                      <Label className='mb-1'>City</Label>
                       <Input
                         value={editing ? (formData.address?.city || '') : (profile.address?.city || '')}
                         onChange={(e) => setFormData({...formData, address: {...(formData.address || {}), city: e.target.value}})}
@@ -275,7 +275,7 @@ export default function MyAccount() {
                       />
                     </div>
                     <div>
-                      <Label>Postcode</Label>
+                      <Label className='mb-1'>Postcode</Label>
                       <Input
                         value={editing ? (formData.address?.postcode || '') : (profile.address?.postcode || '')}
                         onChange={(e) => setFormData({...formData, address: {...(formData.address || {}), postcode: e.target.value}})}
@@ -283,7 +283,7 @@ export default function MyAccount() {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <Label>Country</Label>
+                      <Label className='mb-1'>Country</Label>
                       <Input
                         value={editing ? (formData.address?.country || '') : (profile.address?.country || '')}
                         onChange={(e) => setFormData({...formData, address: {...(formData.address || {}), country: e.target.value}})}
@@ -302,7 +302,7 @@ export default function MyAccount() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label>Current Password</Label>
+                  <Label className='mb-1'>Current Password</Label>
                   <Input
                     type="password"
                     value={currentPassword}
@@ -311,7 +311,7 @@ export default function MyAccount() {
                   />
                 </div>
                 <div>
-                  <Label>New Password</Label>
+                  <Label className='mb-1'>New Password</Label>
                   <Input
                     type="password"
                     value={newPassword}
@@ -320,7 +320,7 @@ export default function MyAccount() {
                   />
                 </div>
                 <div>
-                  <Label>Confirm New Password</Label>
+                  <Label className='mb-1'>Confirm New Password</Label>
                   <Input
                     type="password"
                     value={confirmPassword}
@@ -328,7 +328,7 @@ export default function MyAccount() {
                     placeholder="Confirm new password"
                   />
                 </div>
-                <Button onClick={handlePasswordUpdate}>Update Password</Button>
+                <Button onClick={handlePasswordUpdate} className='rounded-tl-lg rounded-br-lg'>Update Password</Button>
               </CardContent>
             </Card>
           </div>
