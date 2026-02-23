@@ -1,17 +1,18 @@
 "use client";
 import React, { useState } from 'react';
-import { PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
 
 interface StripePaymentFormProps {
-  onSuccess: () => void;
-  onCancel: () => void;
-  bookingRef: string;
+  onSuccess: (bookingRef: string) => void;
+  onCancel: (bookingRef?: string) => void;
+  bookingRef?: string;
   amount: number;
-  useInlinePayment?: boolean;
+  onCreatePaymentIntent: () => Promise<{ clientSecret?: string; bookingRef: string; paymentRequired: boolean } | undefined>;
+  paymentDisabled?: boolean;
 }
 
-export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amount, useInlinePayment = false }: StripePaymentFormProps) {
+export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amount, onCreatePaymentIntent, paymentDisabled = false }: StripePaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -26,34 +27,42 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amo
     setIsProcessing(true);
 
     try {
-      if (useInlinePayment) {
-        // Inline payment - no redirect
-        const { error, paymentIntent } = await stripe.confirmPayment({
-          elements,
-          redirect: 'if_required',
-        });
+      const creationResult = await onCreatePaymentIntent();
 
-        if (error) {
-          toast.error(error.message || 'Payment failed');
-          setIsProcessing(false);
-        } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-          toast.success('Payment successful!');
-          onSuccess();
-        }
-      } else {
-        // Original behavior - redirect to return_url
-        const { error } = await stripe.confirmPayment({
-          elements,
-          confirmParams: {
-            return_url: `${window.location.origin}/bookings/payment-success?ref=${bookingRef}`,
-          },
-        });
-
-        if (error) {
-          toast.error(error.message || 'Payment failed');
-          setIsProcessing(false);
-        }
+      if (!creationResult) {
+        setIsProcessing(false);
+        return;
       }
+
+      if (!creationResult.paymentRequired) {
+        toast.success('Booking created successfully!');
+        onSuccess(creationResult.bookingRef);
+        return;
+      }
+
+      if (!creationResult.clientSecret) {
+        throw new Error('Payment client secret missing');
+      }
+
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) {
+        throw new Error('Card details are not available');
+      }
+
+      const { error } = await stripe.confirmCardPayment(creationResult.clientSecret, {
+        payment_method: { card: cardElement },
+      }, {
+        handleActions: true,
+      });
+
+      if (error) {
+        toast.error(error.message || 'Payment failed');
+        setIsProcessing(false);
+        return;
+      }
+
+      toast.success('Payment successful!');
+      onSuccess(creationResult.bookingRef);
     } catch (err) {
       toast.error('Payment processing failed');
       setIsProcessing(false);
@@ -64,7 +73,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amo
     <div className="space-y-6">
       <div className="text-center pb-4 border-b">
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Complete Payment</h2>
-        <p className="text-slate-600">Booking Reference: <span className="font-semibold text-slate-900">{bookingRef}</span></p>
+        <p className="text-slate-600">Booking Reference: <span className="font-semibold text-slate-900">{bookingRef || 'Pending'}</span></p>
       </div>
 
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
@@ -89,15 +98,24 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amo
             </svg>
             Secure Payment Details
           </h3>
-          <PaymentElement options={{ layout: 'tabs' }} />
+          <CardElement
+            options={{
+              hidePostalCode: true,
+              style: {
+                base: {
+                  fontSize: '16px',
+                  color: '#0f172a',
+                  '::placeholder': { color: '#94a3b8' },
+                },
+              },
+            }}
+          />
         </div>
 
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={useInlinePayment ? onCancel : () => {
-              window.location.href = `/bookings/payment-cancel?ref=${bookingRef}`;
-            }}
+            onClick={() => onCancel(bookingRef)}
             disabled={isProcessing}
             className="flex-1 px-6 py-3.5 border-2 border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all"
           >
@@ -105,7 +123,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amo
           </button>
           <button
             type="submit"
-            disabled={!stripe || isProcessing}
+            disabled={!stripe || isProcessing || paymentDisabled}
             className="flex-1 px-6 py-3.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg shadow-green-600/30 transition-all"
           >
             {isProcessing ? (
