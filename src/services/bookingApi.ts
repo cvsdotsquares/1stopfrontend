@@ -137,8 +137,36 @@ class BookingApiService {
       });
 
       if (!response.ok) {
-        console.error(`HTTP ${response.status} for ${endpoint}:`, response.statusText);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        let errorPayload: any = null;
+        let rawText = '';
+        try {
+          errorPayload = await response.json();
+        } catch (parseError) {
+          try {
+            rawText = await response.text();
+          } catch (textError) {
+            rawText = '';
+          }
+          errorPayload = null;
+        }
+
+        const isEmptyObject = errorPayload && typeof errorPayload === 'object' && Object.keys(errorPayload).length === 0;
+        const errorMessage =
+          (!isEmptyObject && errorPayload?.message) ||
+          (rawText ? rawText : '') ||
+          `HTTP ${response.status}: ${response.statusText}`;
+
+        const logPayload = isEmptyObject ? response.statusText : (errorPayload || rawText || response.statusText);
+        if (response.status >= 400 && response.status < 500) {
+          console.warn(`HTTP ${response.status} for ${endpoint}:`, logPayload);
+        } else {
+          console.error(`HTTP ${response.status} for ${endpoint}:`, logPayload);
+        }
+        const err: any = new Error(errorMessage);
+        err.status = response.status;
+        err.data = isEmptyObject ? null : errorPayload;
+        err.raw = rawText || null;
+        throw err;
       }
 
       const data = await response.json();

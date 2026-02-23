@@ -327,10 +327,7 @@ export default function OnePageBookingCheckout() {
   const [isPaying, setIsPaying] = useState(false);
 
   // Stripe payment state
-  const [clientSecret, setClientSecret] = useState<string>('');
   const [bookingRef, setBookingRef] = useState<string>('');
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [bookingCreated, setBookingCreated] = useState(false);
 
   // WorldPay Form State
   const [paymentFormUrl, setPaymentFormUrl] = useState<string>('');
@@ -402,6 +399,8 @@ export default function OnePageBookingCheckout() {
     4: attendeeDetails.slice(0, attendees).every(a => isAttendeeComplete(a)) && photocardConfirmed.slice(0, attendees).every(c => c),
     5: false, // Final section never auto-completes
   };
+
+  const canPayNow = sectionComplete[1] && sectionComplete[2] && sectionComplete[3] && sectionComplete[4];
 
   // Check if all previous sections are complete
   const allPreviousSectionsComplete = (sectionIndex: number) => {
@@ -899,8 +898,13 @@ export default function OnePageBookingCheckout() {
 
   const subtotal = pricing?.final_totals?.subtotal || 0;
   const vat = pricing?.final_totals?.vat || 0;
-  const discount = promoData?.valid ? promoData.discount_amount : 0;
-  const total = (pricing?.final_totals?.final_amount || 0) - discount;
+  const totalBeforeDiscount = pricing?.final_totals?.final_amount || 0;
+  const discount = promoData?.valid
+    ? (promoData.discount_type === 'percent_off'
+        ? (totalBeforeDiscount * (Number(promoData.discount_amount) || 0)) / 100
+        : Number(promoData.discount_amount) || 0)
+    : 0;
+  const total = Math.max(0, totalBeforeDiscount - discount);
 
   const handleLogin = async () => {
     try {
@@ -993,7 +997,7 @@ export default function OnePageBookingCheckout() {
     toast.info('Promo code removed');
   };
 
-  async function handlePay() {
+  async function handleCreateBooking() {
     const missing = [];
     if (!selectedCourse) missing.push("Course");
     if (!locationId) missing.push("Location");
@@ -1026,7 +1030,7 @@ export default function OnePageBookingCheckout() {
         toast.error(`Attendee ${idx + 1}: Emails do not match`);
         return;
       }
-      
+
       // License number validation - skip if license type is 4 (Other/No Licence)
       const isOtherLicense = attendee.licenseType === '4';
       if (!isOtherLicense) {
@@ -1115,18 +1119,30 @@ export default function OnePageBookingCheckout() {
 
       localStorage.removeItem('booking_form_data');
 
+      setBookingRef(response.booking_ref);
+
       if (response.client_secret) {
-        setClientSecret(response.client_secret);
-        setBookingRef(response.booking_ref);
-        setBookingCreated(true);
         toast.success(`Booking created! Reference: ${response.booking_ref}`);
-      } else {
-        toast.success(`Booking created! Reference: ${response.booking_ref}. (No payment required)`);
-        window.location.href = `/booking/success?ref=${response.booking_ref}`;
+        return { clientSecret: response.client_secret, bookingRef: response.booking_ref, paymentRequired: true };
       }
+
+      toast.success(`Booking created! Reference: ${response.booking_ref}. (No payment required)`);
+      return { bookingRef: response.booking_ref, paymentRequired: false };
     } catch (error: any) {
-      const errMsg = error instanceof Error ? error.message : (error?.response?.data?.message ?? 'Unknown error');
-      toast.error(`Booking failed: ${errMsg}`);
+      const errMsg = error?.data?.message || (error instanceof Error ? error.message : (error?.response?.data?.message ?? 'Unknown error'));
+
+      if (typeof error?.data?.available_spaces === 'number') {
+        toast.error(errMsg || 'Selected date is no longer available. Please choose another date.');
+        setCourseLocationError(errMsg || 'Selected date is no longer available. Please choose another date.');
+        setSelectedDate(null);
+        setSelectedCourseEventId(null);
+      } else if (error?.status === 400 && (!error?.data || !error?.data?.message)) {
+        toast.error('We couldn’t create the booking. Please review your details and try again.');
+      } else {
+        toast.error(`Booking failed: ${errMsg}`);
+      }
+
+      throw error;
     } finally {
       setIsPaying(false);
     }
@@ -1535,7 +1551,11 @@ export default function OnePageBookingCheckout() {
                     <div className="flex items-center justify-between"><span className="text-slate-600">VAT (20%)</span><span className="font-medium text-slate-900"><Money value={vat} /></span></div>
                     {promoData?.valid && (
                       <div className="flex items-center justify-between text-green-600">
-                        <span>Discount ({promoData.discount_type})</span>
+                        <span>
+                          Discount {promoData.discount_type === 'percent_off'
+                            ? `(${promoData.discount_amount}% off)`
+                            : '(amount off)'}
+                        </span>
                         <span className="font-medium">-<Money value={discount} /></span>
                       </div>
                     )}
@@ -1589,43 +1609,32 @@ export default function OnePageBookingCheckout() {
                 <label htmlFor="terms" className="text-sm text-slate-700">I agree to the <a className="text-teal-700 underline-offset-2 hover:underline" href="#">Terms & Conditions</a> and <a className="text-teal-700 underline-offset-2 hover:underline" href="#">Privacy Policy</a>.</label>
               </div>
 
-              {!bookingCreated ? (
-                <div className="mt-4 space-y-3">
-                  <div className="grid gap-3 sm:flex sm:items-center sm:justify-between">
-                    <p className="text-sm text-slate-600">Review your booking details and proceed to payment.</p>
-                    <button
-                      type="button"
-                      onClick={handlePay}
-                      disabled={isPaying}
-                      aria-busy={isPaying}
-                      className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${isPaying ? 'bg-teal-400 cursor-not-allowed' : 'bg-red-600 hover:bg-teal-700'}`}
-                    >
-                      {isPaying ? 'Processing…' : 'Create Booking'}
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                        <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414-1.414L13.586 10 10.293 6.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                        <path fillRule="evenodd" d="M3 10a1 1 0 011-1h11a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                      </svg>
-                    </button>
+              <div className="mt-6">
+                {acceptTerms ? (
+                  <Elements stripe={stripePromise}>
+                    <StripePaymentForm
+                      onCreatePaymentIntent={handleCreateBooking}
+                      onSuccess={(ref) => {
+                        window.location.href = `/bookings/payment-success?ref=${ref}`;
+                      }}
+                      onCancel={(ref) => {
+                        if (ref) {
+                          window.location.href = `/bookings/payment-cancel?ref=${ref}`;
+                        } else {
+                          toast.info('Payment cancelled');
+                        }
+                      }}
+                      bookingRef={bookingRef}
+                      amount={Math.round(total * 100)}
+                      paymentDisabled={!canPayNow}
+                    />
+                  </Elements>
+                ) : (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                    Please accept the Terms & Conditions and Privacy Policy to proceed to payment.
                   </div>
-                </div>
-              ) : (
-                <div className="mt-6">
-                  {clientSecret && (
-                    <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
-                      <StripePaymentForm
-                        onSuccess={() => {
-                          window.location.href = `/booking/success?ref=${bookingRef}`;
-                        }}
-                        onCancel={() => {
-                          window.location.href = `/bookings/payment-cancel?ref=${bookingRef}`;
-                        }}
-                        bookingRef={bookingRef}
-                        amount={Math.round(total * 100)}
-                      />
-                    </Elements>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
             </Section>
           </div>
 

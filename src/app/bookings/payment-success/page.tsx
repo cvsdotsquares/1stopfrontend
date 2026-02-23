@@ -13,8 +13,18 @@ function PaymentSuccessContent() {
     const sessionId = searchParams.get('payment_intent');
     const bookingRef = searchParams.get('ref');
 
-    if (!sessionId || !bookingRef) {
+    if (!bookingRef) {
       setVerificationStatus('error');
+      return;
+    }
+
+    if (!sessionId) {
+      // Handle success without a payment_intent (e.g., no payment required)
+      setBookingDetails({
+        booking_ref: bookingRef,
+        payment_status: 'confirmed'
+      });
+      setVerificationStatus('success');
       return;
     }
 
@@ -100,10 +110,12 @@ function PaymentSuccessContent() {
                   <span className="text-slate-600">Booking Reference:</span>
                   <span className="font-medium text-slate-900">{bookingDetails.booking_ref}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Amount Paid:</span>
-                  <span className="font-medium text-slate-900">£{bookingDetails.amount_paid?.toFixed(2)}</span>
-                </div>
+                {typeof bookingDetails.amount_paid === 'number' && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Amount Paid:</span>
+                    <span className="font-medium text-slate-900">£{bookingDetails.amount_paid.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-slate-600">Payment Status:</span>
                   <span className="font-medium text-green-600 capitalize">{bookingDetails.payment_status}</span>

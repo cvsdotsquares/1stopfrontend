@@ -262,17 +262,22 @@ export default function GiftVoucherPage() {
               </div>
             </div>
 
-            <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
+            <Elements stripe={stripePromise}>
               <StripePaymentForm
-                onSuccess={() => {
-                  window.location.href = `/gift-voucher/success?ref=${voucherRef}`;
+                onCreatePaymentIntent={async () => {
+                  if (!clientSecret || !voucherRef) {
+                    return undefined;
+                  }
+                  return { clientSecret, bookingRef: voucherRef, paymentRequired: true };
                 }}
-                onCancel={() => {
-                  window.location.href = `/gift-voucher/cancel?ref=${voucherRef}`;
+                onSuccess={(ref) => {
+                  window.location.href = `/gift-voucher/success?ref=${ref}`;
+                }}
+                onCancel={(ref) => {
+                  window.location.href = `/gift-voucher/cancel?ref=${ref || voucherRef}`;
                 }}
                 bookingRef={voucherRef}
                 amount={Math.round(total * 100)}
-                useInlinePayment={true}
               />
             </Elements>
           </div>
