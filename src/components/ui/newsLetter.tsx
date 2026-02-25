@@ -13,7 +13,6 @@ export default function NewsLetter() {
     setMessage("");
 
     try {
-      // Add your newsletter API call here
       const response = await fetch("/api/newsletter", {
         method: "POST",
         headers: {
@@ -22,13 +21,16 @@ export default function NewsLetter() {
         body: JSON.stringify({ email }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        setMessage("Successfully subscribed!");
+        setMessage("Successfully subscribed to our newsletter!");
         setEmail("");
       } else {
-        setMessage("Failed to subscribe. Please try again.");
+        setMessage(data.error || "Failed to subscribe. Please try again.");
       }
     } catch (error) {
+      console.error("Newsletter error:", error);
       setMessage("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);

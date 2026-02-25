@@ -178,23 +178,38 @@ export default function AttendeeForm({
             Date of Birth <span className="text-rose-500">*</span>
           </label>
           <input
-            type="text"
+            type="date"
             className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
               ageWarning && ageWarning.includes('must be at least 16')
                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
                 : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
             }`}
-            value={attendee.dateOfBirth}
+            value={(() => {
+              // Convert DD/MM/YYYY to YYYY-MM-DD for date input
+              if (attendee.dateOfBirth && attendee.dateOfBirth.length === 10) {
+                const [day, month, year] = attendee.dateOfBirth.split('/');
+                if (day && month && year) {
+                  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                }
+              }
+              return '';
+            })()}
             onChange={(e) => {
-              let value = e.target.value.replace(/[^0-9]/g, '');
-              if (value.length >= 2) value = value.slice(0, 2) + '/' + value.slice(2);
-              if (value.length >= 5) value = value.slice(0, 5) + '/' + value.slice(5, 9);
-              handleDobChange(value);
+              // Convert YYYY-MM-DD to DD/MM/YYYY for storage
+              const dateValue = e.target.value;
+              if (dateValue) {
+                const [year, month, day] = dateValue.split('-');
+                const formattedDate = `${day}/${month}/${year}`;
+                handleDobChange(formattedDate);
+              } else {
+                handleDobChange('');
+              }
             }}
-            placeholder="DD/MM/YYYY"
-            maxLength={10}
+            max={(() => {
+              const today = new Date();
+              return today.toISOString().split('T')[0];
+            })()}
           />
-          <p className="mt-1 text-xs text-slate-500">Format: DD/MM/YYYY</p>
           {ageWarning && (
             <p className={`mt-1 text-xs ${
               ageWarning.includes('must be at least 16') ? 'text-red-500' : 'text-amber-600'
@@ -258,7 +273,7 @@ export default function AttendeeForm({
             type="tel"
             className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
               attendee.phone
-                ? /^(?:(?:\+44\s?7|07)\d{9})$/.test(attendee.phone.replace(/\s/g, ''))
+                ? /^[0-9+]+$/.test(attendee.phone)
                   ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
                   : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
                 : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
@@ -266,11 +281,10 @@ export default function AttendeeForm({
             value={attendee.phone}
             onChange={(e) => onChange('phone', e.target.value)}
             placeholder="07123456789"
-            maxLength={11}
           />
-          <p className="mt-1 text-xs text-slate-500">UK mobile number required (11 digits)</p>
-          {attendee.phone && !/^(?:(?:\+44\s?7|07)\d{9})$/.test(attendee.phone.replace(/\s/g, '')) && (
-            <p className="mt-1 text-xs text-red-500">Invalid UK mobile number</p>
+          <p className="mt-1 text-xs text-slate-500">Numbers only or "+" symbol allowed</p>
+          {attendee.phone && !/^[0-9+]+$/.test(attendee.phone) && (
+            <p className="mt-1 text-xs text-red-500">Only numbers and "+" symbol allowed</p>
           )}
         </div>
 
@@ -283,8 +297,7 @@ export default function AttendeeForm({
             className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
             value={attendee.alternativePhone}
             onChange={(e) => onChange('alternativePhone', e.target.value)}
-            placeholder="07123456789 or 01234567890"
-            maxLength={15}
+            placeholder="Optional"
           />
         </div>
 
@@ -297,7 +310,7 @@ export default function AttendeeForm({
             value={attendee.vehicleType}
             onChange={(e) => onChange('vehicleType', e.target.value)}
           >
-            <option value="">Select vehicle type</option>
+            <option value="">Please select</option>
             {getAllVehicleTypesWithStatus().map(([key, description]) => {
               const disabled = isVehicleTypeDisabled(key, description);
               return (
@@ -318,7 +331,7 @@ export default function AttendeeForm({
             value={attendee.licenseType}
             onChange={(e) => onChange('licenseType', e.target.value)}
           >
-            <option value="">Select license type</option>
+            <option value="">Please select</option>
             {licenseTypes.map((license) => (
               <option key={license.id} value={license.id}>{license.licence_type}</option>
             ))}
@@ -365,19 +378,6 @@ export default function AttendeeForm({
             value={attendee.theoryNumber}
             onChange={(e) => onChange('theoryNumber', e.target.value)}
             placeholder="Optional"
-          />
-        </div>
-
-        <div className="sm:col-span-2">
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            Order notes
-          </label>
-          <textarea
-            rows={2}
-            className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-            value={attendee.notes}
-            onChange={(e) => onChange('notes', e.target.value)}
-            placeholder="Anything we should know?"
           />
         </div>
       </div>
