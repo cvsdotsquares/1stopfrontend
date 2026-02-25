@@ -14,7 +14,6 @@ export async function POST(req: NextRequest) {
     // Mailchimp API credentials
     const API_KEY = process.env.MAILCHIMP_API_KEY;
     const AUDIENCE_ID = process.env.MAILCHIMP_AUDIENCE_ID;
-    const DATACENTER = process.env.MAILCHIMP_API_SERVER || "us11"; // Extract from your API key (e.g., "us11")
 
     if (!API_KEY || !AUDIENCE_ID) {
       console.error("Missing Mailchimp credentials");
@@ -23,6 +22,9 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Extract datacenter from API key (format: xxxxx-us14)
+    const DATACENTER = API_KEY.split('-').pop() || "us14";
 
     const url = `https://${DATACENTER}.api.mailchimp.com/3.0/lists/${AUDIENCE_ID}/members`;
 
