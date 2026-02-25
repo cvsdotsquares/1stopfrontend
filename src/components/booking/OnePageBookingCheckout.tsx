@@ -246,6 +246,24 @@ function Money({ value }: MoneyProps) {
 
 // ---------- Main Component ----------
 export default function OnePageBookingCheckout() {
+  // Force scroll to top on mount and disable browser scroll restoration
+  useEffect(() => {
+    // Scroll to top immediately
+    window.scrollTo(0, 0);
+
+    // Disable browser's scroll restoration
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+
+    return () => {
+      // Restore default behavior on unmount
+      if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'auto';
+      }
+    };
+  }, []);
+
   // Auth state
   const { isAuthenticated, user, login } = useAuthStore();
 
@@ -275,6 +293,8 @@ export default function OnePageBookingCheckout() {
   const [promoCode, setPromoCode] = useState('');
   const [promoData, setPromoData] = useState<any>(null);
   const [isValidatingPromo, setIsValidatingPromo] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoSuccess, setPromoSuccess] = useState<string | null>(null);
 
   // Photocard confirmation per attendee
   const [photocardConfirmed, setPhotocardConfirmed] = useState<boolean[]>([]);
@@ -322,6 +342,8 @@ export default function OnePageBookingCheckout() {
   const [ipBlocked, setIpBlocked] = useState(false);
   const [blockMessage, setBlockMessage] = useState('');
   const [userIP, setUserIP] = useState<string>('');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [hasUrlParams, setHasUrlParams] = useState(false);
 
   // UI submit states
   const [isPaying, setIsPaying] = useState(false);
@@ -359,9 +381,12 @@ export default function OnePageBookingCheckout() {
   // Attendee form expansion state - only one attendee form expanded at a time
   const [expandedAttendeeIndex, setExpandedAttendeeIndex] = useState(0);
 
+  // Track previous course for change detection
+  const prevCourseIdRef = useRef<number | null>(null);
+
   // Check if an attendee form is complete (all required fields filled)
   const isAttendeeComplete = (attendee: typeof attendeeDetails[0]) => {
-    const ukMobileRegex = /^(?:(?:\+44\s?7|07)\d{9})$/;
+    const phoneRegex = /^[0-9+]+$/;
     const licenseRegex = /^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/;
     const isOtherLicense = attendee.licenseType === '4';
 
@@ -373,7 +398,9 @@ export default function OnePageBookingCheckout() {
       attendee.confirmEmail.trim() !== '' &&
       attendee.email === attendee.confirmEmail &&
       attendee.phone.trim() !== '' &&
-      ukMobileRegex.test(attendee.phone.replace(/\s/g, ''));
+      phoneRegex.test(attendee.phone.trim()) &&
+      attendee.vehicleType.trim() !== '' &&
+      attendee.licenseType.trim() !== '';
 
     // License number validation - skip if license type is 4
     const licenseComplete = isOtherLicense || (
@@ -410,43 +437,94 @@ export default function OnePageBookingCheckout() {
     return true;
   };
 
+  // Check if URL has params (synchronous check)
+  const hasUrlParameters = () => {
+    if (typeof window === 'undefined') return false;
+    const urlParams = new URLSearchParams(window.location.search);
+    return !!(urlParams.get('course_id') || urlParams.get('location_id') || urlParams.get('date'));
+  };
+
+
   // Auto-expand next section when current is completed
   useEffect(() => {
     if (sectionComplete[1] && !expandedSections[2]) {
       setExpandedSections(prev => ({ ...prev, 2: true }));
-      // Scroll to the newly opened section (give time for layout)
-      setTimeout(() => {
-        document.getElementById('section-2')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 150);
+      // Only scroll if page was NOT loaded with URL params AND initial load is complete
+      // hasUrlParams stays true if params were present, blocking scroll permanently
+      // isInitialLoad prevents scroll when default course is auto-selected
+      if (!hasUrlParams && !isInitialLoad) {
+        setTimeout(() => {
+          document.getElementById('section-2')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+      }
     }
-  }, [sectionComplete[1]]);
+  }, [sectionComplete[1], hasUrlParams, isInitialLoad, expandedSections]);
+
+  // Scroll to section 2 when course changes manually (after initial load)
+  useEffect(() => {
+    if (selectedCourse && !hasUrlParams && !isInitialLoad) {
+      const currentCourseId = selectedCourse.id;
+      // Check if course actually changed (not initial selection)
+      if (prevCourseIdRef.current !== null && prevCourseIdRef.current !== currentCourseId) {
+        setTimeout(() => {
+          document.getElementById('section-2')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+      }
+      prevCourseIdRef.current = currentCourseId;
+    } else if (!selectedCourse) {
+      prevCourseIdRef.current = null;
+    }
+  }, [selectedCourse, hasUrlParams, isInitialLoad]);
 
   useEffect(() => {
     if (sectionComplete[2] && !expandedSections[3]) {
       setExpandedSections(prev => ({ ...prev, 3: true }));
-      setTimeout(() => {
-        document.getElementById('section-3')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 150);
+      // Only scroll if page was NOT loaded with URL params AND initial load is complete
+      // hasUrlParams stays true if params were present, blocking scroll permanently
+      // isInitialLoad prevents scroll when default course is auto-selected
+      if (!hasUrlParams && !isInitialLoad) {
+        setTimeout(() => {
+          document.getElementById('section-3')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+      }
     }
-  }, [sectionComplete[2]]);
+  }, [sectionComplete[2], hasUrlParams, isInitialLoad, expandedSections]);
 
   useEffect(() => {
     if (sectionComplete[3] && !expandedSections[4]) {
       setExpandedSections(prev => ({ ...prev, 4: true }));
-      setTimeout(() => {
-        document.getElementById('section-4')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 150);
+      // Only scroll if page was NOT loaded with URL params AND initial load is complete
+      if (!hasUrlParameters() && !isInitialLoad) {
+        setTimeout(() => {
+          document.getElementById('section-4')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+      }
     }
-  }, [sectionComplete[3]]);
+  }, [sectionComplete[3], isInitialLoad]);
 
   useEffect(() => {
-    if (sectionComplete[4] && !expandedSections[5] && photocardConfirmed.slice(0, attendees).every(c => c)) {
-      setExpandedSections(prev => ({ ...prev, 5: true }));
-      setTimeout(() => {
-        document.getElementById('section-5')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 150);
-    }
-  }, [sectionComplete[4], photocardConfirmed, attendees]);
+    // Only expand section 5 if section 4 is truly complete (all attendees have complete details AND confirmed photocards)
+    const allAttendeesComplete = attendeeDetails.slice(0, attendees).every(a => isAttendeeComplete(a));
+    const allPhotocardsConfirmed = photocardConfirmed.slice(0, attendees).every(c => c);
+    const shouldBeExpanded = allAttendeesComplete && allPhotocardsConfirmed;
+
+    setExpandedSections(prev => {
+      // Only update if the state would actually change
+      if (shouldBeExpanded && !prev[5]) {
+        // Expand section 5 when all conditions are met
+        if (!hasUrlParameters() && !isInitialLoad) {
+          setTimeout(() => {
+            document.getElementById('section-5')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 150);
+        }
+        return { ...prev, 5: true };
+      } else if (!shouldBeExpanded && prev[5]) {
+        // Collapse section 5 if conditions are no longer met
+        return { ...prev, 5: false };
+      }
+      return prev; // No change needed
+    });
+  }, [attendeeDetails, photocardConfirmed, attendees, isInitialLoad]);
 
   // Collapse first attendee when photocard is confirmed
   useEffect(() => {
@@ -455,29 +533,27 @@ export default function OnePageBookingCheckout() {
     }
   }, [confirmPhotocard, attendees]);
 
-  // Auto-expand next attendee when photocard confirmed
+  // Auto-expand next attendee only when current attendee is complete AND photocard is confirmed
   useEffect(() => {
     if (attendees <= 1) return;
 
     const currentIndex = expandedAttendeeIndex;
-    if (currentIndex >= 0 && currentIndex < attendees && photocardConfirmed[currentIndex]) {
-      if (currentIndex < attendees - 1 && !photocardConfirmed[currentIndex + 1]) {
-        setExpandedAttendeeIndex(currentIndex + 1);
+    // Only proceed if we have a valid current index
+    if (currentIndex >= 0 && currentIndex < attendees) {
+      const currentAttendee = attendeeDetails[currentIndex];
+      const isCurrentComplete = isAttendeeComplete(currentAttendee);
+      const isPhotocardConfirmed = photocardConfirmed[currentIndex];
+
+      // Only auto-expand next attendee if BOTH conditions are met:
+      // 1. All required fields are filled for current attendee
+      // 2. Photocard is confirmed for current attendee
+      if (isCurrentComplete && isPhotocardConfirmed) {
+        if (currentIndex < attendees - 1) {
+          setExpandedAttendeeIndex(currentIndex + 1);
+        }
       }
     }
-  }, [photocardConfirmed, attendees]);
-
-  // Auto-expand next attendee form when current is completed (skip first if photocard confirmed)
-  useEffect(() => {
-    if (attendees <= 1 || !photocardConfirmed.slice(0, attendees).every(c => c)) return;
-
-    const currentAttendee = attendeeDetails[expandedAttendeeIndex];
-    if (currentAttendee && isAttendeeComplete(currentAttendee)) {
-      if (expandedAttendeeIndex < attendees - 1) {
-        setExpandedAttendeeIndex(expandedAttendeeIndex + 1);
-      }
-    }
-  }, [attendeeDetails, expandedAttendeeIndex, attendees, photocardConfirmed]);
+  }, [attendeeDetails, photocardConfirmed, expandedAttendeeIndex, attendees]);
 
   // Reset attendees to 1 when date changes
   useEffect(() => {
@@ -621,24 +697,7 @@ export default function OnePageBookingCheckout() {
         setLicenseTypes(licenseTypesData);
         setAvailableVehicleTypes(vehicleTypesData);
 
-        // Default to first license/vehicle type if user hasn't chosen one yet
-        setAttendeeDetails(prev => prev.map((attendee, idx) => {
-          // Find first automatic vehicle type
-          const sortedVehicles = Object.entries(vehicleTypesData).sort(([, a], [, b]) => {
-            const aIsAuto = a.toLowerCase().includes('automatic');
-            const bIsAuto = b.toLowerCase().includes('automatic');
-            if (aIsAuto && !bIsAuto) return -1;
-            if (!aIsAuto && bIsAuto) return 1;
-            return 0;
-          });
-          const defaultVehicleType = sortedVehicles.length > 0 ? sortedVehicles[0][0] : '';
-
-          return {
-            ...attendee,
-            licenseType: attendee.licenseType || (licenseTypesData && licenseTypesData.length > 0 ? String(licenseTypesData[0].id) : ''),
-            vehicleType: attendee.vehicleType || defaultVehicleType,
-          };
-        }));
+        // Don't auto-select defaults - users must choose from 'Please select'
 
         step5FetchedRef.current = current;
       } catch (err) {
@@ -651,11 +710,19 @@ export default function OnePageBookingCheckout() {
 
   // Get user IP and check block status on load
   useEffect(() => {
+    // Check URL params synchronously first to prevent race condition
+    const urlParams = new URLSearchParams(window.location.search);
+    const courseId = urlParams.get('course_id');
+    const locationIdParam = urlParams.get('location_id');
+    const dateParam = urlParams.get('date');
+    const hasParams = !!(courseId || locationIdParam || dateParam);
+    setHasUrlParams(hasParams);
+
     const initializeBooking = async () => {
       try {
         setLoading(true);
 
-        // Parse URL parameters
+        // URL params already parsed above
         const urlParams = new URLSearchParams(window.location.search);
         const courseId = urlParams.get('course_id');
         const locationIdParam = urlParams.get('location_id');
@@ -727,6 +794,8 @@ export default function OnePageBookingCheckout() {
         if (courseEventId) {
           setSelectedCourseEventId(parseInt(courseEventId));
         }
+
+        // Don't set isInitialLoad to false here - let it happen after default course selection
       } catch (err) {
         console.error('Load initial data error:', err);
         setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -808,9 +877,20 @@ export default function OnePageBookingCheckout() {
       const defaultCourse = courses.find(c => c.id === 1);
       if (defaultCourse) {
         setSelectedCourse(defaultCourse);
+        // Start timer AFTER selecting default course to prevent scroll during initial expansion
+        const timer = setTimeout(() => {
+          setIsInitialLoad(false);
+        }, 600);
+        return () => clearTimeout(timer);
       }
+    } else if (selectedCourse && isInitialLoad) {
+      // If course already selected (from URL params), start timer once
+      const timer = setTimeout(() => {
+        setIsInitialLoad(false);
+      }, 600);
+      return () => clearTimeout(timer);
     }
-  }, [courses, selectedCourse]);
+  }, [courses, selectedCourse]); // Removed isInitialLoad to prevent effect re-running when timer completes
 
   // Track last availability fetch to avoid duplicate requests
   const availabilityFetchedRef = useRef<{ courseId?: number | null; locationId?: number | null } | null>(null);
@@ -835,8 +915,11 @@ export default function OnePageBookingCheckout() {
         setCourseEvents(availability);
         availabilityFetchedRef.current = { courseId: selectedCourse.id, locationId };
 
-        // Auto-select first available date
-        if (availability.length > 0 && !selectedDate) {
+        // Only auto-select first available date if there was a date parameter in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const dateParam = urlParams.get('date');
+
+        if (availability.length > 0 && !selectedDate && dateParam) {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const nextAvailable = availability.find(event => {
@@ -938,19 +1021,15 @@ export default function OnePageBookingCheckout() {
       newConfirmed[index] = confirmed;
       return newConfirmed;
     });
-
-    // If this is the last attendee and photocard is confirmed, expand section 5
-    if (confirmed && index === attendees - 1) {
-      setTimeout(() => {
-        setExpandedSections(prev => ({ ...prev, 5: true }));
-        setTimeout(() => {
-          document.getElementById('section-5')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 150);
-      }, 100);
-    }
+    // Section 5 expansion is handled by the useEffect hook that checks if ALL conditions are met:
+    // 1. All attendees have complete details
+    // 2. All photocards are confirmed
   };
 
   const handleApplyPromo = async () => {
+    setPromoError(null);
+    setPromoSuccess(null);
+
     if (!promoCode.trim()) {
       toast.error('Please enter a promo code');
       return;
@@ -962,6 +1041,8 @@ export default function OnePageBookingCheckout() {
     }
 
     setIsValidatingPromo(true);
+    toast.loading('Validating promo code...', { id: 'promo-validation' });
+
     try {
       const response = await fetch(`${BASE_URL}/booking/promo-codes/validate`, {
         method: 'POST',
@@ -978,14 +1059,17 @@ export default function OnePageBookingCheckout() {
 
       if (data.success && data.data.valid) {
         setPromoData(data.data);
-        toast.success(data.data.description || 'Promo code applied successfully!');
+        setPromoSuccess(data.data.description || 'Promo code applied successfully!');
+        toast.success(data.data.description || 'Promo code applied successfully!', { id: 'promo-validation' });
       } else {
         setPromoData(null);
-        toast.error(data.message || 'Invalid promo code');
+        setPromoError(data.message || 'Invalid promo code');
+        toast.error(data.message || 'Invalid promo code', { id: 'promo-validation' });
       }
     } catch (error) {
       setPromoData(null);
-      toast.error('Failed to validate promo code');
+      setPromoError('Failed to validate promo code');
+      toast.error('Failed to validate promo code', { id: 'promo-validation' });
     } finally {
       setIsValidatingPromo(false);
     }
@@ -994,7 +1078,9 @@ export default function OnePageBookingCheckout() {
   const handleRemovePromo = () => {
     setPromoCode('');
     setPromoData(null);
-    toast.info('Promo code removed');
+    setPromoError(null);
+    setPromoSuccess(null);
+    toast.success('Promo code removed');
   };
 
   async function handleCreateBooking() {
@@ -1136,10 +1222,35 @@ export default function OnePageBookingCheckout() {
         setCourseLocationError(errMsg || 'Selected date is no longer available. Please choose another date.');
         setSelectedDate(null);
         setSelectedCourseEventId(null);
+
+        // Refresh availability to show updated spaces
+        if (selectedCourse && locationId) {
+          bookingApi.getCourseAvailability(selectedCourse.id, locationId)
+            .then(availabilityData => {
+              setCourseEvents(availabilityData.data.availability);
+            })
+            .catch(err => {
+              console.error('Failed to refresh availability:', err);
+            });
+        }
       } else if (error?.status === 400 && (!error?.data || !error?.data?.message)) {
         toast.error('We couldn’t create the booking. Please review your details and try again.');
       } else {
         toast.error(`Booking failed: ${errMsg}`);
+
+        // Refresh availability if error mentions spaces/availability
+        const lowerErrMsg = String(errMsg).toLowerCase();
+        if (lowerErrMsg.includes('availab') || lowerErrMsg.includes('space') || lowerErrMsg.includes('full') || lowerErrMsg.includes('sold out')) {
+          if (selectedCourse && locationId) {
+            bookingApi.getCourseAvailability(selectedCourse.id, locationId)
+              .then(availabilityData => {
+                setCourseEvents(availabilityData.data.availability);
+              })
+              .catch(err => {
+                console.error('Failed to refresh availability:', err);
+              });
+          }
+        }
       }
 
       throw error;
@@ -1311,7 +1422,6 @@ export default function OnePageBookingCheckout() {
                     <div className="mt-1 grid grid-cols-7 gap-1">
                       {weeks.flat().map((cell, idx) => {
                         const isSelected = selectedDate && new Date(selectedDate).toDateString() === cell.date.toDateString();
-                        const isToday = new Date().toDateString() === cell.date.toDateString();
                         const currentMonth = new Date();
                         currentMonth.setMonth(currentMonth.getMonth() + calendarMonthOffset);
                         const inCurrentMonth = cell.date.getMonth() === currentMonth.getMonth() && cell.date.getFullYear() === currentMonth.getFullYear();
@@ -1332,12 +1442,12 @@ export default function OnePageBookingCheckout() {
                                 : cell.available
                                 ? isSelected
                                   ? "border-emerald-600 bg-emerald-600 text-white font-semibold"
-                                  : "border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600"
+                                  : "border-emerald-500 bg-white text-slate-900 hover:border-emerald-600"
                                 : "border-red-300 bg-red-50 text-red-500 cursor-not-allowed"
-                              } ${isToday && inCurrentMonth ? "ring-2 ring-teal-400" : ""}`}
+                              }`}
                           >
                             <div>{cell.date.getDate()}</div>
-                            <div className="text-[10px]">{inCurrentMonth && cell.available ? `${cell.spots}×` : inCurrentMonth ? "—" : ""}</div>
+                            <div className="text-[10px]">{inCurrentMonth && cell.available ? `x${cell.spots}` : inCurrentMonth ? "—" : ""}</div>
                           </button>
                         );
                       })}
@@ -1346,19 +1456,45 @@ export default function OnePageBookingCheckout() {
                 )}
               </div>
 
+              {/* Attendees Selector - moved from sidebar */}
+              {selectedDate && (
+                <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+                  <h4 className="mb-3 text-sm font-semibold text-slate-900">Select Number of Spaces</h4>
+                  <div className="flex items-center justify-center gap-3">
+                    <button type="button" disabled={attendees <= 1} className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => setAttendees((n) => Math.max(1, n - 1))}>−</button>
+                    <input type="number" min={1} max={selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1} className="w-16 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm" value={attendees} onChange={(e) => {
+                      const maxSpots = selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1;
+                      setAttendees(Math.max(1, Math.min(maxSpots, parseInt(e.target.value || "1", 10))));
+                    }} />
+                    <button type="button" disabled={attendees >= (selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1)} className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => {
+                      const maxSpots = selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1;
+                      setAttendees((n) => Math.min(maxSpots, n + 1));
+                    }}>+</button>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500 text-center">{selectedDate ? "Spaces Available: " + (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? "—") : ""}</p>
+                </div>
+              )}
+
               {/* Selected summary */}
               <div className="mt-4 rounded-lg bg-teal-50 p-3 text-sm text-teal-900">
                 {selectedDate ? (
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                     <span><strong>Date:</strong> {selectedDate.toLocaleDateString()}</span>
-                    <span><strong>Time window:</strong> {(() => {
+                    <span><strong>Start Time:</strong> {(() => {
                       const selectedEvent = courseEvents.find(event => {
                         const eventDate = new Date(event.date);
                         return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
                       });
-                      return selectedEvent ? `${selectedEvent.event_start_time}–${selectedEvent.event_end_time}` : '07:00–15:00';
+                      return selectedEvent ? selectedEvent.event_start_time : '07:00';
                     })()}</span>
-                    <span><strong>Attendees:</strong> {attendees}</span>
+                    <span><strong>Finish Time (approx):</strong> {(() => {
+                      const selectedEvent = courseEvents.find(event => {
+                        const eventDate = new Date(event.date);
+                        return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
+                      });
+                      return selectedEvent ? selectedEvent.event_end_time : '15:00';
+                    })()}</span>
+                    <span><strong>Spaces:</strong> {attendees}</span>
                     <span><strong>Location:</strong> {currentLocation?.location_name}</span>
                   </div>
                 ) : (
@@ -1477,20 +1613,6 @@ export default function OnePageBookingCheckout() {
                               if (i !== index) a.isPrimaryUser = false;
                             });
                           }
-                          // Auto-select first automatic vehicle if vehicle type is empty
-                          if (field === 'vehicleType' && !value && Object.keys(availableVehicleTypes).length > 0) {
-                            const sortedVehicles = Object.entries(availableVehicleTypes).sort(([, a], [, b]) => {
-                              const aIsAuto = a.toLowerCase().includes('automatic');
-                              const bIsAuto = b.toLowerCase().includes('automatic');
-                              if (aIsAuto && !bIsAuto) return -1;
-                              if (!aIsAuto && bIsAuto) return 1;
-                              return 0;
-                            });
-                            if (sortedVehicles.length > 0) {
-                              newDetails[index] = { ...newDetails[index], vehicleType: sortedVehicles[0][0] };
-                              return newDetails;
-                            }
-                          }
                           newDetails[index] = { ...newDetails[index], [field]: value };
                           return newDetails;
                         });
@@ -1522,7 +1644,12 @@ export default function OnePageBookingCheckout() {
               subtitle="You'll be redirected to the secure payment page."
               complete={sectionComplete[5]}
               open={expandedSections[5]}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 5: !prev[5] }))}
+              onToggle={() => {
+                // Only allow toggle if section 4 is complete
+                if (sectionComplete[4]) {
+                  setExpandedSections(prev => ({ ...prev, 5: !prev[5] }));
+                }
+              }}
               expandDisabled={!sectionComplete[4]}
             >
               <div className="grid gap-4 md:grid-cols-2">
@@ -1532,23 +1659,22 @@ export default function OnePageBookingCheckout() {
                     <li><span className="text-slate-500">Course:</span> {selectedCourse?.course_name}</li>
                     <li><span className="text-slate-500">Location:</span> {currentLocation?.location_name}</li>
                     <li><span className="text-slate-500">Date:</span> {selectedDate ? selectedDate.toLocaleDateString() : "—"}</li>
-                    <li><span className="text-slate-500">Time window:</span> {selectedDate ? (() => {
+                    <li><span className="text-slate-500">Start Time:</span> {selectedDate ? (() => {
                       const selectedEvent = courseEvents.find(event => {
                         const eventDate = new Date(event.date);
                         return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
                       });
-                      return selectedEvent ? `${selectedEvent.event_start_time}–${selectedEvent.event_end_time}` : '07:00–15:00';
+                      return selectedEvent ? selectedEvent.event_start_time : '07:00';
                     })() : "—"}</li>
-                    <li><span className="text-slate-500">Attendees:</span> {attendees} attendee(s)</li>
+                    <li><span className="text-slate-500">Spaces:</span> {attendees}</li>
                   </ul>
                 </div>
 
                 <div className="rounded-xl border border-slate-200 bg-white p-4">
                   <p className="mb-2 font-medium text-slate-900">Pricing</p>
                   <div className="space-y-1 text-sm">
-                    <div className="flex items-center justify-between"><span className="text-slate-600">Attendees</span><span className="font-medium text-slate-900">{attendees}</span></div>
+                    <div className="flex items-center justify-between"><span className="text-slate-600">Spaces</span><span className="font-medium text-slate-900">{attendees}</span></div>
                     <div className="flex items-center justify-between"><span className="text-slate-600">Course fee</span><span className="font-medium text-slate-900"><Money value={subtotal} /></span></div>
-                    <div className="flex items-center justify-between"><span className="text-slate-600">VAT (20%)</span><span className="font-medium text-slate-900"><Money value={vat} /></span></div>
                     {promoData?.valid && (
                       <div className="flex items-center justify-between text-green-600">
                         <span>
@@ -1566,23 +1692,35 @@ export default function OnePageBookingCheckout() {
                   <div className="mt-4 pt-4 border-t">
                     <p className="text-xs font-medium text-slate-700 mb-2">Have a promo code?</p>
                     {!promoData?.valid ? (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={promoCode}
-                          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                          placeholder="Enter code"
-                          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleApplyPromo}
-                          disabled={isValidatingPromo || !promoCode.trim()}
-                          className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isValidatingPromo ? 'Checking...' : 'Apply'}
-                        </button>
-                      </div>
+                      <>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={promoCode}
+                            onChange={(e) => {
+                              setPromoCode(e.target.value.toUpperCase());
+                              setPromoError(null);
+                              setPromoSuccess(null);
+                            }}
+                            placeholder="Enter code"
+                            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleApplyPromo}
+                            disabled={isValidatingPromo || !promoCode.trim()}
+                            className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isValidatingPromo ? 'Checking...' : 'Apply'}
+                          </button>
+                        </div>
+                        {promoError && (
+                          <p className="mt-2 text-xs text-red-600">{promoError}</p>
+                        )}
+                        {promoSuccess && (
+                          <p className="mt-2 text-xs text-green-600">{promoSuccess}</p>
+                        )}
+                      </>
                     ) : (
                       <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                         <div className="flex items-center gap-2">
@@ -1641,47 +1779,29 @@ export default function OnePageBookingCheckout() {
           {/* Right: Sticky Order Summary */}
           <aside className="md:col-span-1">
             <div className="sticky top-6 space-y-4">
-              <div className="rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
+              <div className="rounded-2xl border border-green-500 bg-white p-5 shadow-sm">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-base font-semibold text-slate-900">Order summary</h3>
-                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">Live</span>
+                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-600">Live</span>
                 </div>
                 <dl className="space-y-2 text-sm">
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Course</dt><dd className="text-right text-slate-900">{selectedCourse?.course_name}</dd></div>
-                  <div className="flex items-center justify-between"><dt className="text-slate-500">Location</dt><dd className="text-right text-slate-900">{currentLocation?.location_name}</dd></div>
+                  <div className="flex items-center justify-between"><dt className="text-slate-500">Location</dt><dd className="text-right text-slate-900">{currentLocation?.location_name || "—"}</dd></div>
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Date</dt><dd className="text-right text-slate-900">{selectedDate ? selectedDate.toLocaleDateString() : "—"}</dd></div>
-                  <div className="flex items-center justify-between"><dt className="text-slate-500">Time window</dt><dd className="text-right text-slate-900">{selectedDate ? (() => {
+                  <div className="flex items-center justify-between"><dt className="text-slate-500">Start Time</dt><dd className="text-right text-slate-900">{selectedDate ? (() => {
                     const selectedEvent = courseEvents.find(event => {
                       const eventDate = new Date(event.date);
                       return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
                     });
-                    return selectedEvent ? `${selectedEvent.event_start_time}–${selectedEvent.event_end_time}` : '07:00–15:00';
+                    return selectedEvent ? selectedEvent.event_start_time : '07:00';
                   })() : "—"}</dd></div>
+                  <div className="flex items-center justify-between"><dt className="text-slate-500">Spaces</dt><dd className="text-right text-slate-900">{attendees}</dd></div>
                 </dl>
                 <div className="my-3 border-t" />
                 <div className="space-y-1 text-sm">
                   <div className="flex items-center justify-between"><span className="text-slate-600">Subtotal</span><span className="font-medium text-slate-900"><Money value={subtotal} /></span></div>
-                  <div className="flex items-center justify-between"><span className="text-slate-600">VAT</span><span className="font-medium text-slate-900"><Money value={vat} /></span></div>
                   <div className="mt-2 flex items-center justify-between text-base font-semibold text-slate-900"><span>Total</span><span><Money value={total} /></span></div>
                 </div>
-              </div>
-
-              {/* Attendees */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h4 className="mb-2 text-sm font-semibold text-slate-900">Attendees</h4>
-                <p className="mb-3 text-xs text-slate-500">Visit anytime during the scheduled time window on your chosen day.</p>
-                <div className="flex items-center justify-center gap-3">
-                  <button type="button" disabled={attendees <= 1} className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => setAttendees((n) => Math.max(1, n - 1))}>−</button>
-                  <input type="number" min={1} max={selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1} className="w-16 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm" value={attendees} onChange={(e) => {
-                    const maxSpots = selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1;
-                    setAttendees(Math.max(1, Math.min(maxSpots, parseInt(e.target.value || "1", 10))));
-                  }} />
-                  <button type="button" disabled={attendees >= (selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1)} className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => {
-                    const maxSpots = selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1;
-                    setAttendees((n) => Math.min(maxSpots, n + 1));
-                  }}>+</button>
-                </div>
-                <p className="mt-2 text-xs text-slate-500 text-center">{selectedDate ? "Spaces Available: " + (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? "—") : "Select a date to see availability."}</p>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
