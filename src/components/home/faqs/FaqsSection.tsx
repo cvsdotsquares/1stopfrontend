@@ -59,7 +59,7 @@ export default function FaqsSection({ data }: { data: FaqsData }) {
                 onClick={() => toggleCategory(category.id)}
                 className="flex w-full items-center justify-between py-3 text-left cursor-pointer"
               >
-                <h3 className="text-xl font-bold text-gray-900">
+                <h3 className="text-base md:text-xl font-bold text-gray-900">
                   {category.category}
                 </h3>
                 <span className="ml-4 flex-shrink-0 text-2xl text-gray-500">
@@ -75,19 +75,19 @@ export default function FaqsSection({ data }: { data: FaqsData }) {
                       {/* Question */}
                       <button
                         onClick={() => toggleQuestion(question.id)}
-                        className="flex w-full items-center justify-between p-4 pl-8 text-left hover:bg-gray-50"
+                        className="flex w-full items-center justify-between p-4 text-left hover:bg-gray-50"
                       >
-                        <h4 className="text-lg font-medium text-gray-800">
+                        <h4 className="text-base mb-0 font-bold text-gray-800">
                           {question.question}
                         </h4>
-                        <span className="ml-4 flex-shrink-0 text-xl text-gray-400">
+                        <span className="ml-4 flex-shrink-0 text-xl text-gray-500">
                           {openQuestion === question.id ? "−" : "+"}
                         </span>
                       </button>
 
                       {/* Answer */}
                       {openQuestion === question.id && (
-                        <div className="px-8 pb-4">
+                        <div className="px-4 pb-4 pt-2">
                           <div 
                             className="text-gray-700 leading-relaxed prose prose-sm max-w-none [&_a]:text-blue-600 hover:[&_a]:text-blue-800"
                             dangerouslySetInnerHTML={{ __html: question.answer }}

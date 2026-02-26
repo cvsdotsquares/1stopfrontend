@@ -146,9 +146,9 @@ export function HtmlMobileNavigationItem({
   
   const borderStyles = {
     0: "",
-    1: "border-l-2 border-gray-200 pl-3",
-    2: "border-l border-gray-300 pl-2",
-    3: "border-l border-gray-400 pl-2"
+    1: "lg:border-l-2 border-gray-200 pl-3",
+    2: "lg:border-l border-gray-300 pl-2",
+    3: "lg:border-l border-gray-400 pl-2"
   };
 
   // Safety checks - support both data structures

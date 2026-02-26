@@ -209,13 +209,13 @@ export default function Header() {
             <div className="flex italic hidden md:block">“Roadcraft Professionals For All Categories Of Driving”</div>
             <div className="flex items-center space-x-4">
               {isAuthenticated ? (
-                <div className="flex items-center space-x-4">
+                <div className="flex md:items-center space-y-2 flex-wrap justify-end">
                   <span>Welcome, {user?.first_name}</span>
                   <div className="inline-block">
-                    <Link href="/bookings" className="px-2 py-1 min-w-[75px] bg-red-600 text-center text-white rounded-tl-lg rounded-br-lg hover:bg-blue-600 text-nowrap border border-red-600 hover:border-blue-600">Book Online Now</Link>
+                    <Link href="/bookings" className="ml-3  inline-block px-2 py-1 min-w-[75px] bg-red-600 text-center text-white rounded-tl-lg rounded-br-lg hover:bg-blue-600 text-nowrap border border-red-600 hover:border-blue-600">Book Online Now</Link>
                   </div>
-                  <Link href="/dashboard" className="border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Dashboard</Link>
-                  <button onClick={logout} className="border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Logout</button>
+                  <Link href="/dashboard" className="ml-3  border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Dashboard</Link>
+                  <button onClick={logout} className="ml-3 mb-2 border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Logout</button>
                 </div>
               ) : (
                 <div className="flex items-center gap-3 text-blue-600 text-sm flex-wrap md:flex-nowrap justify-end">
