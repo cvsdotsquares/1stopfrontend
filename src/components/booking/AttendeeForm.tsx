@@ -179,6 +179,7 @@ export default function AttendeeForm({
           </label>
           <input
             type="date"
+            placeholder="__/__/____"
             className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
               ageWarning && ageWarning.includes('must be at least 16')
                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
@@ -204,6 +205,10 @@ export default function AttendeeForm({
               } else {
                 handleDobChange('');
               }
+            }}
+            onClick={(e) => {
+              // Ensure calendar opens when clicking anywhere in the field
+              e.currentTarget.showPicker?.();
             }}
             max={(() => {
               const today = new Date();

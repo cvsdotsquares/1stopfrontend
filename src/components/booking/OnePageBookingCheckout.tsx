@@ -196,7 +196,7 @@ function RadioCard({ checked, onChange, onClick, title, caption, right, disabled
       type="button"
       onClick={handleClick}
       disabled={disabled}
-      className={`w-full rounded-xl border p-4 text-left transition-all ${disabled ? 'cursor-not-allowed opacity-60' : 'hover:shadow-sm'} focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${checked ? "border-red-500 bg-red-50" : "border-slate-200 bg-white"
+      className={`w-full rounded-xl border p-4 text-left transition-all ${disabled ? 'cursor-not-allowed opacity-60' : 'hover:shadow-sm'} focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${checked ? "border-green-500 bg-green-50" : "border-slate-200 bg-white"
         }`}
       aria-pressed={!!checked}
       aria-disabled={disabled ? true : undefined}
@@ -204,7 +204,7 @@ function RadioCard({ checked, onChange, onClick, title, caption, right, disabled
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-start gap-2">
-            <div className={`h-4 w-4 mt-1 flex-none rounded-full border ${checked ? "border-red-600 bg-red-600" : "border-slate-400"}`} />
+            <div className={`h-4 w-4 mt-1 flex-none rounded-full border ${checked ? "border-green-600 bg-green-600" : "border-slate-400"}`} />
             <div>
               <p className="font-medium text-slate-900 mb-1">{title}</p>
               {caption && <p className="mt-1 text-sm text-slate-500">{caption}</p>}
@@ -322,7 +322,14 @@ export default function OnePageBookingCheckout() {
   }>>([{
     firstName: user?.first_name || "",
     lastName: user?.last_name || "",
-    dateOfBirth: "",
+    dateOfBirth: (() => {
+      const date = new Date();
+      date.setFullYear(date.getFullYear() - 16);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    })(),
     email: user?.email || "",
     confirmEmail: "",
     phone: user?.phone || "",
@@ -447,18 +454,14 @@ export default function OnePageBookingCheckout() {
 
   // Auto-expand next section when current is completed
   useEffect(() => {
-    if (sectionComplete[1] && !expandedSections[2]) {
-      setExpandedSections(prev => ({ ...prev, 2: true }));
-      // Only scroll if page was NOT loaded with URL params AND initial load is complete
-      // hasUrlParams stays true if params were present, blocking scroll permanently
-      // isInitialLoad prevents scroll when default course is auto-selected
-      if (!hasUrlParams && !isInitialLoad) {
-        setTimeout(() => {
-          document.getElementById('section-2')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 150);
+    if (sectionComplete[1]) {
+      // Expand section if not already expanded
+      if (!expandedSections[2]) {
+        setExpandedSections(prev => ({ ...prev, 2: true }));
       }
+      // Note: Scrolling is handled by the course change effect below
     }
-  }, [sectionComplete[1], hasUrlParams, isInitialLoad, expandedSections]);
+  }, [sectionComplete[1]]);
 
   // Scroll to section 2 when course changes manually (after initial load)
   useEffect(() => {
@@ -477,23 +480,27 @@ export default function OnePageBookingCheckout() {
   }, [selectedCourse, hasUrlParams, isInitialLoad]);
 
   useEffect(() => {
-    if (sectionComplete[2] && !expandedSections[3]) {
-      setExpandedSections(prev => ({ ...prev, 3: true }));
-      // Only scroll if page was NOT loaded with URL params AND initial load is complete
-      // hasUrlParams stays true if params were present, blocking scroll permanently
-      // isInitialLoad prevents scroll when default course is auto-selected
+    if (sectionComplete[2]) {
+      // Expand section if not already expanded
+      if (!expandedSections[3]) {
+        setExpandedSections(prev => ({ ...prev, 3: true }));
+      }
+      // Scroll whenever location is complete (even if section already expanded)
       if (!hasUrlParams && !isInitialLoad) {
         setTimeout(() => {
           document.getElementById('section-3')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 150);
       }
     }
-  }, [sectionComplete[2], hasUrlParams, isInitialLoad, expandedSections]);
+  }, [sectionComplete[2], hasUrlParams, isInitialLoad]);
 
   useEffect(() => {
-    if (sectionComplete[3] && !expandedSections[4]) {
-      setExpandedSections(prev => ({ ...prev, 4: true }));
-      // Only scroll if page was NOT loaded with URL params AND initial load is complete
+    if (sectionComplete[3]) {
+      // Expand section if not already expanded
+      if (!expandedSections[4]) {
+        setExpandedSections(prev => ({ ...prev, 4: true }));
+      }
+      // Scroll whenever date is complete (even if section already expanded)
       if (!hasUrlParameters() && !isInitialLoad) {
         setTimeout(() => {
           document.getElementById('section-4')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -508,22 +515,29 @@ export default function OnePageBookingCheckout() {
     const allPhotocardsConfirmed = photocardConfirmed.slice(0, attendees).every(c => c);
     const shouldBeExpanded = allAttendeesComplete && allPhotocardsConfirmed;
 
-    setExpandedSections(prev => {
-      // Only update if the state would actually change
-      if (shouldBeExpanded && !prev[5]) {
-        // Expand section 5 when all conditions are met
-        if (!hasUrlParameters() && !isInitialLoad) {
-          setTimeout(() => {
-            document.getElementById('section-5')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 150);
+    if (shouldBeExpanded) {
+      // Expand section if not already expanded
+      setExpandedSections(prev => {
+        if (!prev[5]) {
+          return { ...prev, 5: true };
         }
-        return { ...prev, 5: true };
-      } else if (!shouldBeExpanded && prev[5]) {
-        // Collapse section 5 if conditions are no longer met
-        return { ...prev, 5: false };
+        return prev;
+      });
+      // Scroll whenever all attendees are complete (even if section already expanded)
+      if (!hasUrlParameters() && !isInitialLoad) {
+        setTimeout(() => {
+          document.getElementById('section-5')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
       }
-      return prev; // No change needed
-    });
+    } else {
+      // Collapse section 5 if conditions are no longer met
+      setExpandedSections(prev => {
+        if (prev[5]) {
+          return { ...prev, 5: false };
+        }
+        return prev;
+      });
+    }
   }, [attendeeDetails, photocardConfirmed, attendees, isInitialLoad]);
 
   // Collapse first attendee when photocard is confirmed
@@ -569,10 +583,17 @@ export default function OnePageBookingCheckout() {
       if (attendees > prev.length) {
         // Add new attendees
         for (let i = prev.length; i < attendees; i++) {
+          const date = new Date();
+          date.setFullYear(date.getFullYear() - 16);
+          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const year = date.getFullYear();
+          const defaultDob = `${day}/${month}/${year}`;
+
           newDetails.push({
             firstName: "",
             lastName: "",
-            dateOfBirth: "",
+            dateOfBirth: defaultDob,
             email: "",
             confirmEmail: "",
             phone: "",
@@ -945,7 +966,7 @@ export default function OnePageBookingCheckout() {
   const weeks = useCalendarWeeks(courseEvents, calendarMonthOffset);
 
   const currentLocation = useMemo(
-    () => locations.find((l) => l.id === locationId) || locations[0],
+    () => locationId ? locations.find((l) => l.id === locationId) : null,
     [locations, locationId]
   );
 
