@@ -148,7 +148,8 @@ export default function AttendeeForm({
       {isExpanded && (
         <div className="p-6 pt-0">
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* First name and Last name - 2 columns */}
+      <div className="grid gap-4 sm:grid-cols-2 mb-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
             First name <span className="text-rose-500">*</span>
@@ -156,7 +157,7 @@ export default function AttendeeForm({
           <input
             type="text"
             className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-            value={attendee.firstName}
+            value={attendee.firstName || ''}
             onChange={(e) => onChange('firstName', e.target.value)}
           />
         </div>
@@ -168,62 +169,68 @@ export default function AttendeeForm({
           <input
             type="text"
             className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-            value={attendee.lastName}
+            value={attendee.lastName || ''}
             onChange={(e) => onChange('lastName', e.target.value)}
           />
         </div>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            Date of Birth <span className="text-rose-500">*</span>
-          </label>
-          <input
-            type="date"
-            placeholder="__/__/____"
-            className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
-              ageWarning && ageWarning.includes('must be at least 16')
-                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
-            }`}
-            value={(() => {
-              // Convert DD/MM/YYYY to YYYY-MM-DD for date input
-              if (attendee.dateOfBirth && attendee.dateOfBirth.length === 10) {
-                const [day, month, year] = attendee.dateOfBirth.split('/');
-                if (day && month && year) {
-                  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-                }
+      {/* Date of Birth - full width */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Date of Birth <span className="text-rose-500">*</span>
+        </label>
+        <input
+          type="date"
+          placeholder="__/__/____"
+          style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
+          className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
+            ageWarning && ageWarning.includes('must be at least 16')
+              ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+              : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
+          }`}
+          value={(() => {
+            // Convert DD/MM/YYYY to YYYY-MM-DD for date input
+            const dob = attendee.dateOfBirth || '';
+            if (dob && dob.length === 10) {
+              const [day, month, year] = dob.split('/');
+              if (day && month && year) {
+                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
               }
-              return '';
-            })()}
-            onChange={(e) => {
-              // Convert YYYY-MM-DD to DD/MM/YYYY for storage
-              const dateValue = e.target.value;
-              if (dateValue) {
-                const [year, month, day] = dateValue.split('-');
-                const formattedDate = `${day}/${month}/${year}`;
-                handleDobChange(formattedDate);
-              } else {
-                handleDobChange('');
-              }
-            }}
-            onClick={(e) => {
-              // Ensure calendar opens when clicking anywhere in the field
-              e.currentTarget.showPicker?.();
-            }}
-            max={(() => {
-              const today = new Date();
-              return today.toISOString().split('T')[0];
-            })()}
-          />
-          {ageWarning && (
-            <p className={`mt-1 text-xs ${
-              ageWarning.includes('must be at least 16') ? 'text-red-500' : 'text-amber-600'
-            }`}>
-              {ageWarning}
-            </p>
-          )}
-        </div>
+            }
+            return '';
+          })()}
+          onChange={(e) => {
+            // Convert YYYY-MM-DD to DD/MM/YYYY for storage
+            const dateValue = e.target.value;
+            if (dateValue) {
+              const [year, month, day] = dateValue.split('-');
+              const formattedDate = `${day}/${month}/${year}`;
+              handleDobChange(formattedDate);
+            } else {
+              handleDobChange('');
+            }
+          }}
+          onClick={(e) => {
+            // Ensure calendar opens when clicking anywhere in the field
+            e.currentTarget.showPicker?.();
+          }}
+          max={(() => {
+            const today = new Date();
+            return today.toISOString().split('T')[0];
+          })()}
+        />
+        {ageWarning && (
+          <p className={`mt-1 text-xs ${
+            ageWarning.includes('must be at least 16') ? 'text-red-500' : 'text-amber-600'
+          }`}>
+            {ageWarning}
+          </p>
+        )}
+      </div>
 
+      {/* Email and Confirm Email - 2 columns */}
+      <div className="grid gap-4 sm:grid-cols-2 mb-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
             Email <span className="text-rose-500">*</span>
@@ -239,7 +246,7 @@ export default function AttendeeForm({
                   : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
                 : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
             }`}
-            value={attendee.email}
+            value={attendee.email || ''}
             onChange={(e) => onChange('email', e.target.value)}
             placeholder="you@example.com"
           />
@@ -261,7 +268,7 @@ export default function AttendeeForm({
                   : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
                 : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
             }`}
-            value={attendee.confirmEmail}
+            value={attendee.confirmEmail || ''}
             onChange={(e) => onChange('confirmEmail', e.target.value)}
             placeholder="Confirm email"
           />
@@ -269,7 +276,10 @@ export default function AttendeeForm({
             <p className="mt-1 text-xs text-red-500">Emails do not match</p>
           )}
         </div>
+      </div>
 
+      {/* Phone and Alternative Phone - 2 columns */}
+      <div className="grid gap-4 sm:grid-cols-2 mb-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
             Phone <span className="text-rose-500">*</span>
@@ -283,7 +293,7 @@ export default function AttendeeForm({
                   : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
                 : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
             }`}
-            value={attendee.phone}
+            value={attendee.phone || ''}
             onChange={(e) => onChange('phone', e.target.value)}
             placeholder="07123456789"
           />
@@ -300,91 +310,97 @@ export default function AttendeeForm({
           <input
             type="tel"
             className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-            value={attendee.alternativePhone}
+            value={attendee.alternativePhone || ''}
             onChange={(e) => onChange('alternativePhone', e.target.value)}
             placeholder="Optional"
           />
         </div>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            Type Of Vehicle Required <span className="text-rose-500">*</span>
-          </label>
-          <select
-            className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-            value={attendee.vehicleType}
-            onChange={(e) => onChange('vehicleType', e.target.value)}
-          >
-            <option value="">Please select</option>
-            {getAllVehicleTypesWithStatus().map(([key, description]) => {
-              const disabled = isVehicleTypeDisabled(key, description);
-              return (
-                <option key={key} value={key} disabled={disabled}>
-                  {description}{disabled ? ' (Not available for 16-year-olds)' : ''}
-                </option>
-              );
-            })}
-          </select>
-        </div>
+      {/* Type Of Vehicle Required - full width */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Type Of Vehicle Required <span className="text-rose-500">*</span>
+        </label>
+        <select
+          style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
+          className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 bg-white"
+          value={attendee.vehicleType || ''}
+          onChange={(e) => onChange('vehicleType', e.target.value)}
+        >
+          <option value="">Please select</option>
+          {getAllVehicleTypesWithStatus().map(([key, description]) => {
+            const disabled = isVehicleTypeDisabled(key, description);
+            return (
+              <option key={key} value={key} disabled={disabled}>
+                {description}{disabled ? ' (Not available for 16-year-olds)' : ''}
+              </option>
+            );
+          })}
+        </select>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            Driving Licence Type <span className="text-rose-500">*</span>
-          </label>
-          <select
-            className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-            value={attendee.licenseType}
-            onChange={(e) => onChange('licenseType', e.target.value)}
-          >
-            <option value="">Please select</option>
-            {licenseTypes.map((license) => (
-              <option key={license.id} value={license.id}>{license.licence_type}</option>
-            ))}
-          </select>
-        </div>
+      {/* Driving Licence Type - full width */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Driving Licence Type <span className="text-rose-500">*</span>
+        </label>
+        <select
+          style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
+          className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 bg-white"
+          value={attendee.licenseType || ''}
+          onChange={(e) => onChange('licenseType', e.target.value)}
+        >
+          <option value="">Please select</option>
+          {licenseTypes.map((license) => (
+            <option key={license.id} value={license.id}>{license.licence_type}</option>
+          ))}
+        </select>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            Driving Licence Number {attendee.licenseType !== '4' && <span className="text-rose-500">*</span>}
-          </label>
-          <input
-            type="text"
-            className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
-              duplicateLicenseIndex !== null
-                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                : attendee.licenseNumber.length === 16
-                ? /^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber)
-                  ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
-                  : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
-            }`}
-            value={attendee.licenseNumber}
-            onChange={(e) => onChange('licenseNumber', e.target.value.toUpperCase())}
-            placeholder={attendee.licenseType === '4' ? 'Not required for this license type' : 'Must be 16 characters long'}
-            maxLength={16}
-            disabled={attendee.licenseType === '4'}
-          />
-          <p className="mt-1 text-xs text-slate-500">{attendee.licenseType === '4' ? 'Not required for Other/No Licence' : 'Must be 16 characters long'}</p>
-          {duplicateLicenseIndex !== null && (
-            <p className="mt-1 text-xs text-red-500">This driving licence number is already used by Attendee {duplicateLicenseIndex + 1}</p>
-          )}
-          {attendee.licenseNumber.length === 16 && !/^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber) && (
-            <p className="mt-1 text-xs text-red-500">Invalid Licence Number.</p>
-          )}
-        </div>
+      {/* Driving Licence Number - full width */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Driving Licence Number {attendee.licenseType !== '4' && <span className="text-rose-500">*</span>}
+        </label>
+        <input
+          type="text"
+          className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
+            duplicateLicenseIndex !== null
+              ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+              : attendee.licenseNumber.length === 16
+              ? /^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber)
+                ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
+                : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+              : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
+          }`}
+          value={attendee.licenseNumber || ''}
+          onChange={(e) => onChange('licenseNumber', e.target.value.toUpperCase())}
+          placeholder={attendee.licenseType === '4' ? 'Not required for this license type' : 'Must be 16 characters long'}
+          maxLength={16}
+          disabled={attendee.licenseType === '4'}
+        />
+        <p className="mt-1 text-xs text-slate-500">{attendee.licenseType === '4' ? 'Not required for Other/No Licence' : 'Must be 16 characters long'}</p>
+        {duplicateLicenseIndex !== null && (
+          <p className="mt-1 text-xs text-red-500">This driving licence number is already used by Attendee {duplicateLicenseIndex + 1}</p>
+        )}
+        {attendee.licenseNumber.length === 16 && !/^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber) && (
+          <p className="mt-1 text-xs text-red-500">Invalid Licence Number.</p>
+        )}
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            Theory Number (If Applicable)
-          </label>
-          <input
-            type="text"
-            className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
-            value={attendee.theoryNumber}
-            onChange={(e) => onChange('theoryNumber', e.target.value)}
-            placeholder="Optional"
-          />
-        </div>
+      {/* Theory Number - full width */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Theory Number (If Applicable)
+        </label>
+        <input
+          type="text"
+          className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+          value={attendee.theoryNumber || ''}
+          onChange={(e) => onChange('theoryNumber', e.target.value)}
+          placeholder="Optional"
+        />
       </div>
 
       <div className="mt-4 pt-4 border-t border-slate-300">
@@ -431,7 +447,7 @@ export default function AttendeeForm({
                       : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
                     : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
                 }`}
-                value={attendee.password}
+                value={attendee.password || ''}
                 onChange={(e) => onChange('password', e.target.value)}
                 placeholder="Min 8 chars"
               />
@@ -450,7 +466,7 @@ export default function AttendeeForm({
                       : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
                     : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
                 }`}
-                value={attendee.confirmPassword}
+                value={attendee.confirmPassword || ''}
                 onChange={(e) => onChange('confirmPassword', e.target.value)}
                 placeholder="Confirm password"
               />

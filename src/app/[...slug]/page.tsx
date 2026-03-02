@@ -13,7 +13,7 @@ import TrainingSlider from "@/components/home/training-slider/TrainingSlider";
 import WhyUsSection from "@/components/home/why-us/WhyUsSection";
 import GenericCta from "@/components/home/generic-cta/GenericCta";
 import Link from 'next/link';
-import Image from 'next/image';
+import Hero from "@/components/home/hero/Hero";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
@@ -105,7 +105,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       .replace(/<[^>]*>/g, '')
       .trim();
   };
-  
+
   const rawTitle = page.meta_title || page.link_title || page.page_title || '';
   const title = stripHtml(rawTitle);
   const description = page.meta_desc || page.meta?.description || undefined;
@@ -135,10 +135,10 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
   return (
     <div className="min-h-screen">
       {/* Carousel Banner when banner_type is 1 */}
-      {page.banner_type == 2 && <CarouselBanner />}
+      {/* {page.banner_type == 2 && <CarouselBanner />} */}
 
       {/* Banner header if present */}
-      {page.banner_type == 1 && (page.carousel_static_image || page.overlay_caption == 1) && (
+      {/* {page.banner_type == 1 && (page.carousel_static_image || page.overlay_caption == 1) && (
           <div className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white">
             {page.carousel_static_image && (
               <div
@@ -156,7 +156,11 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
               {page.carousel_static_caption && <p className="text-lg text-gray-300 mt-4" dangerouslySetInnerHTML={{ __html: page.carousel_static_caption }} />}
             </div>
           </div>
-      )}
+      )} */}
+
+      {/* Hero if present */}
+      {page.hero && <Hero data={page.hero} />}
+
       {/* Dynamic sections */}
       {Array.isArray(page.dynamic_sections) &&
         page.dynamic_sections.map((s) => {
@@ -180,14 +184,19 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
               </div>
             );
           }
-
           return (
             <div className="py-8 md:py-10 px-6" key={`section-${s.id}`}>
               <div className="max-w-[1400px] mx-auto">
                 <div className="[&_h2]:text-black [&_h2]:mb-5 [&_h2]:text-3xl text-gray-500 [&_a]:underline [&_a:hover]:text-red-500 [&_div]:p-5 [&_div]:bg-blue-100  [&_div]:text-blue-600 [&_div]:border-l-2 [&_div]:border-blue-600">
                   <h2>{s.section_title}</h2>
                   {s.items.map((item) => (
-                    <span key={item.id} dangerouslySetInnerHTML={{ __html: item.item_content || '' }} />
+                    <span key={item.id}>
+                      <span dangerouslySetInnerHTML={{ __html: item.item_content || '' }} />
+                      {item.item_image && (
+                        <img src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/dynamic_content/${item.item_image}`} alt={item.item_title} />
+                      )}
+                      {item.item_url && <Link href={item.item_url}>{item.item_title}</Link>}
+                    </span>
                   ))}
                 </div>
               </div>

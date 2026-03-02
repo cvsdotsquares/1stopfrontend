@@ -156,7 +156,8 @@ export default function GiftVoucherPage() {
                   <select
                     value={formData.subject}
                     onChange={(e) => handleInputChange('subject', e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                    style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
+                    className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 bg-white"
                   >
                     {templateData?.options?.map((option) => (
                       <option key={option} value={option}>
