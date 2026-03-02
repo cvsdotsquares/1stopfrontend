@@ -151,66 +151,70 @@ export default function Hero({ data }: { data: HeroData }) {
 
     return `/bookings?${params.toString()}`;
   };
-
   return (
     <section className="relative w-full overflow-hidden">
       <div className="relative flex flex-wrap lg:flex-nowrap">
       {/* Background Images */}
-      {hasMultipleImages ? (
-        <div className="min-h-[300px] md:min-h-[400px] lg:min-h-[700px] relative inset-0 w-full lg:w-2/3">
-          <div className="inset-0 bg-black/50" />
-          {data.backgroundImages.map((image, index) => (
-            <div
-              key={index}
-              className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ${
-                index === currentImageIndex ? 'opacity-100' : 'opacity-0'
-              }`}
-              style={{
-                backgroundImage: `url(${process.env.NEXT_PUBLIC_FILES_URL || ''}${image.src})`
-              }}
-            />
-          ))}
-        </div>
-      ) : (
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${getCurrentBackground()})` }}
-        />
-      )}
-      {/* Dark overlay */}
-      <div className="bg-blue-600 py-6 px-2 md:px-9  w-full lg:w-1/3">
-      
+      <div className={`relative w-full lg:w-2/3 ${data.search ? 'min-h-[300px] md:min-h-[400px] lg:min-h-[700px]' : 'min-h-[300px] md:min-h-[400px] lg:min-h-[500px]'}`}>
+        {hasMultipleImages ? (
+          <>
+            <div className="absolute inset-0 bg-black/50 z-10" />
+            {data.backgroundImages.map((image, index) => (
+              <div
+                key={index}
+                className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ${
+                  index === currentImageIndex ? 'opacity-100' : 'opacity-0'
+                }`}
+                style={{
+                  backgroundImage: `url(${process.env.NEXT_PUBLIC_FILES_URL || ''}${image.src})`
+                }}
+              />
+            ))}
+          </>
+        ) : (
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${getCurrentBackground()})` }}
+          />
+        )}
+      </div>
+      {/* Right panel */}
+      <div className="bg-blue-600 py-6 px-2 md:px-9 w-full lg:w-1/3">
+
 
       {/* Right-side content */}
       <div className="relative z-10 flex h-full items-start justify-center">
         <div className="w-11/12 md:w-full sm:max-w-[562px]">
 
           {/* CBT floating card */}
-          <div className="mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center rounded-lg">
-            <div className="text26 text-xl font-semibold text-red-600">
-              Our Next Available CBT Course Is {getDateDisplay()}
+          {nextCBT && (
+            <div className="mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center rounded-lg">
+              <div className="text26 text-xl font-semibold text-red-600">
+                {data.nextCourse?.label || nextCBT.course_name || 'Next CBT Course'} {getDateDisplay()}
+              </div>
+              <a
+                href={getBookingURL()}
+                className="mt-3 radius20-left radius20-right-bottom inline-block bg-red-600 px-10 py-3 text-base md:text-2xl text-white hover:bg-red-700"
+              >
+                {data.nextCourse?.ctaText || 'Book Now'}
+              </a>
             </div>
-            <a
-              href={getBookingURL()}
-              className="mt-3 radius20-left radius20-right-bottom inline-block bg-red-600 px-10 py-3 text-base md:text-2xl text-white hover:bg-red-700"
-            >
-              Book Now
-            </a>
-          </div>
+          )}
 
           {/* Purple panel */}
           <div className="pt-6 md:py-10 text-white">
 
             {/* Search */}
-            <div className="mb-6 md:mb-5">
-              <p className="mb-3">
-                {data.search.title}
-              </p>
+            {data.search && (
+              <div className="mb-6 md:mb-5">
+                <p className="mb-3">
+                  {data.search.title}
+                </p>
 
-              <div className="relative max-w-[400px]">
-                <input
-                  type="text"
-                  placeholder={data.search.placeholder}
+                <div className="relative max-w-[400px]">
+                  <input
+                    type="text"
+                    placeholder={data.search.placeholder}
                   aria-label={data.search.placeholder}
                   value={postcode}
                   onChange={(e) => setPostcode(e.target.value)}
@@ -260,30 +264,30 @@ export default function Hero({ data }: { data: HeroData }) {
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search h-5 w-5" aria-hidden="true"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
                 </button>
               </div>
-            </div>
-
+              </div>
+            )}
             {/* Summer Special */}
             <h2 className="text50 font-bold leading-none">
-              {data.promotion.title}
+              {data.promotion?.title || 'Summer Special test'}
             </h2>
 
             <p className="mt-4 text-xl md:text-3xl">
-              {data.promotion.subtitle}
+              {data.promotion?.subtitle || 'Get Your CBT For Only £189'}
             </p>
 
             <p className="mt-5 md:text-xl">
               Use Promo Code{" "}
               <span className="text-xl md:text-2xl font-bold">
-                {data.promotion.promoCode}
+                {data.promotion?.promoCode || 'SUMMER10'}
               </span>
             </p>
 
             <div className="mt-4 md:mt-10 flex gap-3 md:gap-4 flex-wrap ">
               <a
-                href={data.promotion.primaryCta.link}
+                href={data.promotion?.primaryCta?.link || '/bookings'}
                 className="min-w-[210px] radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-base md:text-lg text-center text-white hover:bg-red-500"
               >
-                {data.promotion.primaryCta.text}
+                {data.promotion?.primaryCta?.text || 'Book Online Now'}
               </a>
 
               <a
@@ -300,12 +304,14 @@ export default function Hero({ data }: { data: HeroData }) {
       </div>
       </div>
       {/* Bottom banner */}
-      <div className="w-full bg-black py-6 text-center px-3">
-          <p
-          className="text-2xl md:text-4xl text-white"
-          dangerouslySetInnerHTML={{ __html: data.footerText }}
-        />
-      </div>
+      {data.footerText && (
+        <div className="w-full bg-black py-6 text-center px-3">
+          <div
+            className="text-2xl md:text-4xl text-white"
+            dangerouslySetInnerHTML={{ __html: data.footerText }}
+          />
+        </div>
+      )}
     </section>
   );
 }

@@ -13,11 +13,12 @@ interface ServicesData {
 }
 
 export default function ServicesSection({ data }: { data: ServicesData }) {
+  if (!data.header || !data.services) return null;
   return (
     <section className="bg-gray-50 py-8 md:py-16">
       <div className="mx-auto max-w-[1400px] px-6">
         {/* Header */}
-        <div 
+        <div
           className="mb-7 md:mb-12 text-center  [&_p]:text-xl [&_p]:font-semibold [&_p]:mb-0"
           dangerouslySetInnerHTML={{ __html: data.header }}
         />

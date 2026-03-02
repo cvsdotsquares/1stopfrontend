@@ -285,9 +285,14 @@ export default function OnePageBookingCheckout() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedCourseEventId, setSelectedCourseEventId] = useState<number | null>(null);
   const [attendees, setAttendees] = useState(1);
+  const [dateTimeConfirmed, setDateTimeConfirmed] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [confirmPhotocard, setConfirmPhotocard] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [showCourseInfo, setShowCourseInfo] = useState(false);
+  const [selectedCourseInfo, setSelectedCourseInfo] = useState<Course | null>(null);
+  // const [showCourseInfo, setShowCourseInfo] = useState(false);
+  // const [selectedCourseInfo, setSelectedCourseInfo] = useState<Course | null>(null);
 
   // Promo code state
   const [promoCode, setPromoCode] = useState('');
@@ -429,7 +434,7 @@ export default function OnePageBookingCheckout() {
   const sectionComplete: Record<number, boolean> = {
     1: !!selectedCourse,
     2: !!locationId,
-    3: !!selectedDate && attendees > 0,
+    3: !!selectedDate && attendees > 0 && dateTimeConfirmed,
     4: attendeeDetails.slice(0, attendees).every(a => isAttendeeComplete(a)) && photocardConfirmed.slice(0, attendees).every(c => c),
     5: false, // Final section never auto-completes
   };
@@ -478,6 +483,11 @@ export default function OnePageBookingCheckout() {
       prevCourseIdRef.current = null;
     }
   }, [selectedCourse, hasUrlParams, isInitialLoad]);
+
+  // Reset date/time confirmation when date or attendees change
+  useEffect(() => {
+    setDateTimeConfirmed(false);
+  }, [selectedDate, attendees]);
 
   useEffect(() => {
     if (sectionComplete[2]) {
@@ -892,9 +902,10 @@ export default function OnePageBookingCheckout() {
     loadLocations();
   }, [selectedCourse]);
 
-  // Default: select course with id 1 if available (only when user hasn't already selected a course)
+  // Only auto-select course from URL params, don't pre-select by default
   useEffect(() => {
-    if (Array.isArray(courses) && courses.length > 0 && !selectedCourse) {
+    if (Array.isArray(courses) && courses.length > 0 && !selectedCourse && hasUrlParams) {
+      // Only auto-select if there are URL parameters
       const defaultCourse = courses.find(c => c.id === 1);
       if (defaultCourse) {
         setSelectedCourse(defaultCourse);
@@ -910,8 +921,14 @@ export default function OnePageBookingCheckout() {
         setIsInitialLoad(false);
       }, 600);
       return () => clearTimeout(timer);
+    } else if (!hasUrlParams && !isInitialLoad) {
+      // No URL params and not initial load, ensure timer completes
+      const timer = setTimeout(() => {
+        setIsInitialLoad(false);
+      }, 600);
+      return () => clearTimeout(timer);
     }
-  }, [courses, selectedCourse]); // Removed isInitialLoad to prevent effect re-running when timer completes
+  }, [courses, selectedCourse, hasUrlParams]); // Removed isInitialLoad to prevent effect re-running when timer completes
 
   // Track last availability fetch to avoid duplicate requests
   const availabilityFetchedRef = useRef<{ courseId?: number | null; locationId?: number | null } | null>(null);
@@ -1337,12 +1354,29 @@ export default function OnePageBookingCheckout() {
                 {Array.isArray(courses) && courses.map((c, index) => {
                   const isSelected = !!(selectedCourse?.id === c.id && selectedCourse?.course_name === c.course_name);
                   return (
-                    <RadioCard
-                      key={`course-${c.id}-${c.course_name}-${index}`}
-                      checked={isSelected}
-                      onChange={() => setSelectedCourse(c)}
-                      title={c.course_name}
-                    />
+                    <div key={`course-${c.id}-${c.course_name}-${index}`} className="relative">
+                      <RadioCard
+                        checked={isSelected}
+                        onChange={() => setSelectedCourse(c)}
+                        title={c.course_name}
+                      />
+                      {/* {c.description && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCourseInfo(c);
+                            setShowCourseInfo(true);
+                          }}
+                          className="absolute top-3 right-3 inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors z-10"
+                          title="Course information"
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      )} */}
+                    </div>
                   );
                 })}
               </div>
@@ -1522,6 +1556,34 @@ export default function OnePageBookingCheckout() {
                   <span>Select a date to continue.</span>
                 )}
               </div>
+
+              {/* Confirm Button */}
+              {selectedDate && attendees > 0 && !dateTimeConfirmed && (
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDateTimeConfirmed(true);
+                      // Auto-scroll to next section after confirmation
+                      setTimeout(() => {
+                        document.getElementById('section-4')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }, 150);
+                    }}
+                    className="w-full px-6 py-3 bg-teal-600 text-white rounded-xl font-medium hover:bg-teal-700 transition"
+                  >
+                    Confirm Date & Time
+                  </button>
+                </div>
+              )}
+
+              {dateTimeConfirmed && (
+                <div className="mt-4 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-900 flex items-center gap-2">
+                  <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span><strong>Date & Time Confirmed!</strong> Proceed to Attendees Details below.</span>
+                </div>
+              )}
             </Section>
 
             {/* Step 4: Attendees Details (All Attendees) */}
@@ -1868,6 +1930,67 @@ export default function OnePageBookingCheckout() {
           <input key={key} type="hidden" name={key} value={value} />
         ))}
       </form>
+
+      {/* Course Description Modal */}
+      {showCourseInfo && selectedCourseInfo && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowCourseInfo(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between p-6 border-b border-slate-200">
+              <div className="flex-1">
+                <h3 className="text-xl font-semibold text-slate-900">
+                  {selectedCourseInfo.course_name}
+                </h3>
+                {selectedCourseInfo.duration && (
+                  <p className="text-sm text-slate-500 mt-1">
+                    Duration: {selectedCourseInfo.duration}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCourseInfo(false)}
+                className="ml-4 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div
+                className="prose prose-sm sm:prose max-w-none
+                  prose-headings:text-slate-900 prose-headings:font-semibold
+                  prose-p:text-slate-700 prose-p:leading-relaxed
+                  prose-ul:text-slate-700 prose-ol:text-slate-700
+                  prose-li:text-slate-700
+                  prose-strong:text-slate-900 prose-strong:font-semibold
+                  prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline"
+                dangerouslySetInnerHTML={{ __html: selectedCourseInfo.description }}
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setShowCourseInfo(false)}
+                className="w-full sm:w-auto px-6 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
