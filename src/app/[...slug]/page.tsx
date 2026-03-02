@@ -62,6 +62,7 @@ type CmsPage = {
   why_us_data?: any;
   generic_cta_data?: any;
   slider_images?: any;
+  hero?: any;
   about?: any;
   services?: any;
   training_slider?: any;
