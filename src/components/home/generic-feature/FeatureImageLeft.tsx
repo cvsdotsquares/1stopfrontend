@@ -3,16 +3,21 @@ interface FeatureData {
   subtitle: string;
   description: string;
   image: string;
+  marker_text?: string;
   cta?: {
     text: string;
     link: string;
   };
   bgColor?: string;
+  bg_color?: boolean;
 }
 
 export default function FeatureImageLeft({ data }: { data: FeatureData }) {
+  console.log('FeatureImageLeft - bg_color value:', data.bg_color, 'type:', typeof data.bg_color, 'full data:', data);
+  const bgClass = data.bg_color ? "bg-slate-100" : "";
+  console.log('FeatureImageLeft - bgClass:', bgClass);
   return (
-    <section className="py-10 md:py-16">
+    <section className={`${bgClass} py-10 md:py-16`}>
       <div className="mx-auto max-w-[1400px] px-6">
         <div className="grid grid-cols-1 items-center gap-5 md:gap-12 lg:grid-cols-2 across-london-block">
           {/* Image - Left */}
@@ -23,25 +28,30 @@ export default function FeatureImageLeft({ data }: { data: FeatureData }) {
                 alt="CBT Training London"
                 className="w-full h-full object-cover"
               />
+              {data.marker_text && (
+                <div className="absolute bottom-4 right-4 bg-red-600 text-white px-6 py-2.5 rounded-sm shadow-lg">
+                  <div className="text-sm md:text-base font-semibold uppercase tracking-wide" dangerouslySetInnerHTML={{ __html: data.marker_text }} />
+                </div>
+              )}
             </div>
           </div>
 
           {/* Content - Right */}
           <div className="list-icon">
             {/* Title */}
-            <div 
+            <div
               className="mb-2 text-base text-red-600"
               dangerouslySetInnerHTML={{ __html: data.title }}
             />
-            
+
             {/* Subtitle */}
-            <div 
+            <div
               className="mb-6 text-gray-500 [&_h2]:text-black [&_h2]:mb-3"
               dangerouslySetInnerHTML={{ __html: data.subtitle }}
             />
-            
+
             {/* Description */}
-            <div 
+            <div
               className="prose prose-lg max-w-none text-gray-500 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-gray-900 [&_ul]:space-y-2 [&_li]:flex [&_li]:items-start"
               dangerouslySetInnerHTML={{ __html: data.description }}
             />

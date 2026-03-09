@@ -298,6 +298,7 @@ export default function OnePageBookingCheckout() {
   const [promoCode, setPromoCode] = useState('');
   const [promoData, setPromoData] = useState<any>(null);
   const [isValidatingPromo, setIsValidatingPromo] = useState(false);
+  const [courseBulletPoints, setCourseBulletPoints] = useState<string>('');
   const [promoError, setPromoError] = useState<string | null>(null);
   const [promoSuccess, setPromoSuccess] = useState<string | null>(null);
 
@@ -902,6 +903,33 @@ export default function OnePageBookingCheckout() {
     loadLocations();
   }, [selectedCourse]);
 
+  // Fetch course bullet points when course changes
+  useEffect(() => {
+    const fetchBulletPoints = async () => {
+      if (!selectedCourse) {
+        setCourseBulletPoints('');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${BASE_URL}/helper/course-bullet-points`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ course_id: selectedCourse.id })
+        });
+        const data = await response.json();
+        if (data.success && data.data?.bullet_points) {
+          setCourseBulletPoints(data.data.bullet_points);
+        }
+      } catch (error) {
+        console.error('Failed to fetch course bullet points:', error);
+        setCourseBulletPoints('');
+      }
+    };
+
+    fetchBulletPoints();
+  }, [selectedCourse]);
+
   // Only auto-select course from URL params, don't pre-select by default
   useEffect(() => {
     if (Array.isArray(courses) && courses.length > 0 && !selectedCourse && hasUrlParams) {
@@ -989,13 +1017,18 @@ export default function OnePageBookingCheckout() {
 
   // Calculate pricing when details change
   const pricingDeps = useMemo(
-    () => attendeeDetails.slice(0, attendees).map(a => `${a.vehicleType}-${a.licenseType}`).join(','),
+    () => {
+      const deps = attendeeDetails.slice(0, attendees).map(a => `${a.vehicleType}-${a.licenseType}`).join(',');
+      console.log('pricingDeps updated:', deps, { attendees, firstAttendee: attendeeDetails[0] });
+      return deps;
+    },
     [attendeeDetails, attendees]
   );
 
   useEffect(() => {
     const calculatePricing = async () => {
       if (!selectedCourseEventId || !attendeeDetails[0]?.vehicleType || !attendeeDetails[0]?.licenseType) {
+        console.log('Price calculation skipped:', { selectedCourseEventId, vehicleType: attendeeDetails[0]?.vehicleType, licenseType: attendeeDetails[0]?.licenseType });
         setPricing(null);
         return;
       }
@@ -1006,7 +1039,9 @@ export default function OnePageBookingCheckout() {
           license_type: a.licenseType
         }));
 
+        console.log('Calculating price with:', { selectedCourseEventId, attendees, attendeesArray });
         const pricingResult = await bookingApi.calculatePrice(selectedCourseEventId, attendeesArray);
+        console.log('Price calculation result:', pricingResult);
         setPricing(pricingResult.pricing_breakdown);
       } catch (error) {
         console.error('Failed to calculate pricing:', error);
@@ -1889,12 +1924,19 @@ export default function OnePageBookingCheckout() {
 
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h4 className="mb-2 text-sm font-semibold text-slate-900">Why book with us?</h4>
-                <ul className="list-disc space-y-1 pl-5 text-sm text-slate-600">
-                  <li>Trusted UK training provider</li>
-                  <li>Instant e‑mail confirmation</li>
-                  <li>Only pay at the final step</li>
-                  <li>Free date changes (48h notice)</li>
-                </ul>
+                {courseBulletPoints ? (
+                  <div
+                    className="text-sm text-slate-600 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5 [&_li]:text-slate-600"
+                    dangerouslySetInnerHTML={{ __html: courseBulletPoints }}
+                  />
+                ) : (
+                  <ul className="list-disc space-y-1 pl-5 text-sm text-slate-600">
+                    <li>Trusted UK training provider</li>
+                    <li>Instant e‑mail confirmation</li>
+                    <li>Only pay at the final step</li>
+                    <li>Free date changes (48h notice)</li>
+                  </ul>
+                )}
               </div>
             </div>
           </aside>
