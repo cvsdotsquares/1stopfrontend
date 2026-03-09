@@ -24,7 +24,7 @@ export default function PaymentSuccess() {
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/booking-flow/payment-details/${paymentIntent}`)
         .then(res => res.json())
         .then(data => {
-          console.log('Payment details:', data);
+
           if (data.success && data.data) {
             setBookingRef(data.data.booking_ref || data.data.temp_ref || '');
             setAmountPaid(data.data.total_amount || data.data.payment_due || '');
@@ -37,7 +37,7 @@ export default function PaymentSuccess() {
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/booking-flow/booking-details/${ref}`)
         .then(res => res.json())
         .then(data => {
-          console.log('Booking details:', data);
+
           if (data.success && data.data) {
             setAmountPaid(data.data.total_amount || data.data.payment_due || '');
           }

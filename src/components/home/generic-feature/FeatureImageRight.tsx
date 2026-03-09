@@ -14,9 +14,7 @@ interface FeatureData {
 }
 
 export default function FeatureImageRight({ data }: { data: FeatureData }) {
-  console.log('FeatureImageRight - bg_color value:', data.bg_color, 'type:', typeof data.bg_color, 'bgColor:', data.bgColor);
   const bgClass = data.bg_color ? "bg-slate-100" : "";
-  console.log('FeatureImageRight - bgClass:', bgClass);
   return (
     <section className={`${bgClass} py-10 md:py-16`}>
       <div className="mx-auto max-w-[1400px] px-6">

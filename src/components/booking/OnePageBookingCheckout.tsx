@@ -1019,7 +1019,7 @@ export default function OnePageBookingCheckout() {
   const pricingDeps = useMemo(
     () => {
       const deps = attendeeDetails.slice(0, attendees).map(a => `${a.vehicleType}-${a.licenseType}`).join(',');
-      console.log('pricingDeps updated:', deps, { attendees, firstAttendee: attendeeDetails[0] });
+
       return deps;
     },
     [attendeeDetails, attendees]
@@ -1028,7 +1028,7 @@ export default function OnePageBookingCheckout() {
   useEffect(() => {
     const calculatePricing = async () => {
       if (!selectedCourseEventId || !attendeeDetails[0]?.vehicleType || !attendeeDetails[0]?.licenseType) {
-        console.log('Price calculation skipped:', { selectedCourseEventId, vehicleType: attendeeDetails[0]?.vehicleType, licenseType: attendeeDetails[0]?.licenseType });
+
         setPricing(null);
         return;
       }

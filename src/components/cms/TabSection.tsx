@@ -25,7 +25,7 @@ export default function TabSection({ data }: { data: TabSectionData }) {
       <div className="max-w-[1400px] mx-auto px-4">
         {/* Title */}
         <div className="text-center">
-          <h2 
+          <h2
             className="text-3xl mb-6"
             dangerouslySetInnerHTML={{ __html: data.title }}
           />
@@ -49,9 +49,9 @@ export default function TabSection({ data }: { data: TabSectionData }) {
                     onClick={() => setActiveTab(tab.id)}
                     className="flex flex-col gap-1 text-center"
                   >
-                    <img 
-                      src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/${tab.icon}`} 
-                      alt={tab.label} 
+                    <img
+                      src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/${tab.icon}`}
+                      alt={tab.label}
                       className={`text-lg w-5 h-5 mx-auto ${activeTab === tab.id ? 'brightness-0 invert' : ''}`}
                     />
                     {tab.label}

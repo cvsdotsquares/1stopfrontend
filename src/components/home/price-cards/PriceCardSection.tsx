@@ -43,7 +43,7 @@ export default function PriceCardSection({ data }: { data: PriceCardSectionData 
 
               {/* Card Title */}
               <h3 className="text-2xl font-bold text-center mb-1">{card.title}</h3>
-              
+
               {/* Time */}
               <p className="text-slate-500 text-sm text-center mb-6 whitespace-pre-line">{card.time}</p>
 
