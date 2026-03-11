@@ -455,15 +455,23 @@ export default function OnePageBookingCheckout() {
   const isAttendeeComplete = (attendee: typeof attendeeDetails[0]) => {
     const phoneRegex = /^[0-9+]+$/;
     const licenseRegex = /^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const isOtherLicense = attendee.licenseType === '4';
+
+    const email = attendee.email.trim();
+    const confirmEmail = attendee.confirmEmail.trim();
+    const isEmailValid = emailRegex.test(email);
+    const isConfirmEmailValid = emailRegex.test(confirmEmail);
 
     const basicFieldsComplete =
       attendee.firstName.trim() !== '' &&
       attendee.lastName.trim() !== '' &&
       attendee.dateOfBirth.trim() !== '' &&
-      attendee.email.trim() !== '' &&
-      attendee.confirmEmail.trim() !== '' &&
-      attendee.email === attendee.confirmEmail &&
+      email !== '' &&
+      confirmEmail !== '' &&
+      isEmailValid &&
+      isConfirmEmailValid &&
+      email.toLowerCase() === confirmEmail.toLowerCase() &&
       attendee.phone.trim() !== '' &&
       phoneRegex.test(attendee.phone.trim()) &&
       attendee.vehicleType.trim() !== '' &&
@@ -1256,12 +1264,24 @@ export default function OnePageBookingCheckout() {
     // Validate all attendees
     for (let idx = 0; idx < attendeeDetails.slice(0, attendees).length; idx++) {
       const attendee = attendeeDetails[idx];
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const email = attendee.email?.trim() || '';
+      const confirmEmail = attendee.confirmEmail?.trim() || '';
+
       if (!attendee.firstName) missing.push(`Attendee ${idx + 1}: First name`);
       if (!attendee.lastName) missing.push(`Attendee ${idx + 1}: Last name`);
       if (!attendee.dateOfBirth) missing.push(`Attendee ${idx + 1}: Date of Birth`);
-      if (!attendee.email) missing.push(`Attendee ${idx + 1}: Email`);
-      if (!attendee.confirmEmail) missing.push(`Attendee ${idx + 1}: Confirm Email`);
-      if (attendee.email && attendee.confirmEmail && attendee.email !== attendee.confirmEmail) {
+      if (!email) missing.push(`Attendee ${idx + 1}: Email`);
+      if (!confirmEmail) missing.push(`Attendee ${idx + 1}: Confirm Email`);
+      if (email && !emailRegex.test(email)) {
+        toast.error(`Attendee ${idx + 1}: Please enter a valid email address`);
+        return;
+      }
+      if (confirmEmail && !emailRegex.test(confirmEmail)) {
+        toast.error(`Attendee ${idx + 1}: Please enter a valid confirm email address`);
+        return;
+      }
+      if (email && confirmEmail && email.toLowerCase() !== confirmEmail.toLowerCase()) {
         toast.error(`Attendee ${idx + 1}: Emails do not match`);
         return;
       }

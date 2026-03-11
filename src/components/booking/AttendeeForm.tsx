@@ -55,6 +55,14 @@ export default function AttendeeForm({
   disabled = false,
 }: AttendeeFormProps) {
   const [ageWarning, setAgeWarning] = React.useState<string | null>(null);
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const emailValue = attendee.email?.trim() || '';
+  const confirmEmailValue = attendee.confirmEmail?.trim() || '';
+  const isEmailValid = emailValue ? emailRegex.test(emailValue) : false;
+  const isConfirmEmailValid = confirmEmailValue ? emailRegex.test(confirmEmailValue) : false;
+  const areEmailsMatching =
+    emailValue && confirmEmailValue && emailValue.toLowerCase() === confirmEmailValue.toLowerCase();
 
   // Calculate age on course date
   const calculateAge = (dob: string, courseDate: Date): number => {
@@ -254,10 +262,12 @@ export default function AttendeeForm({
             className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
               duplicateEmailIndex !== null
                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                : attendee.email && attendee.confirmEmail
-                ? attendee.email === attendee.confirmEmail
+                : emailValue && confirmEmailValue && isEmailValid && isConfirmEmailValid
+                ? areEmailsMatching
                   ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
                   : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+                : emailValue && !isEmailValid
+                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
                 : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
             }`}
             value={attendee.email || ''}
@@ -266,6 +276,9 @@ export default function AttendeeForm({
           />
           {duplicateEmailIndex !== null && (
             <p className="mt-1 text-xs text-red-500">This email is already used by Attendee {duplicateEmailIndex + 1}</p>
+          )}
+          {emailValue && !isEmailValid && (
+            <p className="mt-1 text-xs text-red-500">Please enter a valid email address</p>
           )}
         </div>
 
@@ -276,17 +289,22 @@ export default function AttendeeForm({
           <input
             type="email"
             className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
-              attendee.email && attendee.confirmEmail
-                ? attendee.email === attendee.confirmEmail
+              emailValue && confirmEmailValue && isEmailValid && isConfirmEmailValid
+                ? areEmailsMatching
                   ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
                   : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+                : confirmEmailValue && !isConfirmEmailValid
+                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
                 : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
             }`}
             value={attendee.confirmEmail || ''}
             onChange={(e) => onChange('confirmEmail', e.target.value)}
             placeholder="Confirm email"
           />
-          {attendee.email && attendee.confirmEmail && attendee.email !== attendee.confirmEmail && (
+          {confirmEmailValue && !isConfirmEmailValid && (
+            <p className="mt-1 text-xs text-red-500">Please enter a valid email address</p>
+          )}
+          {emailValue && confirmEmailValue && isEmailValid && isConfirmEmailValid && !areEmailsMatching && (
             <p className="mt-1 text-xs text-red-500">Emails do not match</p>
           )}
         </div>
