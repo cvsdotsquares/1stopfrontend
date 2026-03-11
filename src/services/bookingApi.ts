@@ -25,6 +25,41 @@ export interface Location {
   status: string;
 }
 
+export interface CourseEventDate {
+  day_number: number;
+  event_date: string;
+  event_start_time: string | null;
+  event_end_time: string | null;
+  is_tbc: boolean;
+}
+
+export interface CourseEventVehiclePricingOneOff {
+  price: number;
+  pricing_type: 'one_off';
+}
+
+export interface CourseEventVehiclePricingDeposit {
+  deposit: number;
+  total: number;
+  pricing_type: 'deposit';
+}
+
+export type CourseEventVehiclePricing = CourseEventVehiclePricingOneOff | CourseEventVehiclePricingDeposit;
+
+export interface CourseEventPricing {
+  vehicle_options: {
+    school_vehicle_available: boolean;
+    own_vehicle_available: boolean;
+  };
+  pricing_mode: 'deposit' | 'one_off';
+  deposit_period_check_enabled: boolean;
+  deposit_available: boolean;
+  deposit_days: number;
+  deposit_note: string | null;
+  school_vehicle: CourseEventVehiclePricing;
+  own_vehicle: CourseEventVehiclePricing;
+}
+
 export interface CourseEvent {
   date: string;
   available: boolean;
@@ -36,6 +71,11 @@ export interface CourseEvent {
   event_end_time: string;
   course_event_id: number;
   freeze: number;
+  course_name?: string;
+  number_of_days?: number;
+  pricing?: CourseEventPricing;
+  all_dates?: CourseEventDate[];
+  status?: string;
 }
 
 export interface AvailabilityResponse {
@@ -276,7 +316,7 @@ class BookingApiService {
     });
   }
 
-  async validatePromoCode(promoCode: string, courseId: number, locationId: number, attendeesCount: number): Promise<PromoValidation> {
+  async validatePromoCode(promoCode: string, courseId: number, locationId: number, attendeesCount: number, licenseNumbers?: string[]): Promise<PromoValidation> {
     return this.fetchApi<PromoValidation>('/promo-codes/validate', {
       method: 'POST',
       body: JSON.stringify({
@@ -284,6 +324,7 @@ class BookingApiService {
         course_id: courseId,
         location_id: locationId,
         attendees_count: attendeesCount,
+        license_numbers: licenseNumbers,
       }),
     });
   }

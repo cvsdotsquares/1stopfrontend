@@ -33,6 +33,7 @@ interface AttendeeFormProps {
   duplicateEmailIndex: number | null;
   duplicateLicenseIndex: number | null;
   selectedDate: Date | null;
+  disabled?: boolean;
 }
 
 export default function AttendeeForm({
@@ -51,6 +52,7 @@ export default function AttendeeForm({
   duplicateEmailIndex,
   duplicateLicenseIndex,
   selectedDate,
+  disabled = false,
 }: AttendeeFormProps) {
   const [ageWarning, setAgeWarning] = React.useState<string | null>(null);
 
@@ -113,30 +115,42 @@ export default function AttendeeForm({
     return entries;
   };
   return (
-    <div className="border border-slate-200 rounded-xl bg-slate-50 overflow-hidden">
+    <div className={`border rounded-xl overflow-hidden ${disabled ? 'border-slate-100 bg-slate-50/60 opacity-70' : 'border-slate-200 bg-slate-50'}`}>
       <button
         type="button"
-        onClick={onToggle}
-        className="w-full flex items-center justify-between p-4 hover:bg-slate-100 transition"
+        onClick={disabled ? undefined : onToggle}
+        disabled={disabled}
+        className={`w-full flex items-center justify-between p-4 transition ${
+          disabled ? 'cursor-not-allowed' : 'hover:bg-slate-100 cursor-pointer'
+        }`}
       >
         <div className="flex items-center gap-3">
           <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-            isComplete ? 'bg-green-500 text-white' : 'bg-slate-300 text-slate-700'
+            isComplete ? 'bg-green-500 text-white' : disabled ? 'bg-slate-200 text-slate-400' : 'bg-slate-300 text-slate-700'
           }`}>
             {isComplete ? (
               <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
+            ) : disabled ? (
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+              </svg>
             ) : (
               index + 1
             )}
           </div>
-          <h4 className="text-base font-semibold text-slate-900">
-            Fill the details for attendee {index + 1}
-          </h4>
+          <div>
+            <h4 className={`text-base font-semibold ${disabled ? 'text-slate-400' : 'text-slate-900'}`}>
+              Fill the details for attendee {index + 1}
+            </h4>
+            {disabled && (
+              <p className="text-xs text-amber-600 mt-0.5">Please complete the previous attendee first</p>
+            )}
+          </div>
         </div>
         <svg
-          className={`h-5 w-5 text-slate-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          className={`h-5 w-5 transition-transform ${disabled ? 'text-slate-300' : 'text-slate-500'} ${isExpanded ? 'rotate-180' : ''}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -483,16 +497,20 @@ export default function AttendeeForm({
       </div>
 
       <div className="mt-4 pt-4 border-t border-slate-300">
-        <div className="flex items-start gap-3">
+        <div className={`flex items-start gap-3 ${!isComplete ? 'opacity-60' : ''}`}>
           <input
             id={`confirmPhotocard-${index}`}
             type="checkbox"
-            className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+            className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 disabled:cursor-not-allowed"
             checked={photocardConfirmed}
             onChange={(e) => onPhotocardChange(e.target.checked)}
+            disabled={!isComplete}
           />
           <label htmlFor={`confirmPhotocard-${index}`} className="text-sm text-slate-700">
             Please tick to confirm that this attendee will be able to present their photocard driving licence on the day of the course.
+            {!isComplete && (
+              <span className="block text-xs text-amber-600 mt-1">Please fill in all required fields above to enable this confirmation.</span>
+            )}
           </label>
         </div>
       </div>

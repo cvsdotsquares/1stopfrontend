@@ -394,8 +394,62 @@ export default function OnePageBookingCheckout() {
   // Attendee form expansion state - only one attendee form expanded at a time
   const [expandedAttendeeIndex, setExpandedAttendeeIndex] = useState(0);
 
+  // Refs used in reset helpers — declared early so they are in scope
+  const step5FetchedRef = useRef<{ selectedCourseId?: number | null; locationId?: number | null; selectedDateISO?: string | null; attendees?: number } | null>(null);
+  const availabilityFetchedRef = useRef<{ courseId?: number | null; locationId?: number | null } | null>(null);
+
   // Track previous course for change detection
   const prevCourseIdRef = useRef<number | null>(null);
+
+  // Track previous date for change detection (avoids resetting attendees on first date selection)
+  const prevDateStrRef = useRef<string | null>(null);
+
+  // ---------- Downstream Reset Helpers ----------
+  // Reset Step 3 and everything below (date, attendees, attendee details, pricing, promo, sections 3-5)
+  const resetStep3AndBelow = () => {
+    setSelectedDate(null);
+    setSelectedCourseEventId(null);
+    setDateTimeConfirmed(false);
+    setAttendees(1);
+    setCalendarMonthOffset(0);
+    setPricing(null);
+    setPromoCode('');
+    setPromoData(null);
+    setPromoError(null);
+    setPromoSuccess(null);
+    setAcceptTerms(false);
+    setConfirmPhotocard(false);
+    setPhotocardConfirmed([false]);
+    setLicenseValidated([false]);
+    setExpandedAttendeeIndex(0);
+    // Reset date tracking ref so next date selection is treated as "first" (no auto-reset of attendees)
+    prevDateStrRef.current = null;
+    const defaultDob = (() => {
+      const date = new Date();
+      date.setFullYear(date.getFullYear() - 16);
+      return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+    })();
+    setAttendeeDetails([{
+      firstName: user?.first_name || '', lastName: user?.last_name || '',
+      dateOfBirth: defaultDob, email: user?.email || '', confirmEmail: '',
+      phone: user?.phone || '', alternativePhone: '', vehicleType: '', licenseType: '',
+      licenseNumber: '', theoryNumber: '', notes: '',
+      registerAsUser: false, isPrimaryUser: false, password: '', confirmPassword: '',
+    }]);
+    // Keep section 3 expanded so user can pick a new date
+    setExpandedSections(prev => ({ ...prev, 3: true, 4: false, 5: false }));
+    step5FetchedRef.current = null;
+  };
+
+  // Reset Step 2 and everything below (location, availability, plus all of step 3+)
+  const resetStep2AndBelow = () => {
+    setLocationId(null);
+    setCourseEvents([]);
+    availabilityFetchedRef.current = null;
+    // Keep section 2 expanded so user can pick a new location
+    setExpandedSections(prev => ({ ...prev, 2: true, 3: false, 4: false, 5: false }));
+    resetStep3AndBelow();
+  };
 
   // Check if an attendee form is complete (all required fields filled)
   const isAttendeeComplete = (attendee: typeof attendeeDetails[0]) => {
@@ -485,10 +539,10 @@ export default function OnePageBookingCheckout() {
     }
   }, [selectedCourse, hasUrlParams, isInitialLoad]);
 
-  // Reset date/time confirmation when date or attendees change
+  // Reset date/time confirmation when attendees change (user needs to re-confirm)
   useEffect(() => {
     setDateTimeConfirmed(false);
-  }, [selectedDate, attendees]);
+  }, [attendees]);
 
   useEffect(() => {
     if (sectionComplete[2]) {
@@ -558,9 +612,19 @@ export default function OnePageBookingCheckout() {
     }
   }, [confirmPhotocard, attendees]);
 
+  // Track whether the user manually toggled an attendee (to avoid auto-expand overriding it)
+  const manualToggleRef = useRef(false);
+
   // Auto-expand next attendee only when current attendee is complete AND photocard is confirmed
+  // BUT skip if the user just manually toggled to go back and edit a previous attendee
   useEffect(() => {
     if (attendees <= 1) return;
+
+    // If the user manually clicked a toggle, don't auto-advance — just reset the flag
+    if (manualToggleRef.current) {
+      manualToggleRef.current = false;
+      return;
+    }
 
     const currentIndex = expandedAttendeeIndex;
     // Only proceed if we have a valid current index
@@ -580,11 +644,15 @@ export default function OnePageBookingCheckout() {
     }
   }, [attendeeDetails, photocardConfirmed, expandedAttendeeIndex, attendees]);
 
-  // Reset attendees to 1 when date changes
+  // Reset attendees to 1 only when the user picks a DIFFERENT date (not on first selection from null)
   useEffect(() => {
-    if (selectedDate) {
+    const dateStr = selectedDate ? formatLocalDate(selectedDate) : null;
+    if (prevDateStrRef.current !== null && dateStr !== null && prevDateStrRef.current !== dateStr) {
+      // Date actually changed from one valid date to another — reset attendees & confirmation
       setAttendees(1);
+      setDateTimeConfirmed(false);
     }
+    prevDateStrRef.current = dateStr;
   }, [selectedDate]);
 
   // Update attendeeDetails array when attendees count changes
@@ -665,7 +733,7 @@ export default function OnePageBookingCheckout() {
         selectedCourseId: selectedCourse?.id ?? null,
         selectedCourseName: selectedCourse?.course_name ?? null,
         locationId,
-        selectedDate: selectedDate?.toISOString(),
+        selectedDate: (selectedDate instanceof Date && !isNaN(selectedDate.getTime())) ? selectedDate.toISOString() : null,
         selectedCourseEventId,
         attendees,
         attendeeDetails: attendeeDetails.map(a => ({
@@ -693,7 +761,6 @@ export default function OnePageBookingCheckout() {
   }, [selectedCourse, locationId, selectedDate, selectedCourseEventId, attendees, attendeeDetails, confirmPhotocard, acceptTerms]);
 
   // Load settings and license types when needed (step 5) — memoized to avoid redundant calls while user types
-  const step5FetchedRef = useRef<{ selectedCourseId?: number | null; locationId?: number | null; selectedDateISO?: string | null; attendees?: number } | null>(null);
 
   useEffect(() => {
     if (!selectedDate || attendees <= 0) return;
@@ -701,7 +768,7 @@ export default function OnePageBookingCheckout() {
     const current = {
       selectedCourseId: selectedCourse?.id ?? null,
       locationId: locationId ?? null,
-      selectedDateISO: selectedDate?.toISOString() ?? null,
+      selectedDateISO: (selectedDate instanceof Date && !isNaN(selectedDate.getTime())) ? selectedDate.toISOString() : null,
       attendees,
     };
 
@@ -738,7 +805,7 @@ export default function OnePageBookingCheckout() {
     };
 
     loadStep5Data();
-  }, [selectedDate?.toISOString(), attendees, selectedCourse?.id, locationId]);
+  }, [selectedDate instanceof Date && !isNaN(selectedDate.getTime()) ? selectedDate.toISOString() : null, attendees, selectedCourse?.id, locationId]);
 
   // Get user IP and check block status on load
   useEffect(() => {
@@ -888,20 +955,24 @@ export default function OnePageBookingCheckout() {
       try {
         const locationsData = await bookingApi.getLocationsByCourse(selectedCourse.id);
         setLocations(locationsData);
-        // Don't auto-select first location - let user choose
-        // Preserve current selection if it's still valid for the new course
-        if (!locationsData.some(l => l.id === locationId)) {
-          setLocationId(null);
-        }
+        // Note: locationId validation is handled by a separate effect below to avoid stale-closure bugs
       } catch (err) {
         console.error('Failed to load locations:', err);
         setLocations([]);
-        setLocationId(null);
       }
     };
 
     loadLocations();
   }, [selectedCourse]);
+
+  // Validate that the current locationId is valid for the loaded locations list.
+  // This runs when locations are refreshed (e.g. after course change) and safely
+  // uses current state instead of a potentially stale async closure.
+  useEffect(() => {
+    if (locationId !== null && locations.length > 0 && !locations.some(l => l.id === locationId)) {
+      setLocationId(null);
+    }
+  }, [locations, locationId]);
 
   // Fetch course bullet points when course changes
   useEffect(() => {
@@ -959,7 +1030,6 @@ export default function OnePageBookingCheckout() {
   }, [courses, selectedCourse, hasUrlParams]); // Removed isInitialLoad to prevent effect re-running when timer completes
 
   // Track last availability fetch to avoid duplicate requests
-  const availabilityFetchedRef = useRef<{ courseId?: number | null; locationId?: number | null } | null>(null);
 
   // Load availability when course/location changes (with guard to prevent redundant calls)
   useEffect(() => {
@@ -1117,6 +1187,11 @@ export default function OnePageBookingCheckout() {
     toast.loading('Validating promo code...', { id: 'promo-validation' });
 
     try {
+      // Collect all license numbers from attendee details
+      const licenseNumbers = attendeeDetails
+        .map(a => a.licenseNumber?.trim())
+        .filter(ln => ln && ln.length > 0);
+
       const response = await fetch(`${BASE_URL}/booking/promo-codes/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1124,7 +1199,8 @@ export default function OnePageBookingCheckout() {
           promo_code: promoCode.trim(),
           course_id: selectedCourse.id,
           location_id: locationId,
-          attendees_count: attendees
+          attendees_count: attendees,
+          license_numbers: licenseNumbers
         })
       });
 
@@ -1392,7 +1468,12 @@ export default function OnePageBookingCheckout() {
                     <div key={`course-${c.id}-${c.course_name}-${index}`} className="relative">
                       <RadioCard
                         checked={isSelected}
-                        onChange={() => setSelectedCourse(c)}
+                        onChange={() => {
+                          if (selectedCourse?.id !== c.id || selectedCourse?.course_name !== c.course_name) {
+                            resetStep2AndBelow();
+                          }
+                          setSelectedCourse(c);
+                        }}
                         title={c.course_name}
                       />
                       {/* {c.description && (
@@ -1432,8 +1513,14 @@ export default function OnePageBookingCheckout() {
                   <RadioCard
                     key={l.id}
                     checked={locationId === l.id}
-                    onClick={() => setLocationId(l.id)}
-                    onChange={() => setLocationId(l.id)}
+                    onChange={() => {
+                      if (locationId !== l.id) {
+                        resetStep3AndBelow();
+                        setCourseEvents([]);
+                        availabilityFetchedRef.current = null;
+                      }
+                      setLocationId(l.id);
+                    }}
                     title={l.location_name}
                     caption={`${l.address1}, ${l.postcode}`}
                   />
@@ -1565,32 +1652,157 @@ export default function OnePageBookingCheckout() {
                 </div>
               )}
 
-              {/* Selected summary */}
-              <div className="mt-4 rounded-lg bg-teal-50 p-3 text-sm text-teal-900">
-                {selectedDate ? (
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                    <span><strong>Date:</strong> {selectedDate.toLocaleDateString()}</span>
-                    <span><strong>Start Time:</strong> {(() => {
-                      const selectedEvent = courseEvents.find(event => {
-                        const eventDate = new Date(event.date);
-                        return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
-                      });
-                      return selectedEvent ? selectedEvent.event_start_time : '07:00';
-                    })()}</span>
-                    <span><strong>Finish Time (approx):</strong> {(() => {
-                      const selectedEvent = courseEvents.find(event => {
-                        const eventDate = new Date(event.date);
-                        return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
-                      });
-                      return selectedEvent ? selectedEvent.event_end_time : '15:00';
-                    })()}</span>
-                    <span><strong>Spaces:</strong> {attendees}</span>
-                    <span><strong>Location:</strong> {currentLocation?.location_name}</span>
+              {/* Course Details Summary */}
+              {selectedDate && (() => {
+                const selectedEvent = courseEvents.find(event => {
+                  const eventDate = new Date(event.date);
+                  return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
+                });
+
+                if (!selectedEvent) return null;
+
+                const formatTime = (time: string | null) => {
+                  if (!time) return '';
+                  const [hours, minutes] = time.split(':');
+                  const hour = parseInt(hours);
+                  const ampm = hour >= 12 ? 'pm' : 'am';
+                  const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+                  return `${displayHour}:${minutes} ${ampm}`;
+                };
+
+                const formatEventDate = (dateStr: string) => {
+                  if (dateStr === 'TBC') return 'TBC';
+                  const date = new Date(dateStr);
+                  const dayName = date.toLocaleDateString('en-GB', { weekday: 'long' });
+                  const day = date.getDate();
+                  const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
+                                day === 2 || day === 22 ? 'nd' :
+                                day === 3 || day === 23 ? 'rd' : 'th';
+                  const month = date.toLocaleDateString('en-GB', { month: 'long' });
+                  const year = date.getFullYear();
+                  return `${dayName} ${day}${suffix} ${month} ${year}`;
+                };
+
+                return (
+                  <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 space-y-3 text-sm">
+                    {selectedEvent.course_name && (
+                      <div>
+                        <strong className="text-slate-700">Course:</strong>
+                        <div className="mt-1 text-slate-900">{selectedEvent.course_name}</div>
+                      </div>
+                    )}
+
+                    {selectedEvent.all_dates && selectedEvent.all_dates.length > 0 && (
+                      <div>
+                        <strong className="text-slate-700">Date and Time:</strong>
+                        <div className="mt-1 space-y-1">
+                          {selectedEvent.all_dates.map((dateInfo) => (
+                            <div key={dateInfo.day_number} className="text-slate-900">
+                              Day {dateInfo.day_number} - {dateInfo.is_tbc ? 'TBC' :
+                                `${formatEventDate(dateInfo.event_date)} (${formatTime(dateInfo.event_start_time)} - ${formatTime(dateInfo.event_end_time)})`
+                              }
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {currentLocation && (
+                      <div>
+                        <strong className="text-slate-700">Location:</strong>
+                        <div className="mt-1 text-slate-900">
+                          {[
+                            currentLocation.location_name,
+                            currentLocation.address1,
+                            currentLocation.address2,
+                            currentLocation.address3,
+                            currentLocation.address4,
+                            currentLocation.postcode
+                          ].filter(Boolean).join(' ')}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedEvent.pricing && (() => {
+                      const { pricing } = selectedEvent;
+                      const schoolAvailable = pricing.vehicle_options.school_vehicle_available;
+                      const ownAvailable = pricing.vehicle_options.own_vehicle_available;
+                      const depositAvailable = pricing.deposit_available;
+
+                      const renderVehiclePrice = (label: string, vehiclePricing: typeof pricing.school_vehicle) => {
+                        if (vehiclePricing.pricing_type === 'deposit') {
+                          const dp = vehiclePricing as { deposit: number; total: number; pricing_type: 'deposit' };
+                          if (dp.deposit === 0 && dp.total === 0) return null;
+                          return (
+                            <div className="space-y-1">
+                              <div className="font-medium text-slate-800">{label}</div>
+                              <div className="ml-3 text-slate-900">
+                                {depositAvailable ? (
+                                  <>
+                                    <div>Deposit to Book: <span className="font-semibold">£{dp.deposit.toFixed(2)}</span></div>
+                                    <div>Total Course Price: <span className="font-semibold">£{dp.total.toFixed(2)}</span></div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div>Full Payment Required: <span className="font-semibold">£{dp.total.toFixed(2)}</span></div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        } else {
+                          const op = vehiclePricing as { price: number; pricing_type: 'one_off' };
+                          if (op.price === 0) return null;
+                          return (
+                            <div className="space-y-1">
+                              <div className="font-medium text-slate-800">{label}</div>
+                              <div className="ml-3 text-slate-900">
+                                <div>Price: <span className="font-semibold">£{op.price.toFixed(2)}</span></div>
+                              </div>
+                            </div>
+                          );
+                        }
+                      };
+
+                      const schoolContent = schoolAvailable ? renderVehiclePrice('Using School Vehicle', pricing.school_vehicle) : null;
+                      const ownContent = ownAvailable ? renderVehiclePrice('Using Your Own Vehicle', pricing.own_vehicle) : null;
+
+                      if (!schoolContent && !ownContent) return null;
+
+                      return (
+                        <div>
+                          <strong className="text-slate-700">Pricing (per person):</strong>
+                          <div className="mt-2 space-y-3">
+                            {schoolContent}
+                            {ownContent}
+                          </div>
+                          {pricing.deposit_note && (
+                            <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 flex items-start gap-2">
+                              <svg className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              <span>{pricing.deposit_note}</span>
+                            </div>
+                          )}
+                          {!depositAvailable && pricing.deposit_period_check_enabled && !pricing.deposit_note && (
+                            <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 flex items-start gap-2">
+                              <svg className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              <span>Deposit option is only available when booking at least {pricing.deposit_days} days before the course start date. Full payment is required for this date.</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    <div>
+                      <strong className="text-slate-700">Spaces Chosen:</strong>
+                      <div className="mt-1 text-slate-900">{attendees}</div>
+                    </div>
                   </div>
-                ) : (
-                  <span>Select a date to continue.</span>
-                )}
-              </div>
+                );
+              })()}
 
               {/* Confirm Button */}
               {selectedDate && attendees > 0 && !dateTimeConfirmed && (
@@ -1740,6 +1952,26 @@ export default function OnePageBookingCheckout() {
                       totalAttendees={attendees}
                       isExpanded={expandedAttendeeIndex === index}
                       onToggle={() => {
+                        // Toggle: collapse if clicking the already-expanded attendee
+                        if (expandedAttendeeIndex === index) {
+                          manualToggleRef.current = true;
+                          setExpandedAttendeeIndex(-1);
+                          return;
+                        }
+                        // Always allow going back to a previously completed attendee for edits
+                        if (index < expandedAttendeeIndex || isAttendeeComplete(attendeeDetails[index])) {
+                          manualToggleRef.current = true;
+                          setExpandedAttendeeIndex(index);
+                          return;
+                        }
+                        // Gate: only allow expanding forward if all previous attendees are complete
+                        for (let i = 0; i < index; i++) {
+                          if (!isAttendeeComplete(attendeeDetails[i]) || !photocardConfirmed[i]) {
+                            toast.error(`Please complete all required fields for Attendee ${i + 1} before proceeding.`);
+                            return;
+                          }
+                        }
+                        manualToggleRef.current = true;
                         setExpandedAttendeeIndex(index);
                       }}
                       isComplete={isAttendeeComplete(attendee)}
@@ -1749,6 +1981,7 @@ export default function OnePageBookingCheckout() {
                       duplicateEmailIndex={duplicateEmailIndex >= 0 ? duplicateEmailIndex : null}
                       duplicateLicenseIndex={duplicateLicenseIndex >= 0 ? duplicateLicenseIndex : null}
                       selectedDate={selectedDate}
+                      disabled={index > 0 && !attendeeDetails.slice(0, index).every((a, i) => isAttendeeComplete(a) && photocardConfirmed[i])}
                     />
                   );
                 })}
@@ -1776,7 +2009,7 @@ export default function OnePageBookingCheckout() {
                   <ul className="space-y-1 text-sm text-slate-600">
                     <li><span className="text-slate-500">Course:</span> {selectedCourse?.course_name}</li>
                     <li><span className="text-slate-500">Location:</span> {currentLocation?.location_name}</li>
-                    <li><span className="text-slate-500">Date:</span> {selectedDate ? selectedDate.toLocaleDateString() : "—"}</li>
+                    <li><span className="text-slate-500">Date:</span> {selectedDate ? selectedDate.toLocaleDateString('en-GB') : "—"}</li>
                     <li><span className="text-slate-500">Start Time:</span> {selectedDate ? (() => {
                       const selectedEvent = courseEvents.find(event => {
                         const eventDate = new Date(event.date);
@@ -1789,7 +2022,7 @@ export default function OnePageBookingCheckout() {
                 </div>
 
                 <div className="rounded-xl border border-slate-200 bg-white p-4">
-                  <p className="mb-2 font-medium text-slate-900">Pricing</p>
+                  <p className="mb-2 font-medium text-slate-900">Pricing (per person)</p>
                   <div className="space-y-1 text-sm">
                     <div className="flex items-center justify-between"><span className="text-slate-600">Spaces</span><span className="font-medium text-slate-900">{attendees}</span></div>
                     <div className="flex items-center justify-between"><span className="text-slate-600">Course fee</span><span className="font-medium text-slate-900"><Money value={subtotal} /></span></div>
@@ -1905,7 +2138,7 @@ export default function OnePageBookingCheckout() {
                 <dl className="space-y-2 text-sm">
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Course</dt><dd className="text-right text-slate-900">{selectedCourse?.course_name}</dd></div>
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Location</dt><dd className="text-right text-slate-900">{currentLocation?.location_name || "—"}</dd></div>
-                  <div className="flex items-center justify-between"><dt className="text-slate-500">Date</dt><dd className="text-right text-slate-900">{selectedDate ? selectedDate.toLocaleDateString() : "—"}</dd></div>
+                  <div className="flex items-center justify-between"><dt className="text-slate-500">Date</dt><dd className="text-right text-slate-900">{selectedDate ? selectedDate.toLocaleDateString('en-GB') : "—"}</dd></div>
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Start Time</dt><dd className="text-right text-slate-900">{selectedDate ? (() => {
                     const selectedEvent = courseEvents.find(event => {
                       const eventDate = new Date(event.date);

@@ -215,7 +215,7 @@ export default function Dashboard() {
                 <div key={booking.id} className="group relative flex justify-between items-center border-b pb-2 hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
                   <div>
                     <p className="text-sm font-medium">{booking.courseTitle}</p>
-                    <p className="text-xs text-gray-500">{new Date(booking.date).toLocaleDateString()}</p>
+                    <p className="text-xs text-gray-500">{new Date(booking.date).toLocaleDateString('en-GB')}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold">£{booking.amount}</p>
@@ -236,7 +236,7 @@ export default function Dashboard() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Event Date:</span>
-                        <span className="font-medium">{new Date(booking.date).toLocaleDateString()}</span>
+                        <span className="font-medium">{new Date(booking.date).toLocaleDateString('en-GB')}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Location:</span>
@@ -260,7 +260,7 @@ export default function Dashboard() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Booked On:</span>
-                        <span className="font-medium">{new Date(booking.created).toLocaleDateString()}</span>
+                        <span className="font-medium">{new Date(booking.created).toLocaleDateString('en-GB')}</span>
                       </div>
                       {booking.transactionId && (
                         <div className="flex justify-between">
@@ -286,7 +286,7 @@ export default function Dashboard() {
               {data.upcomingCourses.map(course => (
                 <div key={course.id} className="border-b pb-2">
                   <p className="text-sm font-medium">{course.title}</p>
-                  <p className="text-xs text-gray-500">{new Date(course.date).toLocaleDateString()} - {course.location}</p>
+                  <p className="text-xs text-gray-500">{new Date(course.date).toLocaleDateString('en-GB')} - {course.location}</p>
                 </div>
               ))}
             </div>
@@ -310,7 +310,7 @@ export default function Dashboard() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold">£{voucher.value}</p>
-                    <p className="text-xs text-gray-500">Valid till: {new Date(voucher.validTill).toLocaleDateString()}</p>
+                    <p className="text-xs text-gray-500">Valid till: {new Date(voucher.validTill).toLocaleDateString('en-GB')}</p>
                   </div>
                 </div>
               ))}

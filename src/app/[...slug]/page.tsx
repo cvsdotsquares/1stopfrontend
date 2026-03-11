@@ -286,20 +286,16 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
         </section>
       ) : (
         /* Standard full-width layout without sidebar */
-        <section className="py-10 lg:py-16">
-          <div className="max-w-[1400px] mx-auto px-4">
-            <div className="grid grid-cols-1 gap-6">
-              {contentSections.map((section, index) => renderSection(section, index))}
+        <>
+          {contentSections.map((section, index) => renderSection(section, index))}
 
-              {/* Fallback: render page_content if no sections */}
-              {(!contentSections || contentSections.length === 0) && page.page_content && (
-                <div className="mb-8">
-                  <PageContent content={page.page_content} />
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
+          {/* Fallback: render page_content if no sections */}
+          {(!contentSections || contentSections.length === 0) && page.page_content && (
+            <section className="mb-8 px-4 py-8 md:py-16 max-w-[1400px] mx-auto">
+              <PageContent content={page.page_content} />
+            </section>
+          )}
+        </>
       )}
 
       {/* Static bottom components - always at full width */}

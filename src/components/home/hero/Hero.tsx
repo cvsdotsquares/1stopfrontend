@@ -109,21 +109,41 @@ export default function Hero({ data }: { data: HeroData }) {
     return () => clearTimeout(timeoutId);
   }, [postcode]);
 
-  // Format date display
+  // Format date display as "DDD Do MMM" (e.g., "Mon 15th Mar")
+  const formatDateDisplay = (date: Date): string => {
+    const dayOfWeek = date.toLocaleDateString('en-GB', { weekday: 'short' });
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-GB', { month: 'short' });
+
+    // Create ordinal suffix (1st, 2nd, 3rd, 4th, etc.)
+    const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
+                   day === 2 || day === 22 ? 'nd' :
+                   day === 3 || day === 23 ? 'rd' : 'th';
+
+    return `${dayOfWeek} ${day}${suffix} ${month}`;
+  };
+
   const getDateDisplay = () => {
-    if (!nextCBT?.next_available?.date) return '';
+    if (!nextCBT?.next_available?.date) return 'Coming Soon';
 
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
 
     const nextDate = new Date(nextCBT.next_available.date);
+    nextDate.setHours(0, 0, 0, 0);
+
+    // If the course date is in the past, show "Coming Soon"
+    if (nextDate < today) {
+      return 'Coming Soon';
+    }
 
     if (nextDate.toDateString() === tomorrow.toDateString()) {
       return 'TOMORROW';
     }
 
-    return nextCBT.next_available.date;
+    return formatDateDisplay(nextDate);
   };
 
   // Generate booking URL
@@ -190,7 +210,9 @@ export default function Hero({ data }: { data: HeroData }) {
           {nextCBT && (
             <div className="mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center rounded-lg">
               <div className="text26 text-xl font-semibold text-red-600">
-                {data.nextCourse?.label || nextCBT.course_name || 'Next CBT Course'} {getDateDisplay()}
+                {data.nextCourse?.label || nextCBT.course_name || 'Next CBT Course'}
+                <br />
+                {getDateDisplay()}
               </div>
               <a
                 href={getBookingURL()}
