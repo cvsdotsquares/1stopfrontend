@@ -35,7 +35,7 @@ export default function TabSection({ data }: Readonly<{ data: TabSectionData }>)
       <div className="max-w-[1400px] mx-auto px-4">
         {/* Title */}
         <div className="text-center">
-          <h2 className="text-3xl mb-6 text-black">{titleText}</h2>
+          <div dangerouslySetInnerHTML={{ __html: data.title }} />
         </div>
 
         <div className={`grid grid-cols-1 gap-6 ${data.image ? 'lg:grid-cols-2' : ''}`}>
