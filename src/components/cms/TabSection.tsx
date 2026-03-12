@@ -15,20 +15,27 @@ interface TabSectionData {
   tabs: Tab[];
 }
 
-export default function TabSection({ data }: { data: TabSectionData }) {
+export default function TabSection({ data }: Readonly<{ data: TabSectionData }>) {
   const [activeTab, setActiveTab] = useState(data.tabs[0]?.id || '');
 
   const activeTabData = data.tabs.find(tab => tab.id === activeTab);
+  const titleText = (data.title || '')
+    .replaceAll(/<[^>]*>/g, ' ')
+    .replaceAll('&nbsp;', ' ')
+    .replaceAll('&amp;', '&')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll(/\s+/g, ' ')
+    .trim();
 
   return (
     <section className="bg-gray-50 py-10 md:py-16">
       <div className="max-w-[1400px] mx-auto px-4">
         {/* Title */}
         <div className="text-center">
-          <h2
-            className="text-3xl mb-6"
-            dangerouslySetInnerHTML={{ __html: data.title }}
-          />
+          <h2 className="text-3xl mb-6 text-black">{titleText}</h2>
         </div>
 
         <div className={`grid grid-cols-1 gap-6 ${data.image ? 'lg:grid-cols-2' : ''}`}>
@@ -80,7 +87,7 @@ export default function TabSection({ data }: { data: TabSectionData }) {
           {data.image && (
             <div>
               <img
-                src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/dynamic_content/${data.image}`}
+                src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/${data.image}`}
                 alt="Directions Map"
                 className="rounded-lg w-full object-cover"
               />
