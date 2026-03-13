@@ -15,7 +15,7 @@ interface TabSectionData {
   tabs: Tab[];
 }
 
-export default function TabSection({ data }: { data: TabSectionData }) {
+export default function TabSection({ data }: Readonly<{ data: TabSectionData }>) {
   const [activeTab, setActiveTab] = useState(data.tabs[0]?.id || '');
 
   const activeTabData = data.tabs.find(tab => tab.id === activeTab);
@@ -23,13 +23,13 @@ export default function TabSection({ data }: { data: TabSectionData }) {
   return (
     <section className="bg-gray-50 py-10 md:py-16">
       <div className="max-w-[1400px] mx-auto px-4">
-        {/* Title */}
-        <div className="text-center">
-          <h2
-            className="text-3xl mb-6"
-            dangerouslySetInnerHTML={{ __html: data.title }}
-          />
-        </div>
+        {/* Title — data.title may already contain an <h2> tag from the CMS,
+              so we render into a <div> to avoid invalid nested heading markup
+              which would cause a React hydration mismatch. */}
+        <div
+          className="text-center [&_h1]:text-3xl [&_h1]:mb-6 [&_h2]:text-3xl [&_h2]:mb-6 [&_h3]:text-3xl [&_h3]:mb-6"
+          dangerouslySetInnerHTML={{ __html: data.title || '' }}
+        />
 
         <div className={`grid grid-cols-1 gap-6 ${data.image ? 'lg:grid-cols-2' : ''}`}>
           {/* Tabs and Content */}

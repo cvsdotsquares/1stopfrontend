@@ -171,6 +171,7 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
         return <TrainingSlider key={`section-${index}`} data={section.data} />;
       case 'why_us':
         return <WhyUsSection key={`section-${index}`} data={section.data} />;
+      case 'banner':
       case 'banners':
         return <GenericCta key={`section-${index}`} {...section.data} />;
       case 'tab_section':
