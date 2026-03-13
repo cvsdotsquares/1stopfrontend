@@ -20,19 +20,19 @@ export default function FeatureImageRight({ data }: { data: FeatureData }) {
       <div className="mx-auto max-w-[1400px] px-6">
         {/* Title at top center if title_top_center is true */}
         {data.title_top_center && data.title && (
-          <div 
+          <div
             className="text-center mb-8 [&_h2]:text-3xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_p]:font-semibold [&_p]:tracking-wide [&_strong]:text-blue-600"
             dangerouslySetInnerHTML={{ __html: data.title }}
           />
         )}
-        
+
         <div className="grid grid-cols-1 items-center gap-6 md:gap-12 lg:grid-cols-2">
           {/* Content - Left */}
           <div>
             {/* Marker text */}
             {data.marker_text && (
               <div className="mb-4 inline-block bg-red-600 text-white px-4 py-2 rounded-md shadow-lg text-left leading-tight">
-                <div className="text-xl md:text-2xl font-bold" dangerouslySetInnerHTML={{ __html: data.marker_text }} />
+                <div className="text-xl md:text-sm font-bold" dangerouslySetInnerHTML={{ __html: data.marker_text }} />
               </div>
             )}
             {/* Title - only show here if title_top_center is false */}

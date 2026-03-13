@@ -19,17 +19,24 @@ export default function TabSection({ data }: Readonly<{ data: TabSectionData }>)
   const [activeTab, setActiveTab] = useState(data.tabs[0]?.id || '');
 
   const activeTabData = data.tabs.find(tab => tab.id === activeTab);
+  const titleText = (data.title || '')
+    .replaceAll(/<[^>]*>/g, ' ')
+    .replaceAll('&nbsp;', ' ')
+    .replaceAll('&amp;', '&')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll(/\s+/g, ' ')
+    .trim();
 
   return (
     <section className="bg-gray-50 py-10 md:py-16">
       <div className="max-w-[1400px] mx-auto px-4">
-        {/* Title — data.title may already contain an <h2> tag from the CMS,
-              so we render into a <div> to avoid invalid nested heading markup
-              which would cause a React hydration mismatch. */}
-        <div
-          className="text-center [&_h1]:text-3xl [&_h1]:mb-6 [&_h2]:text-3xl [&_h2]:mb-6 [&_h3]:text-3xl [&_h3]:mb-6"
-          dangerouslySetInnerHTML={{ __html: data.title || '' }}
-        />
+        {/* Title */}
+        <div className="text-center">
+          <div dangerouslySetInnerHTML={{ __html: data.title }} />
+        </div>
 
         <div className={`grid grid-cols-1 gap-6 ${data.image ? 'lg:grid-cols-2' : ''}`}>
           {/* Tabs and Content */}
@@ -80,7 +87,7 @@ export default function TabSection({ data }: Readonly<{ data: TabSectionData }>)
           {data.image && (
             <div>
               <img
-                src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/dynamic_content/${data.image}`}
+                src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/${data.image}`}
                 alt="Directions Map"
                 className="rounded-lg w-full object-cover"
               />

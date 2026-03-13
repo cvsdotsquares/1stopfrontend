@@ -31,6 +31,7 @@ type CmsItem = {
   item_content: string;
   item_url?: string;
   item_image?: string;
+  sort_order?: number;
 };
 
 type CmsSection = {
@@ -197,7 +198,7 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
                 <div className="[&_h2]:text-black [&_h2]:mb-5 [&_h2]:text-3xl text-gray-500 [&_a]:underline [&_a:hover]:text-red-500 [&_div]:p-5 [&_div]:bg-blue-100 [&_div]:text-blue-600 [&_div]:border-l-2 [&_div]:border-blue-600">
                   <h2 className="text-center">{section.data.section_title}</h2>
                   <span className="flex justify-center items-center gap-8 flex-wrap">
-                    {section.data.items.map((item: CmsItem) => (
+                    {[...section.data.items].sort((a: CmsItem, b: CmsItem) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map((item: CmsItem) => (
                       <span key={item.id} className="text-center">
                         {item.item_image && <img src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/dynamic_content/${item.item_image}`} alt={item.item_title} className="max-w-sm h-auto rounded-lg mb-4" />}
                         {item.item_content && <span className="block text-lg text-gray-700 mb-4" dangerouslySetInnerHTML={{ __html: item.item_content }} />}
@@ -216,7 +217,7 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
               <div className="grid grid-cols-1">
                 <div className="text-center">
                   <h2 className='text-3xl mb-4 text-black'>{section.data.section_title}</h2>
-                  {section.data.items.map((item: CmsItem) => (
+                  {[...section.data.items].sort((a: CmsItem, b: CmsItem) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map((item: CmsItem) => (
                     <span key={item.id}>
                       <div dangerouslySetInnerHTML={{ __html: item.item_content || '' }} />
                       <div className='pt-6'>
