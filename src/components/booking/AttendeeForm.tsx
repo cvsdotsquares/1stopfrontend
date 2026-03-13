@@ -56,6 +56,7 @@ export default function AttendeeForm({
 }: AttendeeFormProps) {
   const [ageWarning, setAgeWarning] = React.useState<string | null>(null);
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phoneRegex = /^\+?[0-9\s()-]+$/;
 
   const emailValue = attendee.email?.trim() || '';
   const confirmEmailValue = attendee.confirmEmail?.trim() || '';
@@ -63,6 +64,33 @@ export default function AttendeeForm({
   const isConfirmEmailValid = confirmEmailValue ? emailRegex.test(confirmEmailValue) : false;
   const areEmailsMatching =
     emailValue && confirmEmailValue && emailValue.toLowerCase() === confirmEmailValue.toLowerCase();
+
+  const isValidDob = (dob: string) => {
+    const match = dob.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!match) return false;
+    const [, dayStr, monthStr, yearStr] = match;
+    const day = Number(dayStr);
+    const month = Number(monthStr);
+    const year = Number(yearStr);
+    const date = new Date(year, month - 1, day);
+
+    return (
+      date.getFullYear() === year &&
+      date.getMonth() === month - 1 &&
+      date.getDate() === day
+    );
+  };
+
+  const formatDobInput = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 8);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+  };
+
+  const phoneValue = attendee.phone?.trim() || '';
+  const normalizedPhone = phoneValue.replace(/[\s()-]/g, '');
+  const isPhoneValid = phoneValue ? /^\+?[0-9]+$/.test(normalizedPhone) : false;
 
   // Calculate age on course date
   const calculateAge = (dob: string, courseDate: Date): number => {
@@ -81,6 +109,13 @@ export default function AttendeeForm({
   const handleDobChange = (value: string) => {
     onChange('dateOfBirth', value);
     setAgeWarning(null);
+
+    if (!value) return;
+
+    if (value.length === 10 && !isValidDob(value)) {
+      setAgeWarning('Please enter a valid date in dd/mm/yyyy format.');
+      return;
+    }
 
     if (value.length === 10 && selectedDate) {
       const age = calculateAge(value, selectedDate);
@@ -122,6 +157,50 @@ export default function AttendeeForm({
     });
     return entries;
   };
+
+  const incompleteReasons: string[] = [];
+
+  if (!attendee.firstName.trim()) incompleteReasons.push('Enter first name');
+  if (!attendee.lastName.trim()) incompleteReasons.push('Enter last name');
+  if (!attendee.dateOfBirth.trim()) {
+    incompleteReasons.push('Enter date of birth');
+  } else if (!isValidDob(attendee.dateOfBirth.trim())) {
+    incompleteReasons.push('Use a valid date of birth in dd/mm/yyyy');
+  }
+  if (!emailValue) {
+    incompleteReasons.push('Enter email');
+  } else if (!isEmailValid) {
+    incompleteReasons.push('Use a valid email address');
+  }
+  if (!confirmEmailValue) {
+    incompleteReasons.push('Confirm email address');
+  } else if (!isConfirmEmailValid) {
+    incompleteReasons.push('Use a valid confirm email address');
+  } else if (emailValue && isEmailValid && emailValue.toLowerCase() !== confirmEmailValue.toLowerCase()) {
+    incompleteReasons.push('Email and confirm email must match');
+  }
+  if (!phoneValue) {
+    incompleteReasons.push('Enter phone number');
+  } else if (!isPhoneValid) {
+    incompleteReasons.push('Use a valid phone number');
+  }
+  if (!attendee.vehicleType.trim()) incompleteReasons.push('Select vehicle type');
+  if (!attendee.licenseType.trim()) incompleteReasons.push('Select driving licence type');
+  if (attendee.licenseType !== '4') {
+    if (!attendee.licenseNumber.trim()) {
+      incompleteReasons.push('Enter driving licence number');
+    } else if (
+      attendee.licenseNumber.trim().length !== 16 ||
+      !/^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber)
+    ) {
+      incompleteReasons.push('Use a valid 16-character driving licence number');
+    }
+  }
+  if (attendee.registerAsUser) {
+    if (attendee.password.length < 8) incompleteReasons.push('Use a password with at least 8 characters');
+    if (attendee.password !== attendee.confirmPassword) incompleteReasons.push('Password and confirm password must match');
+  }
+
   return (
     <div className={`border rounded-xl overflow-hidden ${disabled ? 'border-slate-100 bg-slate-50/60 opacity-70' : 'border-slate-200 bg-slate-50'}`}>
       <button
@@ -203,48 +282,25 @@ export default function AttendeeForm({
           Date of Birth <span className="text-rose-500">*</span>
         </label>
         <input
-          type="date"
-          placeholder="__/__/____"
-          style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
+          type="text"
+          placeholder="dd/mm/yyyy"
           className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
             ageWarning && ageWarning.includes('must be at least 16')
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+              : ageWarning && ageWarning.includes('valid date')
+              ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
               : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
           }`}
-          value={(() => {
-            // Convert DD/MM/YYYY to YYYY-MM-DD for date input
-            const dob = attendee.dateOfBirth || '';
-            if (dob && dob.length === 10) {
-              const [day, month, year] = dob.split('/');
-              if (day && month && year) {
-                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-              }
-            }
-            return '';
-          })()}
-          onChange={(e) => {
-            // Convert YYYY-MM-DD to DD/MM/YYYY for storage
-            const dateValue = e.target.value;
-            if (dateValue) {
-              const [year, month, day] = dateValue.split('-');
-              const formattedDate = `${day}/${month}/${year}`;
-              handleDobChange(formattedDate);
-            } else {
-              handleDobChange('');
-            }
-          }}
-          onClick={(e) => {
-            // Ensure calendar opens when clicking anywhere in the field
-            e.currentTarget.showPicker?.();
-          }}
-          max={(() => {
-            const today = new Date();
-            return today.toISOString().split('T')[0];
-          })()}
+          value={attendee.dateOfBirth || ''}
+          onChange={(e) => handleDobChange(formatDobInput(e.target.value))}
+          inputMode="numeric"
+          maxLength={10}
         />
         {ageWarning && (
           <p className={`mt-1 text-xs ${
-            ageWarning.includes('must be at least 16') ? 'text-red-500' : 'text-amber-600'
+            ageWarning.includes('must be at least 16') || ageWarning.includes('valid date')
+              ? 'text-red-500'
+              : 'text-amber-600'
           }`}>
             {ageWarning}
           </p>
@@ -319,8 +375,8 @@ export default function AttendeeForm({
           <input
             type="tel"
             className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
-              attendee.phone
-                ? /^[0-9+]+$/.test(attendee.phone)
+              phoneValue
+                ? isPhoneValid
                   ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
                   : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
                 : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
@@ -329,9 +385,9 @@ export default function AttendeeForm({
             onChange={(e) => onChange('phone', e.target.value)}
             placeholder="07123456789"
           />
-          <p className="mt-1 text-xs text-slate-500">Numbers only or "+" symbol allowed</p>
-          {attendee.phone && !/^[0-9+]+$/.test(attendee.phone) && (
-            <p className="mt-1 text-xs text-red-500">Only numbers and "+" symbol allowed</p>
+          <p className="mt-1 text-xs text-slate-500">Numbers, spaces, brackets, hyphens, and &quot;+&quot; are allowed</p>
+          {phoneValue && (!phoneRegex.test(phoneValue) || !isPhoneValid) && (
+            <p className="mt-1 text-xs text-red-500">Please enter a valid phone number</p>
           )}
         </div>
 
@@ -527,7 +583,9 @@ export default function AttendeeForm({
           <label htmlFor={`confirmPhotocard-${index}`} className="text-sm text-slate-700">
             Please tick to confirm that this attendee will be able to present their photocard driving licence on the day of the course.
             {!isComplete && (
-              <span className="block text-xs text-amber-600 mt-1">Please fill in all required fields above to enable this confirmation.</span>
+              <span className="block text-xs text-amber-600 mt-1">
+                {incompleteReasons[0] || 'Please complete the required fields above to enable this confirmation.'}
+              </span>
             )}
           </label>
         </div>

@@ -328,14 +328,7 @@ export default function OnePageBookingCheckout() {
   }>>([{
     firstName: user?.first_name || "",
     lastName: user?.last_name || "",
-    dateOfBirth: (() => {
-      const date = new Date();
-      date.setFullYear(date.getFullYear() - 16);
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      return `${day}/${month}/${year}`;
-    })(),
+    dateOfBirth: "",
     email: user?.email || "",
     confirmEmail: "",
     phone: user?.phone || "",
@@ -424,14 +417,9 @@ export default function OnePageBookingCheckout() {
     setExpandedAttendeeIndex(0);
     // Reset date tracking ref so next date selection is treated as "first" (no auto-reset of attendees)
     prevDateStrRef.current = null;
-    const defaultDob = (() => {
-      const date = new Date();
-      date.setFullYear(date.getFullYear() - 16);
-      return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-    })();
     setAttendeeDetails([{
       firstName: user?.first_name || '', lastName: user?.last_name || '',
-      dateOfBirth: defaultDob, email: user?.email || '', confirmEmail: '',
+      dateOfBirth: '', email: user?.email || '', confirmEmail: '',
       phone: user?.phone || '', alternativePhone: '', vehicleType: '', licenseType: '',
       licenseNumber: '', theoryNumber: '', notes: '',
       registerAsUser: false, isPrimaryUser: false, password: '', confirmPassword: '',
@@ -453,27 +441,47 @@ export default function OnePageBookingCheckout() {
 
   // Check if an attendee form is complete (all required fields filled)
   const isAttendeeComplete = (attendee: typeof attendeeDetails[0]) => {
-    const phoneRegex = /^[0-9+]+$/;
+    const phoneRegex = /^\+?[0-9\s()-]+$/;
     const licenseRegex = /^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const isOtherLicense = attendee.licenseType === '4';
+    const dobRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 
     const email = attendee.email.trim();
     const confirmEmail = attendee.confirmEmail.trim();
     const isEmailValid = emailRegex.test(email);
     const isConfirmEmailValid = emailRegex.test(confirmEmail);
+    const phone = attendee.phone.trim();
+    const normalizedPhone = phone.replace(/[\s()-]/g, '');
+    const dob = attendee.dateOfBirth.trim();
+    const dobMatch = dob.match(dobRegex);
+    const isDobValid = (() => {
+      if (!dobMatch) return false;
+      const [, dayStr, monthStr, yearStr] = dobMatch;
+      const day = Number(dayStr);
+      const month = Number(monthStr);
+      const year = Number(yearStr);
+      const date = new Date(year, month - 1, day);
+      return (
+        date.getFullYear() === year &&
+        date.getMonth() === month - 1 &&
+        date.getDate() === day
+      );
+    })();
 
     const basicFieldsComplete =
       attendee.firstName.trim() !== '' &&
       attendee.lastName.trim() !== '' &&
-      attendee.dateOfBirth.trim() !== '' &&
+      dob !== '' &&
+      isDobValid &&
       email !== '' &&
       confirmEmail !== '' &&
       isEmailValid &&
       isConfirmEmailValid &&
       email.toLowerCase() === confirmEmail.toLowerCase() &&
-      attendee.phone.trim() !== '' &&
-      phoneRegex.test(attendee.phone.trim()) &&
+      phone !== '' &&
+      phoneRegex.test(phone) &&
+      /^\+?[0-9]+$/.test(normalizedPhone) &&
       attendee.vehicleType.trim() !== '' &&
       attendee.licenseType.trim() !== '';
 
@@ -670,17 +678,10 @@ export default function OnePageBookingCheckout() {
       if (attendees > prev.length) {
         // Add new attendees
         for (let i = prev.length; i < attendees; i++) {
-          const date = new Date();
-          date.setFullYear(date.getFullYear() - 16);
-          const day = String(date.getDate()).padStart(2, '0');
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const year = date.getFullYear();
-          const defaultDob = `${day}/${month}/${year}`;
-
           newDetails.push({
             firstName: "",
             lastName: "",
-            dateOfBirth: defaultDob,
+            dateOfBirth: "",
             email: "",
             confirmEmail: "",
             phone: "",
@@ -1265,12 +1266,33 @@ export default function OnePageBookingCheckout() {
     for (let idx = 0; idx < attendeeDetails.slice(0, attendees).length; idx++) {
       const attendee = attendeeDetails[idx];
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const phoneRegex = /^\+?[0-9\s()-]+$/;
+      const dobMatch = attendee.dateOfBirth?.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
       const email = attendee.email?.trim() || '';
       const confirmEmail = attendee.confirmEmail?.trim() || '';
+      const phone = attendee.phone?.trim() || '';
+      const normalizedPhone = phone.replace(/[\s()-]/g, '');
+      const isDobValid = (() => {
+        if (!dobMatch) return false;
+        const [, dayStr, monthStr, yearStr] = dobMatch;
+        const day = Number(dayStr);
+        const month = Number(monthStr);
+        const year = Number(yearStr);
+        const date = new Date(year, month - 1, day);
+        return (
+          date.getFullYear() === year &&
+          date.getMonth() === month - 1 &&
+          date.getDate() === day
+        );
+      })();
 
       if (!attendee.firstName) missing.push(`Attendee ${idx + 1}: First name`);
       if (!attendee.lastName) missing.push(`Attendee ${idx + 1}: Last name`);
       if (!attendee.dateOfBirth) missing.push(`Attendee ${idx + 1}: Date of Birth`);
+      if (attendee.dateOfBirth && !isDobValid) {
+        toast.error(`Attendee ${idx + 1}: Please enter date of birth in dd/mm/yyyy format`);
+        return;
+      }
       if (!email) missing.push(`Attendee ${idx + 1}: Email`);
       if (!confirmEmail) missing.push(`Attendee ${idx + 1}: Confirm Email`);
       if (email && !emailRegex.test(email)) {
@@ -1283,6 +1305,11 @@ export default function OnePageBookingCheckout() {
       }
       if (email && confirmEmail && email.toLowerCase() !== confirmEmail.toLowerCase()) {
         toast.error(`Attendee ${idx + 1}: Emails do not match`);
+        return;
+      }
+      if (!phone) missing.push(`Attendee ${idx + 1}: Phone`);
+      if (phone && (!phoneRegex.test(phone) || !/^\+?[0-9]+$/.test(normalizedPhone))) {
+        toast.error(`Attendee ${idx + 1}: Please enter a valid phone number`);
         return;
       }
 
