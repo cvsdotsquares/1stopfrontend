@@ -188,6 +188,13 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
       case 'content_cards_section':
         return <ContentCardsSection key={`section-${index}`} data={section.data} />;
       case 'process_steps':
+        if (!hasSidebar) {
+          return (
+            <div key={`section-${index}`} className="max-w-[1400px] mx-auto px-4">
+              <ProcessStepsSection data={section.data} />
+            </div>
+          );
+        }
         return <ProcessStepsSection key={`section-${index}`} data={section.data} />;
       case 'dynamic_content':
         // Render dynamic_content section
