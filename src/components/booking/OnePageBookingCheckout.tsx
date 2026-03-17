@@ -998,9 +998,7 @@ export default function OnePageBookingCheckout() {
           body: JSON.stringify({ course_id: selectedCourse.id })
         });
         const data = await response.json();
-        if (data.success && data.data?.bullet_points) {
-          setCourseBulletPoints(data.data.bullet_points);
-        }
+        setCourseBulletPoints(data.success && data.data?.bullet_points ? data.data.bullet_points : '');
       } catch (error) {
         console.error('Failed to fetch course bullet points:', error);
         setCourseBulletPoints('');
@@ -1523,7 +1521,7 @@ export default function OnePageBookingCheckout() {
                         }}
                         title={c.course_name}
                       />
-                      {/* {c.description && (
+                      {c.description && (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -1538,7 +1536,7 @@ export default function OnePageBookingCheckout() {
                             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                           </svg>
                         </button>
-                      )} */}
+                      )}
                     </div>
                   );
                 })}
@@ -1743,13 +1741,16 @@ export default function OnePageBookingCheckout() {
                       <div>
                         <strong className="text-slate-700">Date and Time:</strong>
                         <div className="mt-1 space-y-1">
-                          {selectedEvent.all_dates.map((dateInfo) => (
-                            <div key={dateInfo.day_number} className="text-slate-900">
-                              Day {dateInfo.day_number} - {dateInfo.is_tbc ? 'TBC' :
-                                `${formatEventDate(dateInfo.event_date)} (${formatTime(dateInfo.event_start_time)} - ${formatTime(dateInfo.event_end_time)})`
-                              }
-                            </div>
-                          ))}
+                          {(() => {
+                            const isMultiDay = selectedEvent.all_dates.length > 1;
+                            return selectedEvent.all_dates.map((dateInfo) => (
+                              <div key={dateInfo.day_number} className="text-slate-900">
+                                {isMultiDay && `Day ${dateInfo.day_number} - `}{dateInfo.is_tbc ? 'TBC' :
+                                  `${formatEventDate(dateInfo.event_date)} (${formatTime(dateInfo.event_start_time)} - ${formatTime(dateInfo.event_end_time)})`
+                                }
+                              </div>
+                            ));
+                          })()}
                         </div>
                       </div>
                     )}
@@ -1765,7 +1766,9 @@ export default function OnePageBookingCheckout() {
                             currentLocation.address3,
                             currentLocation.address4,
                             currentLocation.postcode
-                          ].filter(Boolean).join(' ')}
+                          ].filter(Boolean).map((line, i) => (
+                            <div key={i}>{line}</div>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -2198,26 +2201,17 @@ export default function OnePageBookingCheckout() {
                 <div className="my-3 border-t" />
                 <div className="space-y-1 text-sm">
                   <div className="flex items-center justify-between"><span className="text-slate-600">Subtotal</span><span className="font-medium text-slate-900"><Money value={subtotal} /></span></div>
-                  <div className="mt-2 flex items-center justify-between text-base font-semibold text-slate-900"><span>Total</span><span><Money value={total} /></span></div>
+                  <div className="mt-2 flex items-center justify-between text-base font-semibold text-slate-900"><span>Total Payable</span><span><Money value={total} /></span></div>
                 </div>
               </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h4 className="mb-2 text-sm font-semibold text-slate-900">Why book with us?</h4>
-                {courseBulletPoints ? (
+              {courseBulletPoints ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div
                     className="text-sm text-slate-600 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5 [&_li]:text-slate-600"
                     dangerouslySetInnerHTML={{ __html: courseBulletPoints }}
                   />
-                ) : (
-                  <ul className="list-disc space-y-1 pl-5 text-sm text-slate-600">
-                    <li>Trusted UK training provider</li>
-                    <li>Instant e‑mail confirmation</li>
-                    <li>Only pay at the final step</li>
-                    <li>Free date changes (48h notice)</li>
-                  </ul>
-                )}
-              </div>
+                </div>
+              ) : null}
             </div>
           </aside>
         </div>
