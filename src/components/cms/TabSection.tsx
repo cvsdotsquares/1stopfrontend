@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface Tab {
   id: string;
@@ -17,6 +17,14 @@ interface TabSectionData {
 
 export default function TabSection({ data }: Readonly<{ data: TabSectionData }>) {
   const [activeTab, setActiveTab] = useState(data.tabs[0]?.id || '');
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (contentRef.current) {
+      setContentHeight(contentRef.current.offsetHeight);
+    }
+  }, [activeTab]);
 
   const activeTabData = data.tabs.find(tab => tab.id === activeTab);
   const titleText = (data.title || '')
@@ -40,7 +48,7 @@ export default function TabSection({ data }: Readonly<{ data: TabSectionData }>)
 
         <div className={`grid grid-cols-1 gap-6 ${data.image ? 'lg:grid-cols-2' : ''}`}>
           {/* Tabs and Content */}
-          <div>
+          <div ref={contentRef} className="flex flex-col">
             {/* Tab Buttons */}
             <ul className="inline-flex flex-wrap w-full bg-white border rounded p-3">
               {data.tabs.map((tab) => (
@@ -56,11 +64,13 @@ export default function TabSection({ data }: Readonly<{ data: TabSectionData }>)
                     onClick={() => setActiveTab(tab.id)}
                     className="flex flex-col gap-1 text-center"
                   >
-                    <img
-                      src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/${tab.icon}`}
-                      alt={tab.label}
-                      className={`text-lg w-5 h-5 mx-auto ${activeTab === tab.id ? 'brightness-0 invert' : ''}`}
-                    />
+                    {tab.icon && (
+                      <img
+                        src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/${tab.icon}`}
+                        alt={tab.label}
+                        className={`text-lg w-5 h-5 mx-auto ${activeTab === tab.id ? 'brightness-0 invert' : ''}`}
+                      />
+                    )}
                     {tab.label}
                   </button>
                 </li>
@@ -85,11 +95,11 @@ export default function TabSection({ data }: Readonly<{ data: TabSectionData }>)
 
           {/* Image */}
           {data.image && (
-            <div>
+            <div className="flex items-center justify-center" style={contentHeight ? { height: contentHeight } : {}}>
               <img
                 src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/${data.image}`}
                 alt="Directions Map"
-                className="rounded-lg w-full object-cover"
+                className="rounded-lg w-full h-full object-contain"
               />
             </div>
           )}

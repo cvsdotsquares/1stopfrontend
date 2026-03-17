@@ -182,6 +182,13 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
       case 'price_card_section':
         return <PriceCardSection key={`section-${index}`} data={section.data} />;
       case 'service_areas_section':
+        if (!hasSidebar) {
+          return (
+            <div key={`section-${index}`} className="max-w-[1400px] mx-auto px-4">
+              <ServiceAreasSection data={section.data} />
+            </div>
+          );
+        }
         return <ServiceAreasSection key={`section-${index}`} data={section.data} />;
       case 'accordion_section':
         return <AccordionSection key={`section-${index}`} data={section.data} />;
