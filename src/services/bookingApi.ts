@@ -301,12 +301,12 @@ class BookingApiService {
     }
   }
 
-  async getVehicleTypesByCourseAndLocation(courseId: number, locationId: number): Promise<Record<string, string>> {
+  async getVehicleTypesByCourseAndLocation(courseId: number, locationId: number, courseEventId: number): Promise<Record<string, string>> {
     try {
-      const response = await this.fetchApi<any>(`/booking/vehicle-types/${courseId}/${locationId}`);
+      const response = await this.fetchApi<any>(`/booking/vehicle-types/${courseId}/${locationId}/${courseEventId}`);
       return response.vehicleTypes || response || { "1": "Manual Car", "2": "Automatic Car" };
     } catch (error) {
-      console.warn(`Vehicle types API failed for course ${courseId}, location ${locationId}:`, error);
+      console.warn(`Vehicle types API failed for course ${courseId}, location ${locationId}, event ${courseEventId}:`, error);
       return { "1": "Manual Car", "2": "Automatic Car" };
     }
   }

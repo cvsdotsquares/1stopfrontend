@@ -436,7 +436,7 @@ export default function OnePageBookingCheckout() {
   const [expandedAttendeeIndex, setExpandedAttendeeIndex] = useState(0);
 
   // Refs used in reset helpers — declared early so they are in scope
-  const step5FetchedRef = useRef<{ selectedCourseId?: number | null; locationId?: number | null; selectedDateISO?: string | null; attendees?: number } | null>(null);
+  const step5FetchedRef = useRef<{ selectedCourseId?: number | null; locationId?: number | null; selectedCourseEventId?: number | null; selectedDateISO?: string | null; attendees?: number } | null>(null);
   const availabilityFetchedRef = useRef<{ courseId?: number | null; locationId?: number | null } | null>(null);
 
   // Track previous course for change detection
@@ -809,11 +809,7 @@ export default function OnePageBookingCheckout() {
         acceptTerms,
       };
 
-      try {
-        localStorage.setItem('booking_form_data', JSON.stringify(formData));
-      } catch (e) {
-        console.warn('Failed to save booking_form_data', e);
-      }
+      localStorage.setItem('booking_form_data', JSON.stringify(formData));
     }
   }, [selectedCourse, locationId, selectedDate, selectedCourseEventId, attendees, attendeeDetails, confirmPhotocard, acceptTerms]);
 
@@ -825,6 +821,7 @@ export default function OnePageBookingCheckout() {
     const current = {
       selectedCourseId: selectedCourse?.id ?? null,
       locationId: locationId ?? null,
+      selectedCourseEventId: selectedCourseEventId ?? null,
       selectedDateISO: (selectedDate instanceof Date && !isNaN(selectedDate.getTime())) ? selectedDate.toISOString() : null,
       attendees,
     };
@@ -834,6 +831,7 @@ export default function OnePageBookingCheckout() {
       step5FetchedRef.current &&
       step5FetchedRef.current.selectedCourseId === current.selectedCourseId &&
       step5FetchedRef.current.locationId === current.locationId &&
+      step5FetchedRef.current.selectedCourseEventId === current.selectedCourseEventId &&
       step5FetchedRef.current.selectedDateISO === current.selectedDateISO &&
       step5FetchedRef.current.attendees === current.attendees
     ) {
@@ -841,28 +839,24 @@ export default function OnePageBookingCheckout() {
     }
 
     const loadStep5Data = async () => {
-      try {
-        const [settingsData, licenseTypesData, vehicleTypesData] = await Promise.all([
-          bookingApi.getSettings().catch(() => ({ vat_rate: 0.2, credit_card_surcharge: 0, booking_bcc: '' })),
-          bookingApi.getLicenseTypes().catch(() => [{ id: 1, licence_type: "UK Full Licence", status: 1 }]),
-          current.selectedCourseId && current.locationId
-            ? bookingApi.getVehicleTypesByCourseAndLocation(current.selectedCourseId, current.locationId).catch(() => ({}))
-            : Promise.resolve({})
-        ]);
-        setSettings(settingsData);
-        setLicenseTypes(licenseTypesData);
-        setAvailableVehicleTypes(vehicleTypesData);
+      const [settingsData, licenseTypesData, vehicleTypesData] = await Promise.all([
+        bookingApi.getSettings().catch(() => ({ vat_rate: 0.2, credit_card_surcharge: 0, booking_bcc: '' })),
+        bookingApi.getLicenseTypes().catch(() => [{ id: 1, licence_type: "UK Full Licence", status: 1 }]),
+        current.selectedCourseId && current.locationId && current.selectedCourseEventId
+          ? bookingApi.getVehicleTypesByCourseAndLocation(current.selectedCourseId, current.locationId, current.selectedCourseEventId).catch(() => ({}))
+          : Promise.resolve({})
+      ]);
+      setSettings(settingsData);
+      setLicenseTypes(licenseTypesData);
+      setAvailableVehicleTypes(vehicleTypesData);
 
-        // Don't auto-select defaults - users must choose from 'Please select'
+      // Don't auto-select defaults - users must choose from 'Please select'
 
-        step5FetchedRef.current = current;
-      } catch (err) {
-        console.error('Failed to load step 5 data:', err);
-      }
+      step5FetchedRef.current = current;
     };
 
     loadStep5Data();
-  }, [selectedDate instanceof Date && !isNaN(selectedDate.getTime()) ? selectedDate.toISOString() : null, attendees, selectedCourse?.id, locationId]);
+  }, [selectedDate instanceof Date && !isNaN(selectedDate.getTime()) ? selectedDate.toISOString() : null, attendees, selectedCourse?.id, locationId, selectedCourseEventId]);
 
   // Get user IP and check block status on load
   useEffect(() => {
@@ -927,7 +921,6 @@ export default function OnePageBookingCheckout() {
                 setCourseLocationError('This course is not available at the selected location. Please choose a different location.');
               }
             } catch (err) {
-              console.error('Failed to validate course/location:', err);
               setCourseLocationError('Unable to verify course availability. Please select a course and location from the options below.');
             }
           }
@@ -953,7 +946,6 @@ export default function OnePageBookingCheckout() {
 
         // Don't set isInitialLoad to false here - let it happen after default course selection
       } catch (err) {
-        console.error('Load initial data error:', err);
         setError(err instanceof Error ? err.message : 'Failed to load data');
         setCourses([]);
       } finally {
@@ -991,8 +983,8 @@ export default function OnePageBookingCheckout() {
           setConfirmPhotocard(!!formData.confirmPhotocard);
           setAcceptTerms(!!formData.acceptTerms);
         }
-      } catch (err) {
-        console.warn('Error handling storage event', err);
+      } catch {
+        // ignore malformed storage payloads
       }
     }
 
@@ -1014,7 +1006,6 @@ export default function OnePageBookingCheckout() {
         setLocations(locationsData);
         // Note: locationId validation is handled by a separate effect below to avoid stale-closure bugs
       } catch (err) {
-        console.error('Failed to load locations:', err);
         setLocations([]);
       }
     };
@@ -1048,7 +1039,6 @@ export default function OnePageBookingCheckout() {
         const data = await response.json();
         setCourseBulletPoints(data.success && data.data?.bullet_points ? data.data.bullet_points : '');
       } catch (error) {
-        console.error('Failed to fetch course bullet points:', error);
         setCourseBulletPoints('');
       }
     };
@@ -1124,7 +1114,6 @@ export default function OnePageBookingCheckout() {
           }
         }
       } catch (err) {
-        console.error('Failed to load availability:', err);
         setCourseEvents([]);
         availabilityFetchedRef.current = null;
       }
@@ -1167,7 +1156,6 @@ export default function OnePageBookingCheckout() {
         const pricingResult = await bookingApi.calculatePrice(selectedCourseEventId, attendeesArray);
         setPricing(pricingResult.pricing_breakdown);
       } catch (error) {
-        console.error('Failed to calculate pricing:', error);
         setPricing(null);
       }
     };
@@ -1206,7 +1194,6 @@ export default function OnePageBookingCheckout() {
       const data = await response.json();
       return data.success && data.is_blacklisted;
     } catch (error) {
-      console.error('Failed to check blacklist:', error);
       return false;
     }
   };
@@ -1483,8 +1470,8 @@ export default function OnePageBookingCheckout() {
             .then(availabilityData => {
               setCourseEvents(availabilityData.data.availability);
             })
-            .catch(err => {
-              console.error('Failed to refresh availability:', err);
+            .catch(() => {
+              setCourseEvents([]);
             });
         }
       } else if (error?.status === 400 && (!error?.data || !error?.data?.message)) {
@@ -1500,8 +1487,8 @@ export default function OnePageBookingCheckout() {
               .then(availabilityData => {
                 setCourseEvents(availabilityData.data.availability);
               })
-              .catch(err => {
-                console.error('Failed to refresh availability:', err);
+              .catch(() => {
+                setCourseEvents([]);
               });
           }
         }
