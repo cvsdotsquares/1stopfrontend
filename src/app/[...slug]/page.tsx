@@ -184,22 +184,18 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
       case 'service_areas_section':
         if (!hasSidebar) {
           return (
-            <div key={`section-${index}`} className="max-w-[1400px] mx-auto px-4">
-              <ServiceAreasSection data={section.data} />
-            </div>
+              <ServiceAreasSection key={`section-${index}`} data={section.data} />
           );
         }
         return <ServiceAreasSection key={`section-${index}`} data={section.data} />;
       case 'accordion_section':
-        return <AccordionSection key={`section-${index}`} data={section.data} />;
+        return <AccordionSection key={`section-${index}`} data={section.data} order={section.order} />;
       case 'content_cards_section':
         return <ContentCardsSection key={`section-${index}`} data={section.data} />;
       case 'process_steps':
         if (!hasSidebar) {
           return (
-            <div key={`section-${index}`} className="max-w-[1400px] mx-auto px-4">
               <ProcessStepsSection data={section.data} />
-            </div>
           );
         }
         return <ProcessStepsSection key={`section-${index}`} data={section.data} />;
@@ -227,22 +223,20 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
         }
         return (
           <section className="py-10 md:py-16" key={`section-${index}`}>
-            <div className="max-w-[800px] mx-auto px-4">
+            <div className="max-w-[1400px] mx-auto px-4">
               <div className="grid grid-cols-1">
-                <div className="text-center">
-                  <h2 className='text-3xl mb-4 text-black'>{section.data.section_title}</h2>
-                  {[...section.data.items].sort((a: CmsItem, b: CmsItem) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map((item: CmsItem) => (
-                    <span key={item.id}>
-                      <div dangerouslySetInnerHTML={{ __html: item.item_content || '' }} />
-                      <div className='pt-6'>
-                        {item.item_image && (
-                          <img className="rounded-lg w-full object-cover" src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/dynamic_content/${item.item_image}`} alt={item.item_title} />
-                        )}
-                        {item.item_url && <Link href={item.item_url}>{item.item_title}</Link>}
-                      </div>
-                    </span>
-                  ))}
-                </div>
+                <h2 className='text-3xl mb-4 text-black'>{section.data.section_title}</h2>
+                {[...section.data.items].sort((a: CmsItem, b: CmsItem) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map((item: CmsItem) => (
+                  <span key={item.id}>
+                    <div dangerouslySetInnerHTML={{ __html: item.item_content || '' }} />
+                    <div className='pt-6'>
+                      {item.item_image && (
+                        <img className="rounded-lg w-full object-cover" src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/dynamic_content/${item.item_image}`} alt={item.item_title} />
+                      )}
+                      {item.item_url && <Link href={item.item_url}>{item.item_title}</Link>}
+                    </div>
+                  </span>
+                ))}
               </div>
             </div>
           </section>
