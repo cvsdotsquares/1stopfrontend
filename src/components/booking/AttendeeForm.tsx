@@ -30,7 +30,6 @@ interface AttendeeFormProps {
   photocardConfirmed: boolean;
   onPhotocardChange: (confirmed: boolean) => void;
   licenseValidated: boolean;
-  duplicateEmailIndex: number | null;
   duplicateLicenseIndex: number | null;
   selectedDate: Date | null;
   disabled?: boolean;
@@ -49,7 +48,6 @@ export default function AttendeeForm({
   photocardConfirmed,
   onPhotocardChange,
   licenseValidated,
-  duplicateEmailIndex,
   duplicateLicenseIndex,
   selectedDate,
   disabled = false,
@@ -316,9 +314,7 @@ export default function AttendeeForm({
           <input
             type="email"
             className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
-              duplicateEmailIndex !== null
-                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                : emailValue && confirmEmailValue && isEmailValid && isConfirmEmailValid
+              emailValue && confirmEmailValue && isEmailValid && isConfirmEmailValid
                 ? areEmailsMatching
                   ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
                   : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
@@ -330,9 +326,6 @@ export default function AttendeeForm({
             onChange={(e) => onChange('email', e.target.value)}
             placeholder="you@example.com"
           />
-          {duplicateEmailIndex !== null && (
-            <p className="mt-1 text-xs text-red-500">This email is already used by Attendee {duplicateEmailIndex + 1}</p>
-          )}
           {emailValue && !isEmailValid && (
             <p className="mt-1 text-xs text-red-500">Please enter a valid email address</p>
           )}

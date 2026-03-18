@@ -99,6 +99,54 @@ function computeTotals(unitPrice: string | number | undefined, attendees: string
   return { subtotal, vat, total };
 }
 
+/**
+ * Returns the number of whole days between today (midnight) and courseStartDate (midnight).
+ * Returns 0 if the date is today, negative if in the past.
+ * Timezone-safe: compares local midnight values.
+ */
+function daysUntilCourseStart(courseStartDate: Date): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(courseStartDate);
+  start.setHours(0, 0, 0, 0);
+  return Math.ceil((start.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Determines the effective payment type for a course event.
+ * Returns 'DEPOSIT' only when deposit pricing exists AND the cutoff has not been reached.
+ * Falls back to 'FULL' in all other cases (including one_off, no pricing, past cutoff).
+ */
+function resolvePaymentType(
+  pricing: CourseEvent['pricing'],
+  courseStartDate: Date | null
+): { paymentType: 'DEPOSIT' | 'FULL'; forcedFullReason: string | null } {
+  if (!pricing || pricing.pricing_mode !== 'deposit') {
+    return { paymentType: 'FULL', forcedFullReason: null };
+  }
+
+  // deposit_available is already computed server-side using deposit_days
+  if (!pricing.deposit_available) {
+    return {
+      paymentType: 'FULL',
+      forcedFullReason: 'This course requires full payment as the course start date is too soon.',
+    };
+  }
+
+  // Extra client-side guard: re-check cutoff in case the page has been open a long time
+  if (courseStartDate && pricing.deposit_days > 0) {
+    const days = daysUntilCourseStart(courseStartDate);
+    if (days <= pricing.deposit_days) {
+      return {
+        paymentType: 'FULL',
+        forcedFullReason: 'This course requires full payment as the course start date is too soon.',
+      };
+    }
+  }
+
+  return { paymentType: 'DEPOSIT', forcedFullReason: null };
+}
+
 // ---------- Hook wrapper for calendar ----------
 function useCalendarWeeks(courseEvents: CourseEvent[], monthOffset: number) {
   return useMemo(() => generateCalendarWeeksFrom(new Date(), courseEvents, monthOffset), [courseEvents, monthOffset]);
@@ -1116,9 +1164,7 @@ export default function OnePageBookingCheckout() {
           license_type: a.licenseType
         }));
 
-        console.log('Calculating price with:', { selectedCourseEventId, attendees, attendeesArray });
         const pricingResult = await bookingApi.calculatePrice(selectedCourseEventId, attendeesArray);
-        console.log('Price calculation result:', pricingResult);
         setPricing(pricingResult.pricing_breakdown);
       } catch (error) {
         console.error('Failed to calculate pricing:', error);
@@ -1359,6 +1405,19 @@ export default function OnePageBookingCheckout() {
     if (missing.length) {
       toast.error("Please complete: " + missing.join(", "));
       return;
+    }
+
+    // Deposit cutoff guard: re-evaluate at submission time in case the page was left open
+    if (selectedCourseEventId && selectedDate) {
+      const selectedEvent = courseEvents.find(e => e.course_event_id === selectedCourseEventId);
+      if (selectedEvent?.pricing) {
+        const { paymentType } = resolvePaymentType(selectedEvent.pricing, selectedDate);
+        // If the server said deposit but cutoff has now passed, block submission
+        if (selectedEvent.pricing.pricing_mode === 'deposit' && paymentType === 'FULL' && !selectedEvent.pricing.deposit_available) {
+          toast.error('This course now requires full payment as the start date is too soon. Please refresh and try again.');
+          return;
+        }
+      }
     }
 
     setIsPaying(true);
@@ -1777,32 +1836,35 @@ export default function OnePageBookingCheckout() {
                       const { pricing } = selectedEvent;
                       const schoolAvailable = pricing.vehicle_options.school_vehicle_available;
                       const ownAvailable = pricing.vehicle_options.own_vehicle_available;
-                      const depositAvailable = pricing.deposit_available;
+
+                      // Resolve effective payment type using centralised helper
+                      const courseStart = selectedDate ? new Date(selectedDate) : null;
+                      const { paymentType, forcedFullReason } = resolvePaymentType(pricing, courseStart);
+                      const isDeposit = paymentType === 'DEPOSIT';
 
                       const renderVehiclePrice = (label: string, vehiclePricing: typeof pricing.school_vehicle) => {
                         if (vehiclePricing.pricing_type === 'deposit') {
                           const dp = vehiclePricing as { deposit: number; total: number; pricing_type: 'deposit' };
-                          if (dp.deposit === 0 && dp.total === 0) return null;
+                          // Skip if both values are zero/null
+                          if ((!dp.deposit || dp.deposit === 0) && (!dp.total || dp.total === 0)) return null;
                           return (
                             <div className="space-y-1">
                               <div className="font-medium text-slate-800">{label}</div>
                               <div className="ml-3 text-slate-900">
-                                {depositAvailable ? (
+                                {isDeposit ? (
                                   <>
-                                    <div>Deposit to Book: <span className="font-semibold">£{dp.deposit.toFixed(2)}</span></div>
-                                    <div>Total Course Price: <span className="font-semibold">£{dp.total.toFixed(2)}</span></div>
+                                    <div>Deposit to Book: <span className="font-semibold">£{(dp.deposit || 0).toFixed(2)}</span></div>
+                                    <div>Total Course Price: <span className="font-semibold">£{(dp.total || 0).toFixed(2)}</span></div>
                                   </>
                                 ) : (
-                                  <>
-                                    <div>Full Payment Required: <span className="font-semibold">£{dp.total.toFixed(2)}</span></div>
-                                  </>
+                                  <div>Full Payment Required: <span className="font-semibold">£{(dp.total || dp.deposit || 0).toFixed(2)}</span></div>
                                 )}
                               </div>
                             </div>
                           );
                         } else {
-                          const op = vehiclePricing as { price: number; pricing_type: 'one_off' };
-                          if (op.price === 0) return null;
+                          const op = vehiclePricing as { price: number; pricing_type: 'one_off' | 'none' };
+                          if (!op.price || op.price === 0) return null;
                           return (
                             <div className="space-y-1">
                               <div className="font-medium text-slate-800">{label}</div>
@@ -1814,10 +1876,17 @@ export default function OnePageBookingCheckout() {
                         }
                       };
 
+                      // Always render both options when they exist — fixes the single-option bug
                       const schoolContent = schoolAvailable ? renderVehiclePrice('Using School Vehicle', pricing.school_vehicle) : null;
                       const ownContent = ownAvailable ? renderVehiclePrice('Using Your Own Vehicle', pricing.own_vehicle) : null;
 
                       if (!schoolContent && !ownContent) return null;
+
+                      const WarningIcon = () => (
+                        <svg className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      );
 
                       return (
                         <div>
@@ -1826,20 +1895,24 @@ export default function OnePageBookingCheckout() {
                             {schoolContent}
                             {ownContent}
                           </div>
-                          {pricing.deposit_note && (
+
+                          {/* Show deposit info banner ONLY when deposit is active */}
+                          {isDeposit && (
                             <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 flex items-start gap-2">
-                              <svg className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                              </svg>
-                              <span>{pricing.deposit_note}</span>
+                              <WarningIcon />
+                              <span>
+                                This course only requires a deposit payment to secure your place.
+                                The balance will need to be paid not later than{' '}
+                                <strong>{pricing.deposit_days}</strong> days before the first day of your course.
+                              </span>
                             </div>
                           )}
-                          {!depositAvailable && pricing.deposit_period_check_enabled && !pricing.deposit_note && (
+
+                          {/* Show forced-full warning when deposit was overridden by cutoff */}
+                          {!isDeposit && forcedFullReason && (
                             <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 flex items-start gap-2">
-                              <svg className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                              </svg>
-                              <span>Deposit option is only available when booking at least {pricing.deposit_days} days before the course start date. Full payment is required for this date.</span>
+                              <WarningIcon />
+                              <span>{forcedFullReason}</span>
                             </div>
                           )}
                         </div>
@@ -1961,13 +2034,6 @@ export default function OnePageBookingCheckout() {
 
               <div className="space-y-4">
                 {attendeeDetails.slice(0, attendees).map((attendee, index) => {
-                  // Check if this attendee's email is used by another attendee
-                  const duplicateEmailIndex = attendee.email.trim()
-                    ? attendeeDetails.slice(0, attendees).findIndex((a, i) =>
-                        i !== index && a.email.trim().toLowerCase() === attendee.email.trim().toLowerCase()
-                      )
-                    : -1;
-
                   // Check if this attendee's license number is used by another attendee
                   const duplicateLicenseIndex = attendee.licenseNumber.trim()
                     ? attendeeDetails.slice(0, attendees).findIndex((a, i) =>
@@ -2028,7 +2094,6 @@ export default function OnePageBookingCheckout() {
                       photocardConfirmed={photocardConfirmed[index] || false}
                       onPhotocardChange={(confirmed) => handlePhotocardChange(index, confirmed)}
                       licenseValidated={licenseValidated[index] || false}
-                      duplicateEmailIndex={duplicateEmailIndex >= 0 ? duplicateEmailIndex : null}
                       duplicateLicenseIndex={duplicateLicenseIndex >= 0 ? duplicateLicenseIndex : null}
                       selectedDate={selectedDate}
                       disabled={index > 0 && !attendeeDetails.slice(0, index).every((a, i) => isAttendeeComplete(a) && photocardConfirmed[i])}
@@ -2086,7 +2151,7 @@ export default function OnePageBookingCheckout() {
                         <span className="font-medium">-<Money value={discount} /></span>
                       </div>
                     )}
-                    <div className="mt-2 border-t pt-2 text-base font-semibold text-slate-900 flex items-center justify-between"><span>Total</span><span><Money value={total} /></span></div>
+                    <div className="mt-2 border-t pt-2 text-base font-semibold text-slate-900 flex items-center justify-between"><span>Total Payable</span><span><Money value={total} /></span></div>
                   </div>
 
                   {/* Promo Code Section */}
