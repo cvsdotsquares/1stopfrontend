@@ -11,33 +11,31 @@ function PaymentSuccessContent() {
 
   useEffect(() => {
     const sessionId = searchParams.get('payment_intent');
-    const bookingRef = searchParams.get('ref');
+    // Support both ?refs=1SRC1,1SRC2 (multi) and legacy ?ref=1SRC1 (single)
+    const refsParam = searchParams.get('refs') || searchParams.get('ref');
+    const bookingRefs = refsParam ? refsParam.split(',').map(r => r.trim()).filter(Boolean) : [];
+    const primaryRef = bookingRefs[0] || null;
 
-    if (!bookingRef) {
+    if (!primaryRef) {
       setVerificationStatus('error');
       return;
     }
 
     if (!sessionId) {
-      // Handle success without a payment_intent (e.g., no payment required)
-      setBookingDetails({
-        booking_ref: bookingRef,
-        payment_status: 'confirmed'
-      });
+      setBookingDetails({ booking_refs: bookingRefs, payment_status: 'confirmed' });
       setVerificationStatus('success');
       return;
     }
 
-    // Verify payment with backend
     const verifyPayment = async () => {
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/webhook/stripe/verify?payment_intent=${sessionId}&ref=${bookingRef}`
+          `${process.env.NEXT_PUBLIC_API_URL}/webhook/stripe/verify?payment_intent=${sessionId}&ref=${primaryRef}`
         );
 
         if (response.ok) {
           const data = await response.json();
-          setBookingDetails(data.data);
+          setBookingDetails({ ...data.data, booking_refs: bookingRefs });
           setVerificationStatus('success');
         } else {
           setVerificationStatus('error');
@@ -107,8 +105,15 @@ function PaymentSuccessContent() {
               <h3 className="font-semibold text-slate-900 mb-4">Booking Details</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Booking Reference:</span>
-                  <span className="font-medium text-slate-900">{bookingDetails.booking_ref}</span>
+                  <span className="text-slate-600">{bookingDetails.booking_refs?.length > 1 ? 'Booking References:' : 'Booking Reference:'}</span>
+                  <span className="font-medium text-slate-900 text-right">
+                    {bookingDetails.booking_refs?.length > 1
+                      ? bookingDetails.booking_refs.map((ref: string, i: number) => (
+                          <div key={ref}>Attendee {i + 1}: {ref}</div>
+                        ))
+                      : (bookingDetails.booking_refs?.[0] || bookingDetails.booking_ref)
+                    }
+                  </span>
                 </div>
                 {typeof bookingDetails.amount_paid === 'number' && (
                   <div className="flex justify-between">
@@ -132,19 +137,31 @@ function PaymentSuccessContent() {
                 <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                You'll receive a confirmation email with your booking details
+                You’ll receive a booking confirmation email with your booking details
               </li>
               <li className="flex items-start gap-2">
                 <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                Course joining instructions will be sent 24-48 hours before your course date
+                Please check junk/spam inboxes, and add info@1stopinstruction as a safe sender
               </li>
               <li className="flex items-start gap-2">
                 <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                You can view and manage your bookings in your account dashboard
+                You can also check your booking details by logging into your account
+              </li>
+              <li className="flex items-start gap-2">
+                <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                If you did not create an account at the time of booking, please use this forgot password link and enter the email address used to make your booking
+              </li>
+              <li className="flex items-start gap-2">
+                <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                If you have still not received your booking confirmation within 1 hour, and you are unable to check your booking in your account on our website, then please reach out and contact us by phone (020 8597 7333) or email (info@1stopinstruction) as soon as possible
               </li>
             </ul>
           </div>

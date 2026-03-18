@@ -1458,15 +1458,16 @@ export default function OnePageBookingCheckout() {
 
       localStorage.removeItem('booking_form_data');
 
+      const allRefs: string[] = response.booking_refs || [response.booking_ref];
       setBookingRef(response.booking_ref);
 
       if (response.client_secret) {
-        toast.success(`Booking created! Reference: ${response.booking_ref}`);
-        return { clientSecret: response.client_secret, bookingRef: response.booking_ref, paymentRequired: true };
+        toast.success(`Booking created! Reference${allRefs.length > 1 ? 's' : ''}: ${allRefs.join(', ')}`);
+        return { clientSecret: response.client_secret, bookingRef: response.booking_ref, bookingRefs: allRefs, paymentRequired: true };
       }
 
-      toast.success(`Booking created! Reference: ${response.booking_ref}. (No payment required)`);
-      return { bookingRef: response.booking_ref, paymentRequired: false };
+      toast.success(`Booking created! Reference${allRefs.length > 1 ? 's' : ''}: ${allRefs.join(', ')}. (No payment required)`);
+      return { bookingRef: response.booking_ref, bookingRefs: allRefs, paymentRequired: false };
     } catch (error: any) {
       const errMsg = error?.data?.message || (error instanceof Error ? error.message : (error?.response?.data?.message ?? 'Unknown error'));
 
@@ -2218,8 +2219,8 @@ export default function OnePageBookingCheckout() {
                   <Elements stripe={stripePromise}>
                     <StripePaymentForm
                       onCreatePaymentIntent={handleCreateBooking}
-                      onSuccess={(ref) => {
-                        window.location.href = `/bookings/payment-success?ref=${ref}`;
+                      onSuccess={(refs) => {
+                        window.location.href = `/bookings/payment-success?refs=${refs.join(',')}`;
                       }}
                       onCancel={(ref) => {
                         if (ref) {
