@@ -152,6 +152,8 @@ export interface BookingRequest {
 export interface BookingResponse {
   booking_id: number;
   booking_ref: string;
+  booking_refs?: string[];
+  booking_ids?: number[];
   temp_ref: string;
   payment_due: number;
   total_fees: number;

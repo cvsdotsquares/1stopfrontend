@@ -320,10 +320,10 @@ export default function GiftVoucherPage() {
                   if (!clientSecret || !voucherRef) {
                     return undefined;
                   }
-                  return { clientSecret, bookingRef: voucherRef, paymentRequired: true };
+                  return { clientSecret, bookingRef: voucherRef, bookingRefs: [voucherRef], paymentRequired: true };
                 }}
-                onSuccess={(ref) => {
-                  window.location.href = `/gift-voucher/success?ref=${ref}`;
+                onSuccess={(refs) => {
+                  window.location.href = `/gift-voucher/success?ref=${refs[0]}`;
                 }}
                 onCancel={(ref) => {
                   window.location.href = `/gift-voucher/cancel?ref=${ref || voucherRef}`;
