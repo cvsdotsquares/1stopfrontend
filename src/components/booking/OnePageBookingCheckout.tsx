@@ -99,6 +99,54 @@ function computeTotals(unitPrice: string | number | undefined, attendees: string
   return { subtotal, vat, total };
 }
 
+/**
+ * Returns the number of whole days between today (midnight) and courseStartDate (midnight).
+ * Returns 0 if the date is today, negative if in the past.
+ * Timezone-safe: compares local midnight values.
+ */
+function daysUntilCourseStart(courseStartDate: Date): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(courseStartDate);
+  start.setHours(0, 0, 0, 0);
+  return Math.ceil((start.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Determines the effective payment type for a course event.
+ * Returns 'DEPOSIT' only when deposit pricing exists AND the cutoff has not been reached.
+ * Falls back to 'FULL' in all other cases (including one_off, no pricing, past cutoff).
+ */
+function resolvePaymentType(
+  pricing: CourseEvent['pricing'],
+  courseStartDate: Date | null
+): { paymentType: 'DEPOSIT' | 'FULL'; forcedFullReason: string | null } {
+  if (!pricing || pricing.pricing_mode !== 'deposit') {
+    return { paymentType: 'FULL', forcedFullReason: null };
+  }
+
+  // deposit_available is already computed server-side using deposit_days
+  if (!pricing.deposit_available) {
+    return {
+      paymentType: 'FULL',
+      forcedFullReason: 'This course requires full payment as the course start date is too soon.',
+    };
+  }
+
+  // Extra client-side guard: re-check cutoff in case the page has been open a long time
+  if (courseStartDate && pricing.deposit_days > 0) {
+    const days = daysUntilCourseStart(courseStartDate);
+    if (days <= pricing.deposit_days) {
+      return {
+        paymentType: 'FULL',
+        forcedFullReason: 'This course requires full payment as the course start date is too soon.',
+      };
+    }
+  }
+
+  return { paymentType: 'DEPOSIT', forcedFullReason: null };
+}
+
 // ---------- Hook wrapper for calendar ----------
 function useCalendarWeeks(courseEvents: CourseEvent[], monthOffset: number) {
   return useMemo(() => generateCalendarWeeksFrom(new Date(), courseEvents, monthOffset), [courseEvents, monthOffset]);
@@ -388,7 +436,7 @@ export default function OnePageBookingCheckout() {
   const [expandedAttendeeIndex, setExpandedAttendeeIndex] = useState(0);
 
   // Refs used in reset helpers — declared early so they are in scope
-  const step5FetchedRef = useRef<{ selectedCourseId?: number | null; locationId?: number | null; selectedDateISO?: string | null; attendees?: number } | null>(null);
+  const step5FetchedRef = useRef<{ selectedCourseId?: number | null; locationId?: number | null; selectedCourseEventId?: number | null; selectedDateISO?: string | null; attendees?: number } | null>(null);
   const availabilityFetchedRef = useRef<{ courseId?: number | null; locationId?: number | null } | null>(null);
 
   // Track previous course for change detection
@@ -761,11 +809,7 @@ export default function OnePageBookingCheckout() {
         acceptTerms,
       };
 
-      try {
-        localStorage.setItem('booking_form_data', JSON.stringify(formData));
-      } catch (e) {
-        console.warn('Failed to save booking_form_data', e);
-      }
+      localStorage.setItem('booking_form_data', JSON.stringify(formData));
     }
   }, [selectedCourse, locationId, selectedDate, selectedCourseEventId, attendees, attendeeDetails, confirmPhotocard, acceptTerms]);
 
@@ -777,6 +821,7 @@ export default function OnePageBookingCheckout() {
     const current = {
       selectedCourseId: selectedCourse?.id ?? null,
       locationId: locationId ?? null,
+      selectedCourseEventId: selectedCourseEventId ?? null,
       selectedDateISO: (selectedDate instanceof Date && !isNaN(selectedDate.getTime())) ? selectedDate.toISOString() : null,
       attendees,
     };
@@ -786,6 +831,7 @@ export default function OnePageBookingCheckout() {
       step5FetchedRef.current &&
       step5FetchedRef.current.selectedCourseId === current.selectedCourseId &&
       step5FetchedRef.current.locationId === current.locationId &&
+      step5FetchedRef.current.selectedCourseEventId === current.selectedCourseEventId &&
       step5FetchedRef.current.selectedDateISO === current.selectedDateISO &&
       step5FetchedRef.current.attendees === current.attendees
     ) {
@@ -793,28 +839,24 @@ export default function OnePageBookingCheckout() {
     }
 
     const loadStep5Data = async () => {
-      try {
-        const [settingsData, licenseTypesData, vehicleTypesData] = await Promise.all([
-          bookingApi.getSettings().catch(() => ({ vat_rate: 0.2, credit_card_surcharge: 0, booking_bcc: '' })),
-          bookingApi.getLicenseTypes().catch(() => [{ id: 1, licence_type: "UK Full Licence", status: 1 }]),
-          current.selectedCourseId && current.locationId
-            ? bookingApi.getVehicleTypesByCourseAndLocation(current.selectedCourseId, current.locationId).catch(() => ({}))
-            : Promise.resolve({})
-        ]);
-        setSettings(settingsData);
-        setLicenseTypes(licenseTypesData);
-        setAvailableVehicleTypes(vehicleTypesData);
+      const [settingsData, licenseTypesData, vehicleTypesData] = await Promise.all([
+        bookingApi.getSettings().catch(() => ({ vat_rate: 0.2, credit_card_surcharge: 0, booking_bcc: '' })),
+        bookingApi.getLicenseTypes().catch(() => [{ id: 1, licence_type: "UK Full Licence", status: 1 }]),
+        current.selectedCourseId && current.locationId && current.selectedCourseEventId
+          ? bookingApi.getVehicleTypesByCourseAndLocation(current.selectedCourseId, current.locationId, current.selectedCourseEventId).catch(() => ({}))
+          : Promise.resolve({})
+      ]);
+      setSettings(settingsData);
+      setLicenseTypes(licenseTypesData);
+      setAvailableVehicleTypes(vehicleTypesData);
 
-        // Don't auto-select defaults - users must choose from 'Please select'
+      // Don't auto-select defaults - users must choose from 'Please select'
 
-        step5FetchedRef.current = current;
-      } catch (err) {
-        console.error('Failed to load step 5 data:', err);
-      }
+      step5FetchedRef.current = current;
     };
 
     loadStep5Data();
-  }, [selectedDate instanceof Date && !isNaN(selectedDate.getTime()) ? selectedDate.toISOString() : null, attendees, selectedCourse?.id, locationId]);
+  }, [selectedDate instanceof Date && !isNaN(selectedDate.getTime()) ? selectedDate.toISOString() : null, attendees, selectedCourse?.id, locationId, selectedCourseEventId]);
 
   // Get user IP and check block status on load
   useEffect(() => {
@@ -879,7 +921,6 @@ export default function OnePageBookingCheckout() {
                 setCourseLocationError('This course is not available at the selected location. Please choose a different location.');
               }
             } catch (err) {
-              console.error('Failed to validate course/location:', err);
               setCourseLocationError('Unable to verify course availability. Please select a course and location from the options below.');
             }
           }
@@ -905,7 +946,6 @@ export default function OnePageBookingCheckout() {
 
         // Don't set isInitialLoad to false here - let it happen after default course selection
       } catch (err) {
-        console.error('Load initial data error:', err);
         setError(err instanceof Error ? err.message : 'Failed to load data');
         setCourses([]);
       } finally {
@@ -943,8 +983,8 @@ export default function OnePageBookingCheckout() {
           setConfirmPhotocard(!!formData.confirmPhotocard);
           setAcceptTerms(!!formData.acceptTerms);
         }
-      } catch (err) {
-        console.warn('Error handling storage event', err);
+      } catch {
+        // ignore malformed storage payloads
       }
     }
 
@@ -966,7 +1006,6 @@ export default function OnePageBookingCheckout() {
         setLocations(locationsData);
         // Note: locationId validation is handled by a separate effect below to avoid stale-closure bugs
       } catch (err) {
-        console.error('Failed to load locations:', err);
         setLocations([]);
       }
     };
@@ -998,11 +1037,8 @@ export default function OnePageBookingCheckout() {
           body: JSON.stringify({ course_id: selectedCourse.id })
         });
         const data = await response.json();
-        if (data.success && data.data?.bullet_points) {
-          setCourseBulletPoints(data.data.bullet_points);
-        }
+        setCourseBulletPoints(data.success && data.data?.bullet_points ? data.data.bullet_points : '');
       } catch (error) {
-        console.error('Failed to fetch course bullet points:', error);
         setCourseBulletPoints('');
       }
     };
@@ -1078,7 +1114,6 @@ export default function OnePageBookingCheckout() {
           }
         }
       } catch (err) {
-        console.error('Failed to load availability:', err);
         setCourseEvents([]);
         availabilityFetchedRef.current = null;
       }
@@ -1118,12 +1153,9 @@ export default function OnePageBookingCheckout() {
           license_type: a.licenseType
         }));
 
-        console.log('Calculating price with:', { selectedCourseEventId, attendees, attendeesArray });
         const pricingResult = await bookingApi.calculatePrice(selectedCourseEventId, attendeesArray);
-        console.log('Price calculation result:', pricingResult);
         setPricing(pricingResult.pricing_breakdown);
       } catch (error) {
-        console.error('Failed to calculate pricing:', error);
         setPricing(null);
       }
     };
@@ -1162,7 +1194,6 @@ export default function OnePageBookingCheckout() {
       const data = await response.json();
       return data.success && data.is_blacklisted;
     } catch (error) {
-      console.error('Failed to check blacklist:', error);
       return false;
     }
   };
@@ -1363,6 +1394,19 @@ export default function OnePageBookingCheckout() {
       return;
     }
 
+    // Deposit cutoff guard: re-evaluate at submission time in case the page was left open
+    if (selectedCourseEventId && selectedDate) {
+      const selectedEvent = courseEvents.find(e => e.course_event_id === selectedCourseEventId);
+      if (selectedEvent?.pricing) {
+        const { paymentType } = resolvePaymentType(selectedEvent.pricing, selectedDate);
+        // If the server said deposit but cutoff has now passed, block submission
+        if (selectedEvent.pricing.pricing_mode === 'deposit' && paymentType === 'FULL' && !selectedEvent.pricing.deposit_available) {
+          toast.error('This course now requires full payment as the start date is too soon. Please refresh and try again.');
+          return;
+        }
+      }
+    }
+
     setIsPaying(true);
     try {
       // Encrypt passwords using AES
@@ -1401,15 +1445,16 @@ export default function OnePageBookingCheckout() {
 
       localStorage.removeItem('booking_form_data');
 
+      const allRefs: string[] = response.booking_refs || [response.booking_ref];
       setBookingRef(response.booking_ref);
 
       if (response.client_secret) {
-        toast.success(`Booking created! Reference: ${response.booking_ref}`);
-        return { clientSecret: response.client_secret, bookingRef: response.booking_ref, paymentRequired: true };
+        toast.success(`Booking created! Reference${allRefs.length > 1 ? 's' : ''}: ${allRefs.join(', ')}`);
+        return { clientSecret: response.client_secret, bookingRef: response.booking_ref, bookingRefs: allRefs, paymentRequired: true };
       }
 
-      toast.success(`Booking created! Reference: ${response.booking_ref}. (No payment required)`);
-      return { bookingRef: response.booking_ref, paymentRequired: false };
+      toast.success(`Booking created! Reference${allRefs.length > 1 ? 's' : ''}: ${allRefs.join(', ')}. (No payment required)`);
+      return { bookingRef: response.booking_ref, bookingRefs: allRefs, paymentRequired: false };
     } catch (error: any) {
       const errMsg = error?.data?.message || (error instanceof Error ? error.message : (error?.response?.data?.message ?? 'Unknown error'));
 
@@ -1425,8 +1470,8 @@ export default function OnePageBookingCheckout() {
             .then(availabilityData => {
               setCourseEvents(availabilityData.data.availability);
             })
-            .catch(err => {
-              console.error('Failed to refresh availability:', err);
+            .catch(() => {
+              setCourseEvents([]);
             });
         }
       } else if (error?.status === 400 && (!error?.data || !error?.data?.message)) {
@@ -1442,8 +1487,8 @@ export default function OnePageBookingCheckout() {
               .then(availabilityData => {
                 setCourseEvents(availabilityData.data.availability);
               })
-              .catch(err => {
-                console.error('Failed to refresh availability:', err);
+              .catch(() => {
+                setCourseEvents([]);
               });
           }
         }
@@ -1523,7 +1568,7 @@ export default function OnePageBookingCheckout() {
                         }}
                         title={c.course_name}
                       />
-                      {/* {c.description && (
+                      {c.description && (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -1538,7 +1583,7 @@ export default function OnePageBookingCheckout() {
                             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                           </svg>
                         </button>
-                      )} */}
+                      )}
                     </div>
                   );
                 })}
@@ -1743,13 +1788,16 @@ export default function OnePageBookingCheckout() {
                       <div>
                         <strong className="text-slate-700">Date and Time:</strong>
                         <div className="mt-1 space-y-1">
-                          {selectedEvent.all_dates.map((dateInfo) => (
-                            <div key={dateInfo.day_number} className="text-slate-900">
-                              Day {dateInfo.day_number} - {dateInfo.is_tbc ? 'TBC' :
-                                `${formatEventDate(dateInfo.event_date)} (${formatTime(dateInfo.event_start_time)} - ${formatTime(dateInfo.event_end_time)})`
-                              }
-                            </div>
-                          ))}
+                          {(() => {
+                            const isMultiDay = selectedEvent.all_dates.length > 1;
+                            return selectedEvent.all_dates.map((dateInfo) => (
+                              <div key={dateInfo.day_number} className="text-slate-900">
+                                {isMultiDay && `Day ${dateInfo.day_number} - `}{dateInfo.is_tbc ? 'TBC' :
+                                  `${formatEventDate(dateInfo.event_date)} (${formatTime(dateInfo.event_start_time)} - ${formatTime(dateInfo.event_end_time)})`
+                                }
+                              </div>
+                            ));
+                          })()}
                         </div>
                       </div>
                     )}
@@ -1765,7 +1813,9 @@ export default function OnePageBookingCheckout() {
                             currentLocation.address3,
                             currentLocation.address4,
                             currentLocation.postcode
-                          ].filter(Boolean).join(' ')}
+                          ].filter(Boolean).map((line, i) => (
+                            <div key={i}>{line}</div>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -1774,32 +1824,35 @@ export default function OnePageBookingCheckout() {
                       const { pricing } = selectedEvent;
                       const schoolAvailable = pricing.vehicle_options.school_vehicle_available;
                       const ownAvailable = pricing.vehicle_options.own_vehicle_available;
-                      const depositAvailable = pricing.deposit_available;
+
+                      // Resolve effective payment type using centralised helper
+                      const courseStart = selectedDate ? new Date(selectedDate) : null;
+                      const { paymentType, forcedFullReason } = resolvePaymentType(pricing, courseStart);
+                      const isDeposit = paymentType === 'DEPOSIT';
 
                       const renderVehiclePrice = (label: string, vehiclePricing: typeof pricing.school_vehicle) => {
                         if (vehiclePricing.pricing_type === 'deposit') {
                           const dp = vehiclePricing as { deposit: number; total: number; pricing_type: 'deposit' };
-                          if (dp.deposit === 0 && dp.total === 0) return null;
+                          // Skip if both values are zero/null
+                          if ((!dp.deposit || dp.deposit === 0) && (!dp.total || dp.total === 0)) return null;
                           return (
                             <div className="space-y-1">
                               <div className="font-medium text-slate-800">{label}</div>
                               <div className="ml-3 text-slate-900">
-                                {depositAvailable ? (
+                                {isDeposit ? (
                                   <>
-                                    <div>Deposit to Book: <span className="font-semibold">£{dp.deposit.toFixed(2)}</span></div>
-                                    <div>Total Course Price: <span className="font-semibold">£{dp.total.toFixed(2)}</span></div>
+                                    <div>Deposit to Book: <span className="font-semibold">£{(dp.deposit || 0).toFixed(2)}</span></div>
+                                    <div>Total Course Price: <span className="font-semibold">£{(dp.total || 0).toFixed(2)}</span></div>
                                   </>
                                 ) : (
-                                  <>
-                                    <div>Full Payment Required: <span className="font-semibold">£{dp.total.toFixed(2)}</span></div>
-                                  </>
+                                  <div>Full Payment Required: <span className="font-semibold">£{(dp.total || dp.deposit || 0).toFixed(2)}</span></div>
                                 )}
                               </div>
                             </div>
                           );
                         } else {
-                          const op = vehiclePricing as { price: number; pricing_type: 'one_off' };
-                          if (op.price === 0) return null;
+                          const op = vehiclePricing as { price: number; pricing_type: 'one_off' | 'none' };
+                          if (!op.price || op.price === 0) return null;
                           return (
                             <div className="space-y-1">
                               <div className="font-medium text-slate-800">{label}</div>
@@ -1811,10 +1864,17 @@ export default function OnePageBookingCheckout() {
                         }
                       };
 
+                      // Always render both options when they exist — fixes the single-option bug
                       const schoolContent = schoolAvailable ? renderVehiclePrice('Using School Vehicle', pricing.school_vehicle) : null;
                       const ownContent = ownAvailable ? renderVehiclePrice('Using Your Own Vehicle', pricing.own_vehicle) : null;
 
                       if (!schoolContent && !ownContent) return null;
+
+                      const WarningIcon = () => (
+                        <svg className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      );
 
                       return (
                         <div>
@@ -1823,20 +1883,24 @@ export default function OnePageBookingCheckout() {
                             {schoolContent}
                             {ownContent}
                           </div>
-                          {pricing.deposit_note && (
+
+                          {/* Show deposit info banner ONLY when deposit is active */}
+                          {isDeposit && (
                             <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 flex items-start gap-2">
-                              <svg className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                              </svg>
-                              <span>{pricing.deposit_note}</span>
+                              <WarningIcon />
+                              <span>
+                                This course only requires a deposit payment to secure your place.
+                                The balance will need to be paid not later than{' '}
+                                <strong>{pricing.deposit_days}</strong> days before the first day of your course.
+                              </span>
                             </div>
                           )}
-                          {!depositAvailable && pricing.deposit_period_check_enabled && !pricing.deposit_note && (
+
+                          {/* Show forced-full warning when deposit was overridden by cutoff */}
+                          {!isDeposit && forcedFullReason && (
                             <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 flex items-start gap-2">
-                              <svg className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                              </svg>
-                              <span>Deposit option is only available when booking at least {pricing.deposit_days} days before the course start date. Full payment is required for this date.</span>
+                              <WarningIcon />
+                              <span>{forcedFullReason}</span>
                             </div>
                           )}
                         </div>
@@ -1958,13 +2022,6 @@ export default function OnePageBookingCheckout() {
 
               <div className="space-y-4">
                 {attendeeDetails.slice(0, attendees).map((attendee, index) => {
-                  // Check if this attendee's email is used by another attendee
-                  const duplicateEmailIndex = attendee.email.trim()
-                    ? attendeeDetails.slice(0, attendees).findIndex((a, i) =>
-                        i !== index && a.email.trim().toLowerCase() === attendee.email.trim().toLowerCase()
-                      )
-                    : -1;
-
                   // Check if this attendee's license number is used by another attendee
                   const duplicateLicenseIndex = attendee.licenseNumber.trim()
                     ? attendeeDetails.slice(0, attendees).findIndex((a, i) =>
@@ -2025,7 +2082,6 @@ export default function OnePageBookingCheckout() {
                       photocardConfirmed={photocardConfirmed[index] || false}
                       onPhotocardChange={(confirmed) => handlePhotocardChange(index, confirmed)}
                       licenseValidated={licenseValidated[index] || false}
-                      duplicateEmailIndex={duplicateEmailIndex >= 0 ? duplicateEmailIndex : null}
                       duplicateLicenseIndex={duplicateLicenseIndex >= 0 ? duplicateLicenseIndex : null}
                       selectedDate={selectedDate}
                       disabled={index > 0 && !attendeeDetails.slice(0, index).every((a, i) => isAttendeeComplete(a) && photocardConfirmed[i])}
@@ -2083,7 +2139,7 @@ export default function OnePageBookingCheckout() {
                         <span className="font-medium">-<Money value={discount} /></span>
                       </div>
                     )}
-                    <div className="mt-2 border-t pt-2 text-base font-semibold text-slate-900 flex items-center justify-between"><span>Total</span><span><Money value={total} /></span></div>
+                    <div className="mt-2 border-t pt-2 text-base font-semibold text-slate-900 flex items-center justify-between"><span>Total Payable</span><span><Money value={total} /></span></div>
                   </div>
 
                   {/* Promo Code Section */}
@@ -2150,8 +2206,8 @@ export default function OnePageBookingCheckout() {
                   <Elements stripe={stripePromise}>
                     <StripePaymentForm
                       onCreatePaymentIntent={handleCreateBooking}
-                      onSuccess={(ref) => {
-                        window.location.href = `/bookings/payment-success?ref=${ref}`;
+                      onSuccess={(refs) => {
+                        window.location.href = `/bookings/payment-success?refs=${refs.join(',')}`;
                       }}
                       onCancel={(ref) => {
                         if (ref) {
@@ -2198,26 +2254,17 @@ export default function OnePageBookingCheckout() {
                 <div className="my-3 border-t" />
                 <div className="space-y-1 text-sm">
                   <div className="flex items-center justify-between"><span className="text-slate-600">Subtotal</span><span className="font-medium text-slate-900"><Money value={subtotal} /></span></div>
-                  <div className="mt-2 flex items-center justify-between text-base font-semibold text-slate-900"><span>Total</span><span><Money value={total} /></span></div>
+                  <div className="mt-2 flex items-center justify-between text-base font-semibold text-slate-900"><span>Total Payable</span><span><Money value={total} /></span></div>
                 </div>
               </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h4 className="mb-2 text-sm font-semibold text-slate-900">Why book with us?</h4>
-                {courseBulletPoints ? (
+              {courseBulletPoints ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div
                     className="text-sm text-slate-600 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5 [&_li]:text-slate-600"
                     dangerouslySetInnerHTML={{ __html: courseBulletPoints }}
                   />
-                ) : (
-                  <ul className="list-disc space-y-1 pl-5 text-sm text-slate-600">
-                    <li>Trusted UK training provider</li>
-                    <li>Instant e‑mail confirmation</li>
-                    <li>Only pay at the final step</li>
-                    <li>Free date changes (48h notice)</li>
-                  </ul>
-                )}
-              </div>
+                </div>
+              ) : null}
             </div>
           </aside>
         </div>

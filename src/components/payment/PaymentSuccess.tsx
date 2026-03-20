@@ -102,9 +102,11 @@ export default function PaymentSuccess() {
           <div className="text-left mb-6">
             <h3 className="font-semibold text-slate-900 mb-2">What happens next?</h3>
             <ul className="text-sm text-slate-600 space-y-1">
-              <li>• You'll receive a confirmation email shortly</li>
-              <li>• Course joining instructions will be sent 24-48 hours before your course</li>
-              <li>• Remember to bring your photocard driving licence on the day</li>
+              <li>• You’ll receive a booking confirmation email with your booking details</li>
+              <li>• Please check junk/spam inboxes, and add info@1stopinstruction as a safe sender</li>
+              <li>• You can also check your booking details by logging into your account</li>
+              <li>• If you did not create an account at the time of booking, please use this forgot password link and enter the email address used to make your booking</li>
+              <li>• If you have still not received your booking confirmation within 1 hour, and you are unable to check your booking in your account on our website, then please reach out and contact us by phone (020 8597 7333) or email (info@1stopinstruction) as soon as possible</li>
             </ul>
           </div>
 

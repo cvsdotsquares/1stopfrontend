@@ -4,11 +4,11 @@ import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
 
 interface StripePaymentFormProps {
-  onSuccess: (bookingRef: string) => void;
+  onSuccess: (bookingRefs: string[]) => void;
   onCancel: (bookingRef?: string) => void;
   bookingRef?: string;
   amount: number;
-  onCreatePaymentIntent: () => Promise<{ clientSecret?: string; bookingRef: string; paymentRequired: boolean } | undefined>;
+  onCreatePaymentIntent: () => Promise<{ clientSecret?: string; bookingRef: string; bookingRefs: string[]; paymentRequired: boolean } | undefined>;
   paymentDisabled?: boolean;
 }
 
@@ -36,7 +36,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amo
 
       if (!creationResult.paymentRequired) {
         toast.success('Booking created successfully!');
-        onSuccess(creationResult.bookingRef);
+        onSuccess(creationResult.bookingRefs);
         return;
       }
 
@@ -62,7 +62,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amo
       }
 
       toast.success('Payment successful!');
-      onSuccess(creationResult.bookingRef);
+      onSuccess(creationResult.bookingRefs);
     } catch (err) {
       toast.error('Payment processing failed');
       setIsProcessing(false);

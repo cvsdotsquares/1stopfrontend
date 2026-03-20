@@ -26,10 +26,12 @@ export default function InfoCardsSection({ data }: { data: InfoCardsSectionData 
               className="bg-white p-6 md:p-10 rounded-3xl border border-slate-200 shadow-sm"
             >
               <div className="flex h-[62px] w-[62px] items-center justify-center rounded-xl bg-red-100 mb-5 md:mb-8 [&_img]:w-[42px]">
-                <img 
-                  src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}${card.icon}`} 
-                  alt={card.title}
-                />
+                {card.icon && (
+                  <img 
+                    src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}${card.icon}`} 
+                    alt={card.title}
+                  />
+                )}
               </div>
               <h2 className="text-3xl mb-4 md:mb-6">{card.title}</h2>
               <div 

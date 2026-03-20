@@ -4,7 +4,9 @@ interface Button {
 }
 
 interface ContentCard {
-  image: string;
+  image?: string;
+  card_image?: string;
+  item_image?: string;
   title: string;
   description: string;
   marker_text?: string | null;
@@ -17,13 +19,13 @@ interface ContentCardsSectionData {
   cards: ContentCard[];
 }
 
-export default function ContentCardsSection({ data }: { data: ContentCardsSectionData }) {
+export default function ContentCardsSection({ data }: Readonly<{ data: ContentCardsSectionData }>) {
   return (
     <section className="py-10 md:py-16 bg-gray-50">
       <div className="max-w-[1400px] mx-auto px-4">
         <div className="grid grid-cols-1">
           {/* Header */}
-          <div 
+          <div
             className="max-w-[900px] mx-auto text-center pb-4 [&_h2]:text-3xl [&_h2]:mb-4 [&_h2]:text-black [&_p]:text-gray-600 [&_div]:contents"
             dangerouslySetInnerHTML={{ __html: data.content_text }}
           />
@@ -31,20 +33,24 @@ export default function ContentCardsSection({ data }: { data: ContentCardsSectio
           {/* Cards */}
           {data.cards.map((card, index) => {
             const isEven = index % 2 === 0;
-            
+            const hasImage = Boolean(card.image || card.card_image || card.item_image);
+            let layoutClass = '';
+            if (hasImage) {
+              layoutClass = isEven ? 'md:flex-row' : 'md:flex-row-reverse';
+            }
+
             return (
               <div
-                key={index}
-                className={`bg-white mt-6 rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col md:flex-row ${
-                  isEven ? '' : 'md:flex-row-reverse'
-                }`}
+                key={`${card.title}-${card.image || card.card_image || card.item_image || 'no-image'}`}
+                className={`bg-white mt-6 rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col ${layoutClass}`}
               >
                 {/* Image */}
+{hasImage && (
                 <div className="w-full md:w-1/3 lg:w-1/4 relative overflow-hidden group">
                   <img
                     alt={card.title}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}${card.image}`}
+                    src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}${card.image || card.card_image || card.item_image}`}
                   />
                   {card.marker_text && (
                     <div className="absolute top-6 left-6 z-10">
@@ -57,28 +63,35 @@ export default function ContentCardsSection({ data }: { data: ContentCardsSectio
                     </div>
                   )}
                 </div>
+                )}
 
                 {/* Content */}
-                <div className="w-full md:w-2/3 lg:w-3/4 p-8 lg:p-12 flex flex-col justify-between">
+                <div className={`w-full p-8 lg:p-12 flex flex-col justify-between ${hasImage ? 'md:w-2/3 lg:w-3/4' : ''}`}>
                   <div className="text-gray-500 space-y-4">
                     <h3 className="text-2xl font-bold text-black">{card.title}</h3>
                     <div dangerouslySetInnerHTML={{ __html: card.description }} />
                   </div>
-                  
+
+{(card.red_button?.text && card.red_button?.url) || (card.blue_button?.text && card.blue_button?.url) ? (
                   <div className={`flex flex-wrap gap-4 mt-4 ${isEven ? 'md:justify-end' : 'md:justify-start'}`}>
-                    <a
-                      className="px-8 py-3 bg-red-600 text-primary radius20-left radius20-right-bottom hover:bg-red-500 text-white transition-all duration-300"
-                      href={card.red_button.url}
-                    >
-                      {card.red_button.text}
-                    </a>
-                    <a
-                      className="px-8 py-3 bg-blue-800 text-primary radius20-left radius20-right-bottom hover:bg-blue-600 text-white transition-all duration-300"
-                      href={card.blue_button.url}
-                    >
-                      {card.blue_button.text}
-                    </a>
+                    {card.red_button?.text && card.red_button?.url && (
+                      <a
+                        className="px-8 py-3 bg-red-600 text-primary radius20-left radius20-right-bottom hover:bg-red-500 text-white transition-all duration-300"
+                        href={card.red_button.url}
+                      >
+                        {card.red_button.text}
+                      </a>
+                    )}
+                    {card.blue_button?.text && card.blue_button?.url && (
+                      <a
+                        className="px-8 py-3 bg-blue-800 text-primary radius20-left radius20-right-bottom hover:bg-blue-600 text-white transition-all duration-300"
+                        href={card.blue_button.url}
+                      >
+                        {card.blue_button.text}
+                      </a>
+                    )}
                   </div>
+                ) : null}
                 </div>
               </div>
             );

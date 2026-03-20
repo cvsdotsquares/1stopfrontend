@@ -152,6 +152,8 @@ export interface BookingRequest {
 export interface BookingResponse {
   booking_id: number;
   booking_ref: string;
+  booking_refs?: string[];
+  booking_ids?: number[];
   temp_ref: string;
   payment_due: number;
   total_fees: number;
@@ -299,12 +301,12 @@ class BookingApiService {
     }
   }
 
-  async getVehicleTypesByCourseAndLocation(courseId: number, locationId: number): Promise<Record<string, string>> {
+  async getVehicleTypesByCourseAndLocation(courseId: number, locationId: number, courseEventId: number): Promise<Record<string, string>> {
     try {
-      const response = await this.fetchApi<any>(`/booking/vehicle-types/${courseId}/${locationId}`);
+      const response = await this.fetchApi<any>(`/booking/vehicle-types/${courseId}/${locationId}/${courseEventId}`);
       return response.vehicleTypes || response || { "1": "Manual Car", "2": "Automatic Car" };
     } catch (error) {
-      console.warn(`Vehicle types API failed for course ${courseId}, location ${locationId}:`, error);
+      console.warn(`Vehicle types API failed for course ${courseId}, location ${locationId}, event ${courseEventId}:`, error);
       return { "1": "Manual Car", "2": "Automatic Car" };
     }
   }
