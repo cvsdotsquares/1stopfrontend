@@ -54,7 +54,7 @@ export default function TabSection({ data }: Readonly<{ data: TabSectionData }>)
                 >
                   <button
                     onClick={() => setActiveTab(tab.id)}
-                    className="flex flex-col gap-1 text-center"
+                    className="flex flex-col gap-1 cursor-pointer text-center"
                   >
                     <img
                       src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/${tab.icon}`}
