@@ -44,37 +44,35 @@ export default function FeaturedServices({ data }: FeaturedServicesProps) {
   if (!services.length) return null;
 
   return (
-    <div className="mt-12">
-      <div className="py-6">
-        <div className="text-center pb-6 m-auto md:w-9/12">
-          <h2 className="mb-2">Featured <span className="text-blue-600">Services</span></h2>
-          <p>Professional training services offered for all types of licence requirements, including advanced training, and assessments for compliance and auditing purposes</p>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {services.map((service) => (
-            <div key={service.id} className="bg-white rounded-lg p-4 border border-gray-300 text-center">
-              <div className="h-[66px] mt-4 flex items-center justify-center">
-                <Image
-                  src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/featured_services/${service.service_file}`}
-                  alt={service.service_title}
-                  width={60}
-                  height={60}
-                  className="w-[60px] h-[60px] object-contain"
-                  style={{
-                    filter: 'brightness(0) saturate(100%) invert(11%) sepia(96%) saturate(7471%) hue-rotate(356deg) brightness(91%) contrast(119%)'
-                  }}
-                />
-              </div>
-              <h5 className="text-base font-bold mb-5">{service.service_title}</h5>
-              <Link
-                href={service.service_link}
-                className="px-3 py-1 w-full inline-block bg-white text-sm text-red-500 rounded-4xl hover:bg-red-500 hover:text-white transition-colors border border-red-500"
-              >
-                More <i className="fa-solid fa-arrow-right"></i>
-              </Link>
+    <div className="mx-auto max-w-[1400px] px-6 py-12">
+      <div className="text-center pb-6 m-auto md:w-9/12">
+        <h2 className="mb-2">Featured <span className="text-blue-600">Services</span></h2>
+        <p>Professional training services offered for all types of licence requirements, including advanced training, and assessments for compliance and auditing purposes</p>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {services.map((service) => (
+          <div key={service.id} className="bg-white rounded-lg p-4 border border-gray-300 text-center">
+            <div className="h-[66px] mt-4 flex items-center justify-center">
+              <Image
+                src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/featured_services/${service.service_file}`}
+                alt={service.service_title}
+                width={60}
+                height={60}
+                className="w-[60px] h-[60px] object-contain"
+                style={{
+                  filter: 'brightness(0) saturate(100%) invert(11%) sepia(96%) saturate(7471%) hue-rotate(356deg) brightness(91%) contrast(119%)'
+                }}
+              />
             </div>
-          ))}
-        </div>
+            <h5 className="text-base font-bold mb-5">{service.service_title}</h5>
+            <Link
+              href={service.service_link}
+              className="px-3 py-1 w-full inline-block bg-white text-sm text-red-500 rounded-4xl hover:bg-red-500 hover:text-white transition-colors border border-red-500"
+            >
+              More <i className="fa-solid fa-arrow-right"></i>
+            </Link>
+          </div>
+        ))}
       </div>
     </div>
   );

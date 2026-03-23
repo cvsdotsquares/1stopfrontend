@@ -54,7 +54,7 @@ type CmsPage = {
   banner_type?: number;
   overlay_caption?: number;
   overlay_caption_text?: string;
-  featured_service?: number;
+  featured_display?: number;
   testimonial_display?: number;
   accreditation_display?: number;
   featured_icon?: string;
@@ -309,7 +309,7 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
       )}
 
       {/* Static bottom components - always at full width */}
-      {page.featured_service == 1 && <FeaturedServices />}
+      {page.featured_display == 1 && <FeaturedServices />}
       {page.testimonial_display == 1 && <TestimonialsCarousel />}
       {page.accreditation_display == 1 && <AccreditationsSection />}
     </div>
