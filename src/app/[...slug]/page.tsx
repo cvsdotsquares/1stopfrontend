@@ -54,7 +54,7 @@ type CmsPage = {
   banner_type?: number;
   overlay_caption?: number;
   overlay_caption_text?: string;
-  featured_service?: number;
+  featured_display?: number;
   testimonial_display?: number;
   accreditation_display?: number;
   featured_icon?: string;
