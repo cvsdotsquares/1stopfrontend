@@ -299,7 +299,9 @@ input[type="date"]::-moz-calendar-picker-indicator {
   cursor: pointer;
 }
 
-
+.custom-list ul {
+  @apply list-disc pl-5 text-gray-700;
+}
 
 
 @media (max-width:767px) {
