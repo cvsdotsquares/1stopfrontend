@@ -113,38 +113,68 @@ function daysUntilCourseStart(courseStartDate: Date): number {
 }
 
 /**
- * Determines the effective payment type for a course event.
- * Returns 'DEPOSIT' only when deposit pricing exists AND the cutoff has not been reached.
- * Falls back to 'FULL' in all other cases (including one_off, no pricing, past cutoff).
+ * Uses the first day of the selected course event where possible.
+ * Falls back to event.date and then provided fallbackDate.
+ */
+function resolveFirstCourseDay(courseEvent: CourseEvent | undefined, fallbackDate: Date | null): Date | null {
+  if (courseEvent?.all_dates?.length) {
+    const validDates = courseEvent.all_dates
+      .filter(d => !d.is_tbc && !!d.event_date)
+      .map(d => new Date(d.event_date))
+      .filter(d => !Number.isNaN(d.getTime()))
+      .sort((a, b) => a.getTime() - b.getTime());
+
+    if (validDates.length > 0) {
+      return validDates[0];
+    }
+  }
+
+  if (courseEvent?.date) {
+    const eventDate = new Date(courseEvent.date);
+    if (!Number.isNaN(eventDate.getTime())) {
+      return eventDate;
+    }
+  }
+
+  return fallbackDate;
+}
+
+/**
+ * Determines effective payment type and customer-facing deposit/full-payment message.
+ * Message is shown whenever pricing_mode is deposit.
  */
 function resolvePaymentType(
   pricing: CourseEvent['pricing'],
   courseStartDate: Date | null
-): { paymentType: 'DEPOSIT' | 'FULL'; forcedFullReason: string | null } {
+): { paymentType: 'DEPOSIT' | 'FULL'; paymentMessage: string | null } {
   if (!pricing || pricing.pricing_mode !== 'deposit') {
-    return { paymentType: 'FULL', forcedFullReason: null };
+    return { paymentType: 'FULL', paymentMessage: null };
   }
 
-  // deposit_available is already computed server-side using deposit_days
-  if (!pricing.deposit_available) {
+  const depositDays = Math.max(0, Number(pricing.deposit_days) || 0);
+  const isDepositPeriodCheckEnabled = pricing.deposit_period_check_enabled === true;
+
+  if (isDepositPeriodCheckEnabled) {
+    if (courseStartDate) {
+      const days = daysUntilCourseStart(courseStartDate);
+      if (days <= depositDays) {
+        return {
+          paymentType: 'FULL',
+          paymentMessage: `This course requires full payment, as it is due to start within ${depositDays} days.`,
+        };
+      }
+    }
+
     return {
-      paymentType: 'FULL',
-      forcedFullReason: 'This course requires full payment as the course start date is too soon.',
+      paymentType: 'DEPOSIT',
+      paymentMessage: `This course only requires a deposit payment to secure your place. The balance will need to be paid no later than ${depositDays} days before the first day of your course.`,
     };
   }
 
-  // Extra client-side guard: re-check cutoff in case the page has been open a long time
-  if (courseStartDate && pricing.deposit_days > 0) {
-    const days = daysUntilCourseStart(courseStartDate);
-    if (days <= pricing.deposit_days) {
-      return {
-        paymentType: 'FULL',
-        forcedFullReason: 'This course requires full payment as the course start date is too soon.',
-      };
-    }
-  }
-
-  return { paymentType: 'DEPOSIT', forcedFullReason: null };
+  return {
+    paymentType: 'DEPOSIT',
+    paymentMessage: `This course only requires a deposit payment to secure your place. The balance will need to be paid no later than ${depositDays} days before the first day of your course. If the date you are booking is within ${depositDays} days, then we will be contact you shortly after you complete your booking to collect any outstanding balance, which will be due immeadiatly.`,
+  };
 }
 
 // ---------- Hook wrapper for calendar ----------
@@ -1132,7 +1162,7 @@ export default function OnePageBookingCheckout() {
   // Calculate pricing when details change
   const pricingDeps = useMemo(
     () => {
-      const deps = attendeeDetails.slice(0, attendees).map(a => `${a.vehicleType}-${a.licenseType}`).join(',');
+      const deps = attendeeDetails.slice(0, attendees).map(a => `${a.vehicleType}`).join(',');
 
       return deps;
     },
@@ -1141,7 +1171,7 @@ export default function OnePageBookingCheckout() {
 
   useEffect(() => {
     const calculatePricing = async () => {
-      if (!selectedCourseEventId || !attendeeDetails[0]?.vehicleType || !attendeeDetails[0]?.licenseType) {
+      if (!selectedCourseEventId || !attendeeDetails[0]?.vehicleType) {
 
         setPricing(null);
         return;
@@ -1398,10 +1428,14 @@ export default function OnePageBookingCheckout() {
     if (selectedCourseEventId && selectedDate) {
       const selectedEvent = courseEvents.find(e => e.course_event_id === selectedCourseEventId);
       if (selectedEvent?.pricing) {
-        const { paymentType } = resolvePaymentType(selectedEvent.pricing, selectedDate);
-        // If the server said deposit but cutoff has now passed, block submission
-        if (selectedEvent.pricing.pricing_mode === 'deposit' && paymentType === 'FULL' && !selectedEvent.pricing.deposit_available) {
-          toast.error('This course now requires full payment as the start date is too soon. Please refresh and try again.');
+        const firstCourseDay = resolveFirstCourseDay(selectedEvent, selectedDate);
+        const { paymentType, paymentMessage } = resolvePaymentType(selectedEvent.pricing, firstCourseDay);
+        if (
+          selectedEvent.pricing.pricing_mode === 'deposit' &&
+          selectedEvent.pricing.deposit_period_check_enabled === true &&
+          paymentType === 'FULL'
+        ) {
+          toast.error(paymentMessage || 'This course requires full payment as the course is due to start soon.');
           return;
         }
       }
@@ -1529,14 +1563,9 @@ export default function OnePageBookingCheckout() {
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl mb-2">Book your course</h1>
-            <p className="mt-1 text-slate-600">One‑page checkout. You'll be redirected only for the payment step.</p>
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-            <a href="/gift-voucher" className="text-sm font-medium text-teal-700 hover:text-teal-800 underline-offset-2 hover:underline">Purchase Gift Voucher</a>
-            <div className="flex items-center gap-2">
-              <Badge>Secure booking</Badge>
-              <Badge>Pay only at last step</Badge>
-            </div>
+            <a href="/gift-voucher" className="px-2 py-1 min-w-[75px] bg-red-600 text-center text-white rounded rounded hover:bg-blue-600 text-nowrap border border-red-600 hover:border-blue-600">Purchase Gift Voucher</a>
           </div>
         </div>
 
@@ -1547,8 +1576,8 @@ export default function OnePageBookingCheckout() {
             {/* Step 1: Course / Voucher */}
             <Section
               index={1}
-              title="Choose a course or voucher"
-              subtitle="All sections are on one page – pick a course to continue."
+              title="Choose a course"
+              subtitle="Click i button for more information"
               complete={sectionComplete[1]}
               open={expandedSections[1]}
               onToggle={() => setExpandedSections(prev => ({ ...prev, 1: !prev[1] }))}
@@ -1594,7 +1623,7 @@ export default function OnePageBookingCheckout() {
             <Section
               index={2}
               title="Pick a location"
-              subtitle="Choose your preferred city/venue."
+              subtitle=""
               complete={sectionComplete[2]}
               open={expandedSections[2]}
               onToggle={() => setExpandedSections(prev => ({ ...prev, 2: !prev[2] }))}
@@ -1614,7 +1643,7 @@ export default function OnePageBookingCheckout() {
                       setLocationId(l.id);
                     }}
                     title={l.location_name}
-                    caption={`${l.address1}, ${l.postcode}`}
+                    caption={`${l.postcode}`}
                   />
                 ))}
               </div>
@@ -1624,7 +1653,7 @@ export default function OnePageBookingCheckout() {
             <Section
               index={3}
               title="Select date & time"
-              subtitle="Pick a day and tell us how many attendees."
+              subtitle=""
               complete={sectionComplete[3]}
               open={expandedSections[3]}
               onToggle={() => setExpandedSections(prev => ({ ...prev, 3: !prev[3] }))}
@@ -1826,8 +1855,8 @@ export default function OnePageBookingCheckout() {
                       const ownAvailable = pricing.vehicle_options.own_vehicle_available;
 
                       // Resolve effective payment type using centralised helper
-                      const courseStart = selectedDate ? new Date(selectedDate) : null;
-                      const { paymentType, forcedFullReason } = resolvePaymentType(pricing, courseStart);
+                      const courseStart = resolveFirstCourseDay(selectedEvent, selectedDate ? new Date(selectedDate) : null);
+                      const { paymentType, paymentMessage } = resolvePaymentType(pricing, courseStart);
                       const isDeposit = paymentType === 'DEPOSIT';
 
                       const renderVehiclePrice = (label: string, vehiclePricing: typeof pricing.school_vehicle) => {
@@ -1884,23 +1913,11 @@ export default function OnePageBookingCheckout() {
                             {ownContent}
                           </div>
 
-                          {/* Show deposit info banner ONLY when deposit is active */}
-                          {isDeposit && (
+                          {/* Always show messaging when pricing_mode is deposit */}
+                          {paymentMessage && (
                             <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 flex items-start gap-2">
                               <WarningIcon />
-                              <span>
-                                This course only requires a deposit payment to secure your place.
-                                The balance will need to be paid not later than{' '}
-                                <strong>{pricing.deposit_days}</strong> days before the first day of your course.
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Show forced-full warning when deposit was overridden by cutoff */}
-                          {!isDeposit && forcedFullReason && (
-                            <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 flex items-start gap-2">
-                              <WarningIcon />
-                              <span>{forcedFullReason}</span>
+                              <span>{paymentMessage}</span>
                             </div>
                           )}
                         </div>
@@ -2085,6 +2102,7 @@ export default function OnePageBookingCheckout() {
                       duplicateLicenseIndex={duplicateLicenseIndex >= 0 ? duplicateLicenseIndex : null}
                       selectedDate={selectedDate}
                       disabled={index > 0 && !attendeeDetails.slice(0, index).every((a, i) => isAttendeeComplete(a) && photocardConfirmed[i])}
+                      isLoggedIn={isAuthenticated}
                     />
                   );
                 })}
@@ -2318,7 +2336,7 @@ export default function OnePageBookingCheckout() {
                 </h3>
                 {selectedCourseInfo.duration && (
                   <p className="text-sm text-slate-500 mt-1">
-                    Duration: {selectedCourseInfo.duration}
+                    Course Information
                   </p>
                 )}
               </div>
@@ -2342,7 +2360,8 @@ export default function OnePageBookingCheckout() {
                   prose-ul:text-slate-700 prose-ol:text-slate-700
                   prose-li:text-slate-700
                   prose-strong:text-slate-900 prose-strong:font-semibold
-                  prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline"
+                  prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+                  [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5"
                 dangerouslySetInnerHTML={{ __html: selectedCourseInfo.description }}
               />
             </div>

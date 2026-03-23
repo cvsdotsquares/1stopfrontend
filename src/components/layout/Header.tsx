@@ -154,9 +154,11 @@ const renderMenuItem = (item: any, level: number = 0): React.ReactNode => {
             <div className="font-medium text-black text-sm">{item.page_title}</div>
           </div>
           {hasChildren && (
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <span className="menu-toggle-nested-icon">
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </span>
           )}
         </Link>
 
@@ -192,12 +194,6 @@ export default function Header() {
   // Build comprehensive hierarchical menu structure
   const hierarchicalMenu = completeMenuData ?
     completeMenuData.menu_items || [] : [];
-
-  // Debug log (remove in production)
-  if (typeof window !== 'undefined' && hierarchicalMenu.length > 0) {
-    hierarchicalMenu.slice(0, 2).forEach((item: any) => {
-    });
-  }
 
   return (
     <header className="bg-white shadow-sm relative z-40 min-h-[160px] md:min-h-[145px]">

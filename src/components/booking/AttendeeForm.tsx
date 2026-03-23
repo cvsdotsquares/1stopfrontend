@@ -1,5 +1,25 @@
 import React from 'react';
 
+// ---------- DOB masked-input helpers ----------
+// Character positions in 'dd/mm/yyyy' (10 chars) that hold digits
+const DOB_DIGIT_POSITIONS = [0, 1, 3, 4, 6, 7, 8, 9] as const;
+const DOB_MASK_CHARS = ['_', '_', '/', '_', '_', '/', '_', '_', '_', '_'] as const;
+
+/** Builds a full 10-char display string, e.g. '2_/__/____' for digits='2' */
+function buildDobDisplay(digits: string): string {
+  let di = 0;
+  return DOB_MASK_CHARS.map(ch => (ch === '/' ? '/' : di < digits.length ? digits[di++] : ch)).join('');
+}
+
+/** Maps a char position in the display string to its digit-slot index (snaps forward to next slot) */
+function charPosToDigitIdx(charPos: number): number {
+  for (let i = 0; i < DOB_DIGIT_POSITIONS.length; i++) {
+    if (DOB_DIGIT_POSITIONS[i] >= charPos) return i;
+  }
+  return DOB_DIGIT_POSITIONS.length; // past end
+}
+// ---------- end DOB helpers ----------
+
 interface AttendeeFormProps {
   index: number;
   attendee: {
@@ -33,6 +53,7 @@ interface AttendeeFormProps {
   duplicateLicenseIndex: number | null;
   selectedDate: Date | null;
   disabled?: boolean;
+  isLoggedIn?: boolean;
 }
 
 export default function AttendeeForm({
@@ -51,6 +72,7 @@ export default function AttendeeForm({
   duplicateLicenseIndex,
   selectedDate,
   disabled = false,
+  isLoggedIn = false,
 }: AttendeeFormProps) {
   const [ageWarning, setAgeWarning] = React.useState<string | null>(null);
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -131,6 +153,108 @@ export default function AttendeeForm({
       }
     }
   };
+
+  // --- Masked DOB input ---
+  const dobInputRef = React.useRef<HTMLInputElement>(null);
+  const pendingDobCursorPosRef = React.useRef<number | null>(null);
+  // Raw digits extracted from the stored dateOfBirth value (max 8 digits)
+  const dobDigits = (attendee.dateOfBirth || '').replace(/[^0-9]/g, '').slice(0, 8);
+  // Show placeholder when empty; show masked value after first digit, e.g. '2_/__/____'
+  const dobDisplay = dobDigits.length > 0 ? buildDobDisplay(dobDigits) : '';
+
+  React.useLayoutEffect(() => {
+    if (!dobInputRef.current || pendingDobCursorPosRef.current === null) return;
+    const pos = pendingDobCursorPosRef.current;
+    dobInputRef.current.setSelectionRange(pos, pos);
+    pendingDobCursorPosRef.current = null;
+  }, [dobDisplay]);
+
+  /** Snap cursor to the correct pixel position after a state update */
+  const snapDobCursor = (input: HTMLInputElement, afterDigitIdx: number, immediate = false) => {
+    const clamped = Math.min(afterDigitIdx, DOB_DIGIT_POSITIONS.length);
+    const pos = clamped >= DOB_DIGIT_POSITIONS.length ? 10 : DOB_DIGIT_POSITIONS[clamped];
+    if (immediate) {
+      input.setSelectionRange(pos, pos);
+      return;
+    }
+    pendingDobCursorPosRef.current = pos;
+  };
+
+  const handleDobKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+    // Pass through browser/OS shortcuts and Tab
+    if (e.ctrlKey || e.metaKey || e.key === 'Tab') return;
+    e.preventDefault();
+
+    const selStart = input.selectionStart ?? 0;
+    const digitIdx = charPosToDigitIdx(selStart);
+
+    if (e.key === 'ArrowLeft') {
+      const prev = Math.max(0, Math.min(digitIdx, dobDigits.length) - 1);
+      input.setSelectionRange(DOB_DIGIT_POSITIONS[prev], DOB_DIGIT_POSITIONS[prev]);
+      return;
+    }
+    if (e.key === 'ArrowRight') {
+      snapDobCursor(input, Math.min(dobDigits.length, digitIdx + 1), true);
+      return;
+    }
+    if (e.key === 'Home') {
+      input.setSelectionRange(0, 0);
+      return;
+    }
+    if (e.key === 'End') {
+      snapDobCursor(input, dobDigits.length, true);
+      return;
+    }
+
+    if (e.key === 'Backspace') {
+      if (dobDigits.length === 0) return;
+      const deleteIdx = Math.min(digitIdx, dobDigits.length) - 1;
+      if (deleteIdx < 0) return;
+      const newDigits = dobDigits.slice(0, deleteIdx) + dobDigits.slice(deleteIdx + 1);
+      handleDobChange(formatDobInput(newDigits));
+      snapDobCursor(input, deleteIdx);
+      return;
+    }
+    if (e.key === 'Delete') {
+      if (dobDigits.length === 0) return;
+      const deleteIdx = Math.min(digitIdx, dobDigits.length - 1);
+      const newDigits = dobDigits.slice(0, deleteIdx) + dobDigits.slice(deleteIdx + 1);
+      handleDobChange(formatDobInput(newDigits));
+      snapDobCursor(input, deleteIdx);
+      return;
+    }
+
+    if (!/^\d$/.test(e.key)) return;
+
+    // Overwrite at insertAt; if cursor is at first empty slot it acts as append
+    const insertAt = Math.min(digitIdx, dobDigits.length);
+    if (insertAt > 7) return; // mask is full and cursor is past end
+    const newDigits = (dobDigits.slice(0, insertAt) + e.key + dobDigits.slice(insertAt + 1)).slice(0, 8);
+    handleDobChange(formatDobInput(newDigits));
+    snapDobCursor(input, insertAt + 1);
+  };
+
+  const handleDobPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const digits = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 8);
+    if (!digits) return;
+    handleDobChange(formatDobInput(digits));
+    snapDobCursor(e.currentTarget, digits.length);
+  };
+
+  const handleDobFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    snapDobCursor(e.currentTarget, dobDigits.length, true);
+  };
+
+  const handleDobClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+    const clickPos = input.selectionStart ?? 0;
+    // Snap to nearest slot but never past the first empty slot
+    const snapIdx = Math.min(charPosToDigitIdx(clickPos), dobDigits.length);
+    snapDobCursor(input, snapIdx, true);
+  };
+  // --- end masked DOB input ---
 
   // Check if a vehicle type is disabled
   const isVehicleTypeDisabled = (key: string, description: string) => {
@@ -280,19 +404,23 @@ export default function AttendeeForm({
           Date of Birth <span className="text-rose-500">*</span>
         </label>
         <input
+          ref={dobInputRef}
           type="text"
           placeholder="dd/mm/yyyy"
-          className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
+          className={`w-full rounded-sm border px-3 py-3 text-sm font-mono tracking-wider focus:outline-none focus:ring-2 ${
             ageWarning && ageWarning.includes('must be at least 16')
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
               : ageWarning && ageWarning.includes('valid date')
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
               : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
           }`}
-          value={attendee.dateOfBirth || ''}
-          onChange={(e) => handleDobChange(formatDobInput(e.target.value))}
+          value={dobDisplay}
+          onKeyDown={handleDobKeyDown}
+          onPaste={handleDobPaste}
+          onFocus={handleDobFocus}
+          onClick={handleDobClick}
+          onChange={() => { /* fully controlled via onKeyDown */ }}
           inputMode="numeric"
-          maxLength={10}
         />
         {ageWarning && (
           <p className={`mt-1 text-xs ${
@@ -484,84 +612,88 @@ export default function AttendeeForm({
         />
       </div>
 
-      <div className="mt-4 pt-4 border-t border-slate-300">
-        <div className="flex items-start gap-3">
-          <input
-            id={`registerAsUser-${index}`}
-            type="checkbox"
-            className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-            checked={attendee.registerAsUser}
-            onChange={(e) => onChange('registerAsUser', e.target.checked)}
-          />
-          <label htmlFor={`registerAsUser-${index}`} className="text-sm text-slate-700">
-            Register as a user for faster checkout next time
-          </label>
+      {(!isLoggedIn || totalAttendees > 1 || attendee.registerAsUser) && (
+        <div className="mt-4 pt-4 border-t border-slate-300">
+          {!isLoggedIn && (
+            <div className="flex items-start gap-3">
+              <input
+                id={`registerAsUser-${index}`}
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                checked={attendee.registerAsUser}
+                onChange={(e) => onChange('registerAsUser', e.target.checked)}
+              />
+              <label htmlFor={`registerAsUser-${index}`} className="text-sm text-slate-700">
+                Register as a user for faster checkout next time
+              </label>
+            </div>
+          )}
+
+          {totalAttendees > 1 && (
+            <div className="flex items-start gap-3 mt-3">
+              <input
+                id={`isPrimaryUser-${index}`}
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                checked={attendee.isPrimaryUser}
+                onChange={(e) => onChange('isPrimaryUser', e.target.checked)}
+              />
+              <label htmlFor={`isPrimaryUser-${index}`} className="text-sm text-slate-700">
+                Set as Primary User (main leader for all attendees)
+              </label>
+            </div>
+          )}
+
+          {attendee.registerAsUser && (
+            <div className="grid gap-4 sm:grid-cols-2 mt-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Password <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
+                    attendee.password && attendee.confirmPassword && attendee.password.length >= 8
+                      ? attendee.password === attendee.confirmPassword
+                        ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
+                        : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+                      : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
+                  }`}
+                  value={attendee.password || ''}
+                  onChange={(e) => onChange('password', e.target.value)}
+                  placeholder="Min 8 chars"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Confirm Password <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
+                    attendee.password && attendee.confirmPassword && attendee.password.length >= 8
+                      ? attendee.password === attendee.confirmPassword
+                        ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
+                        : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+                      : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
+                  }`}
+                  value={attendee.confirmPassword || ''}
+                  onChange={(e) => onChange('confirmPassword', e.target.value)}
+                  placeholder="Confirm password"
+                />
+                {attendee.password && attendee.confirmPassword && attendee.password.length >= 8 && (
+                  <p className={`mt-1 text-xs ${
+                    attendee.password === attendee.confirmPassword ? 'text-green-500' : 'text-red-500'
+                  }`}>
+                    {attendee.password === attendee.confirmPassword ? 'Passwords match' : 'Passwords do not match'}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-
-        {totalAttendees > 1 && (
-          <div className="flex items-start gap-3 mt-3">
-            <input
-              id={`isPrimaryUser-${index}`}
-              type="checkbox"
-              className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-              checked={attendee.isPrimaryUser}
-              onChange={(e) => onChange('isPrimaryUser', e.target.checked)}
-            />
-            <label htmlFor={`isPrimaryUser-${index}`} className="text-sm text-slate-700">
-              Set as Primary User (main leader for all attendees)
-            </label>
-          </div>
-        )}
-
-        {attendee.registerAsUser && (
-          <div className="grid gap-4 sm:grid-cols-2 mt-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Password <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="password"
-                className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
-                  attendee.password && attendee.confirmPassword && attendee.password.length >= 8
-                    ? attendee.password === attendee.confirmPassword
-                      ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
-                      : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                    : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
-                }`}
-                value={attendee.password || ''}
-                onChange={(e) => onChange('password', e.target.value)}
-                placeholder="Min 8 chars"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Confirm Password <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="password"
-                className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
-                  attendee.password && attendee.confirmPassword && attendee.password.length >= 8
-                    ? attendee.password === attendee.confirmPassword
-                      ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
-                      : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                    : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
-                }`}
-                value={attendee.confirmPassword || ''}
-                onChange={(e) => onChange('confirmPassword', e.target.value)}
-                placeholder="Confirm password"
-              />
-              {attendee.password && attendee.confirmPassword && attendee.password.length >= 8 && (
-                <p className={`mt-1 text-xs ${
-                  attendee.password === attendee.confirmPassword ? 'text-green-500' : 'text-red-500'
-                }`}>
-                  {attendee.password === attendee.confirmPassword ? 'Passwords match' : 'Passwords do not match'}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
       <div className="mt-4 pt-4 border-t border-slate-300">
         <div className={`flex items-start gap-3 ${!isComplete ? 'opacity-60' : ''}`}>
