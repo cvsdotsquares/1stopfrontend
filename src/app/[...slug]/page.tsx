@@ -309,7 +309,7 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
       )}
 
       {/* Static bottom components - always at full width */}
-      {page.featured_service == 1 && <FeaturedServices />}
+      {page.featured_display == 1 && <FeaturedServices />}
       {page.testimonial_display == 1 && <TestimonialsCarousel />}
       {page.accreditation_display == 1 && <AccreditationsSection />}
     </div>
