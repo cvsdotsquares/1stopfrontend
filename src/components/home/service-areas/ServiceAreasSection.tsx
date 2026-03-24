@@ -22,7 +22,7 @@ export default function ServiceAreasSection({ data }: { data: ServiceAreasSectio
               {/* Left Card */}
               <div className={`rounded-lg ${borderClass} p-4 md:p-8 relative`}>
                 <div 
-                  className="[&_h3]:mb-2 [&_h3]:text-2xl [&_h3]:md:text-3xl [&_h3]:font-bold [&_p]:mb-3 [&_p]:md:mb-6 [&_p]:text-gray-500 [&_ul]:grid [&_ul]:grid-cols-2 [&_ul]:gap-2 [&_ul]:md:grid-cols-2 [&_li]:flex [&_li]:items-start [&_li]:text-black [&_li]:text-sm [&_li]:md:text-base [&_li]:before:content-[''] [&_li]:before:inline-block [&_li]:before:w-4 [&_li]:before:h-4 [&_li]:before:mr-1 [&_li]:before:md:mr-3 [&_li]:before:bg-[url('/location-dot-solid.png')] [&_li]:before:bg-contain [&_li]:before:bg-no-repeat [&_li]:before:bg-center"
+                  className="[&_h3]:mb-2 [&_h3]:text-2xl [&_h3]:md:text-3xl [&_h3]:font-bold [&_p]:mb-3 [&_p]:md:mb-6 [&_p]:text-gray-500 [&_ul]:grid [&_ul]:grid-cols-2 [&_ul]:gap-2 [&_ul]:md:grid-cols-2 [&_li]:flex [&_li]:items-start [&_li]:text-black [&_li]:text-sm [&_li]:md:text-base [&_li]:before:content-[''] [&_li]:before:inline-block [&_li]:before:w-[16px] [&_li]:before:min-w-[16px] [&_li]:before:h-4 [&_li]:before:mr-1 [&_li]:before:bg-[url('/location-dot-solid.png')] [&_li]:before:bg-contain [&_li]:before:bg-no-repeat [&_li]:before:bg-center"
                   dangerouslySetInnerHTML={{ __html: area.left_text }}
                 />
               </div>
@@ -30,7 +30,7 @@ export default function ServiceAreasSection({ data }: { data: ServiceAreasSectio
               {/* Right Card */}
               <div className={`rounded-lg ${borderClass} p-4 md:p-8 relative`}>
                 <div 
-                  className="[&_h3]:mb-2 [&_h3]:text-2xl [&_h3]:md:text-3xl [&_h3]:font-bold [&_p]:mb-3 [&_p]:md:mb-6 [&_p]:text-gray-500 [&_ul]:grid [&_ul]:grid-cols-1 [&_ul]:gap-2 [&_li]:flex [&_li]:items-start [&_li]:text-black [&_li]:text-sm [&_li]:md:text-base [&_li]:before:content-[''] [&_li]:before:inline-block [&_li]:before:w-4 [&_li]:before:h-4 [&_li]:before:mr-1 [&_li]:before:md:mr-3 [&_li]:before:bg-[url('/location-dot-solid.png')] [&_li]:before:bg-contain [&_li]:before:bg-no-repeat [&_li]:before:bg-center"
+                  className="[&_h3]:mb-2 [&_h3]:text-2xl [&_h3]:md:text-3xl [&_h3]:font-bold [&_p]:mb-3 [&_p]:md:mb-6 [&_p]:text-gray-500 [&_ul]:grid [&_ul]:grid-cols-1 [&_ul]:gap-2 [&_li]:flex [&_li]:items-start [&_li]:text-black [&_li]:text-sm [&_li]:md:text-base [&_li]:before:content-[''] [&_li]:before:inline-block [&_li]:before:w-[16px] [&_li]:before:h-4 [&_li]:before:min-w-[16px] [&_li]:before:mr-1 [&_li]:before:bg-[url('/location-dot-solid.png')] [&_li]:before:bg-contain [&_li]:before:bg-no-repeat [&_li]:before:bg-center"
                   dangerouslySetInnerHTML={{ __html: area.right_text }}
                 />
               </div>
