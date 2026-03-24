@@ -42,7 +42,7 @@ export default function TabSection({ data }: Readonly<{ data: TabSectionData }>)
     <section className="bg-gray-50 py-10 md:py-16">
       <div className="max-w-[1400px] mx-auto px-4">
         {/* Title */}
-        <div className="text-center">
+        <div className="text-center [&_h2]:pb-4 [&_h2]:md:pb-6">
           <div dangerouslySetInnerHTML={{ __html: data.title }} />
         </div>
 
@@ -85,7 +85,7 @@ export default function TabSection({ data }: Readonly<{ data: TabSectionData }>)
                     {activeTabData.label}
                   </h3>
                   <div
-                    className="[&_p]:mb-0 [&_b]:font-bold [&_b]:text-black"
+                    className="[&_p]:mb-3 [&_p:last-child]:mb-0 [&_b]:font-bold [&_b]:text-black [&_a]:underline"
                     dangerouslySetInnerHTML={{ __html: activeTabData.content }}
                   />
                 </div>
@@ -99,7 +99,7 @@ export default function TabSection({ data }: Readonly<{ data: TabSectionData }>)
               <img
                 src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/${data.image}`}
                 alt="Directions Map"
-                className="rounded-lg w-full h-full object-contain"
+                className="rounded-lg w-full object-contain"
               />
             </div>
           )}

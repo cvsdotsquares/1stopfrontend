@@ -37,7 +37,7 @@ export default function AccordionSection({ data, order }: { data: AccordionSecti
                 >
                   <span className="text-xl font-medium">{item.title}</span>
                 </label>
-                <div className="overflow-hidden max-h-0 transition-all duration-500 peer-checked:max-h-[80rem]">
+                <div className="overflow-hidden max-h-0 transition-all duration-500 peer-checked:max-h-[80rem] [&_a]:underline custom-list">
                   <div
                     className="pb-6 text-gray-500 space-y-4 [&_p]:leading-relaxed [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_.flex]:flex [&_.gap-8]:gap-8 [&_.justify-center]:justify-center"
                     dangerouslySetInnerHTML={{ __html: item.content }}
