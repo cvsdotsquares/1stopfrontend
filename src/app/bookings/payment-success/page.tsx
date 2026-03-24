@@ -8,6 +8,7 @@ function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [bookingDetails, setBookingDetails] = useState<any>(null);
+  const [attendees, setAttendees] = useState<any[]>([]);
 
   useEffect(() => {
     const sessionId = searchParams.get('payment_intent');
@@ -32,7 +33,7 @@ function PaymentSuccessContent() {
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/webhook/stripe/verify?payment_intent=${sessionId}&ref=${primaryRef}`
         );
-
+        console.log('Verification response:', response);
         if (response.ok) {
           const data = await response.json();
           setBookingDetails({ ...data.data, booking_refs: bookingRefs });
@@ -49,6 +50,34 @@ function PaymentSuccessContent() {
     verifyPayment();
   }, [searchParams]);
 
+  // Fetch attendee names based on booking_refs
+  useEffect(() => {
+    if (!bookingDetails?.booking_refs?.length) return;
+    const fetchAttendees = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/attendee`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ booking_refs: bookingDetails.booking_refs }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.data)) {
+            setAttendees(data.data);
+          }
+        } else {
+          console.error('Attendee API request failed:', response.status, response.statusText);
+        }
+      } catch (error) {
+        console.error('Failed to fetch attendee details:', error);
+      }
+    };
+
+    fetchAttendees();
+  }, [bookingDetails?.booking_refs]);
   if (verificationStatus === 'loading') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -104,15 +133,18 @@ function PaymentSuccessContent() {
             <div className="bg-slate-50 rounded-xl p-6 mb-8 text-left">
               <h3 className="font-semibold text-slate-900 mb-4">Booking Details</h3>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
+              <div className="flex justify-between">
                   <span className="text-slate-600">{bookingDetails.booking_refs?.length > 1 ? 'Booking References:' : 'Booking Reference:'}</span>
                   <span className="font-medium text-slate-900 text-right">
-                    {bookingDetails.booking_refs?.length > 1
-                      ? bookingDetails.booking_refs.map((ref: string, i: number) => (
-                          <div key={ref}>Attendee {i + 1}: {ref}</div>
-                        ))
-                      : (bookingDetails.booking_refs?.[0] || bookingDetails.booking_ref)
-                    }
+                      {(() => {
+                        if (attendees) {
+                          return attendees.map((attendee: any) => (
+                            <div key={attendee.booking_ref}>
+                              {attendee.name.firstname} {attendee.name.surname}: {attendee.booking_ref}
+                            </div>
+                          ));
+                        }
+                      })()}
                   </span>
                 </div>
                 {typeof bookingDetails.amount_paid === 'number' && (
@@ -155,13 +187,13 @@ function PaymentSuccessContent() {
                 <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                If you did not create an account at the time of booking, please use this forgot password link and enter the email address used to make your booking
+                <p>If you did not create an account at the time of booking, please use this <Link href="/auth/forgot-password">forgot password link</Link> and enter the email address used to make your booking</p>
               </li>
               <li className="flex items-start gap-2">
                 <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                If you have still not received your booking confirmation within 1 hour, and you are unable to check your booking in your account on our website, then please reach out and contact us by phone (020 8597 7333) or email (info@1stopinstruction) as soon as possible
+                <p>If you have still not received your booking confirmation within 1 hour, and you are unable to check your booking in your account on our website, then please reach out and contact us by phone (<Link href="tel:02085977333">020 8597 7333</Link>) or email (<Link href="mailto:info@1stopinstruction">info@1stopinstruction</Link>) as soon as possible</p>
               </li>
             </ul>
           </div>
