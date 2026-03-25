@@ -50,7 +50,7 @@ export default function FeatureImageLeft({ data }: { data: FeatureData }) {
 
             {/* Description */}
             <div
-              className="prose prose-lg max-w-none text-gray-500 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-gray-900 [&_ul]:space-y-2 [&_li]:flex [&_li]:items-start"
+              className="prose prose-lg max-w-none text-gray-500 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-gray-900 [&_ul]:space-y-2 [&_li]:items-start"
               dangerouslySetInnerHTML={{ __html: data.description }}
             />
 
