@@ -223,7 +223,7 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
                 <h2 className='text-3xl mb-4 text-black'>{section.data.section_title}</h2>
                 {[...section.data.items].sort((a: CmsItem, b: CmsItem) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map((item: CmsItem) => (
                   <span key={item.id}>
-                    <div dangerouslySetInnerHTML={{ __html: item.item_content || '' }} />
+                    <div className='[&_p]:text-gray-700 [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-2' dangerouslySetInnerHTML={{ __html: item.item_content || '' }} />
                     <div className='pt-6'>
                       {item.item_image && (
                         <img className="rounded-lg w-full object-cover" src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/dynamic_content/${item.item_image}`} alt={item.item_title} />
