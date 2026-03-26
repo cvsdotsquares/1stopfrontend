@@ -173,7 +173,7 @@ function resolvePaymentType(
 
   return {
     paymentType: 'DEPOSIT',
-    paymentMessage: `This course only requires a deposit payment to secure your place. The balance will need to be paid no later than ${depositDays} days before the first day of your course. If the date you are booking is within ${depositDays} days, then we will be contact you shortly after you complete your booking to collect any outstanding balance, which will be due immeadiatly.`,
+    paymentMessage: `This course only requires a deposit payment to secure your place. The balance will need to be paid no later than ${depositDays} days before the first day of your course. If the date you are booking is within ${depositDays} days, then we will be contact you shortly after you complete your booking to collect any outstanding balance, which will be due immediately.`,
   };
 }
 
@@ -1178,10 +1178,13 @@ export default function OnePageBookingCheckout() {
       }
 
       try {
-        const attendeesArray = attendeeDetails.slice(0, attendees).map(a => ({
-          vehicle_type: Number(a.vehicleType),
-          license_type: a.licenseType
-        }));
+        const attendeesArray = attendeeDetails
+          .slice(0, attendees)
+          .filter(a => a.vehicleType !== '')
+          .map(a => ({
+            vehicle_type: Number(a.vehicleType),
+            license_type: a.licenseType
+          }));
 
         const pricingResult = await bookingApi.calculatePrice(selectedCourseEventId, attendeesArray);
         setPricing(pricingResult.pricing_breakdown);
@@ -1425,21 +1428,21 @@ export default function OnePageBookingCheckout() {
     }
 
     // Deposit cutoff guard: re-evaluate at submission time in case the page was left open
-    if (selectedCourseEventId && selectedDate) {
-      const selectedEvent = courseEvents.find(e => e.course_event_id === selectedCourseEventId);
-      if (selectedEvent?.pricing) {
-        const firstCourseDay = resolveFirstCourseDay(selectedEvent, selectedDate);
-        const { paymentType, paymentMessage } = resolvePaymentType(selectedEvent.pricing, firstCourseDay);
-        if (
-          selectedEvent.pricing.pricing_mode === 'deposit' &&
-          selectedEvent.pricing.deposit_period_check_enabled === true &&
-          paymentType === 'FULL'
-        ) {
-          toast.error(paymentMessage || 'This course requires full payment as the course is due to start soon.');
-          return;
-        }
-      }
-    }
+    // if (selectedCourseEventId && selectedDate) {
+    //   const selectedEvent = courseEvents.find(e => e.course_event_id === selectedCourseEventId);
+    //   if (selectedEvent?.pricing) {
+    //     const firstCourseDay = resolveFirstCourseDay(selectedEvent, selectedDate);
+    //     const { paymentType, paymentMessage } = resolvePaymentType(selectedEvent.pricing, firstCourseDay);
+    //     if (
+    //       selectedEvent.pricing.pricing_mode === 'deposit' &&
+    //       selectedEvent.pricing.deposit_period_check_enabled === true &&
+    //       paymentType === 'FULL'
+    //     ) {
+    //       toast.error(paymentMessage || 'This course requires full payment as the course is due to start soon.');
+    //       return;
+    //     }
+    //   }
+    // }
 
     setIsPaying(true);
     try {
@@ -1577,7 +1580,7 @@ export default function OnePageBookingCheckout() {
             <Section
               index={1}
               title="Choose a course"
-              subtitle="Click i button for more information"
+              subtitle='Click "i" button for more information'
               complete={sectionComplete[1]}
               open={expandedSections[1]}
               onToggle={() => setExpandedSections(prev => ({ ...prev, 1: !prev[1] }))}
@@ -1605,12 +1608,24 @@ export default function OnePageBookingCheckout() {
                             setSelectedCourseInfo(c);
                             setShowCourseInfo(true);
                           }}
-                          className="absolute top-3 right-3 inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors z-10"
+                          className="absolute top-3 right-3 inline-flex items-center justify-center w-5 h-5 rounded-full transition transform hover:scale-100 z-10"
                           title="Course information"
                         >
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                          </svg>
+                        <svg fill="#000000" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg"
+                          width="500px" height="500px" viewBox="0 0 488.484 488.484">
+                        <g>
+                          <g>
+                            <path d="M244.236,0.002C109.562,0.002,0,109.565,0,244.238c0,134.679,109.563,244.244,244.236,244.244
+                              c134.684,0,244.249-109.564,244.249-244.244C488.484,109.566,378.92,0.002,244.236,0.002z M244.236,413.619
+                              c-93.4,0-169.38-75.979-169.38-169.379c0-93.396,75.979-169.375,169.38-169.375s169.391,75.979,169.391,169.375
+                              C413.627,337.641,337.637,413.619,244.236,413.619z"/>
+                            <path d="M244.236,206.816c-14.757,0-26.619,11.962-26.619,26.73v118.709c0,14.769,11.862,26.735,26.619,26.735
+                              c14.769,0,26.62-11.967,26.62-26.735V233.546C270.855,218.778,259.005,206.816,244.236,206.816z"/>
+                            <path d="M244.236,107.893c-19.949,0-36.102,16.158-36.102,36.091c0,19.934,16.152,36.092,36.102,36.092
+                              c19.929,0,36.081-16.158,36.081-36.092C280.316,124.051,264.165,107.893,244.236,107.893z"/>
+                          </g>
+                        </g>
+                        </svg>
                         </button>
                       )}
                     </div>
