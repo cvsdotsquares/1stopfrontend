@@ -219,7 +219,7 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
         return (
           <section className="py-10 md:py-16" key={`section-${index}`}>
             <div className="max-w-[1400px] mx-auto px-4">
-              <div className="grid grid-cols-1">
+              <div className="grid grid-cols-1 [&_ul]:pb-3 [&_ul]:space-y-2 custom-list [&_a]:underline">
                 <h2 className='text-3xl mb-4 text-black'>{section.data.section_title}</h2>
                 {[...section.data.items].sort((a: CmsItem, b: CmsItem) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map((item: CmsItem) => (
                   <span key={item.id}>

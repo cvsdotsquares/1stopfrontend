@@ -86,7 +86,7 @@ export default function PriceCardSection({ data }: { data: PriceCardSectionData 
         {/* Bottom Text */}
         {data.bottom_text && (
           <div
-            className="text-center pt-3 max-w-3xl mx-auto"
+            className="text-center pt-3 max-w-3xl mx-auto [&_a]:underline"
             dangerouslySetInnerHTML={{ __html: data.bottom_text }}
           />
         )}
