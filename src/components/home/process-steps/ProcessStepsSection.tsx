@@ -38,7 +38,7 @@ export default function ProcessStepsSection({ data, sidebar }: Readonly<ProcessS
             <div className="p-8 space-y-3">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h3 className="text-2xl font-bold text-black dark:text-white flex items-center gap-3">
-                  <span className="text-red-600 text-4xl italic opacity-30">{step.step_no}</span>
+                  { step.step_no && <span className="text-red-600 text-4xl italic opacity-30">{step.step_no}</span> }
                   {step.title}
                 </h3>
               </div>
