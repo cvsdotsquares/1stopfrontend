@@ -51,7 +51,7 @@ export default function FeatureImageRight({ data }: { data: FeatureData }) {
 
             {/* Description */}
             <div
-              className="prose prose-lg max-w-none text-black [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-gray-900 [&_ul]:space-y-2 [&_ul]:pb-3 [&_li]:items-start custom-list"
+              className="prose prose-lg max-w-none text-black [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-gray-900 [&_ul]:space-y-2 [&_ul]:pb-3 [&_li]:items-start custom-list "
               dangerouslySetInnerHTML={{ __html: data.description }}
             />
 
