@@ -28,11 +28,11 @@ export default function PriceCardSection({ data }: { data: PriceCardSectionData 
         </div>
 
         {/* Price Cards Grid */}
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="flex flex-wrap justify-center gap-8">
           {data.cards.map((card, index) => (
             <div
               key={index}
-              className="relative bg-white rounded-3xl border border-slate-200 shadow-lg hover:shadow-2xl transition-all p-8 flex flex-col"
+              className="relative bg-white rounded-3xl border border-slate-200 shadow-lg hover:shadow-2xl transition-all p-8 flex flex-col w-full lg:w-[calc(33.333%-2.25rem)]"
             >
               {/* Marker Badge */}
               {card.marker_text && (
