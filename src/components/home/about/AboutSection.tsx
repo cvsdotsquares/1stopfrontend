@@ -86,7 +86,7 @@ export default function AboutSection({ data }: Readonly<{ data: AboutData }>) {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           {/* Text Content */}
           <div
-            className="space-y-5 text-gray-500 [&_a]:underline [&_a:hover]:text-red-500"
+            className="space-y-5 text-gray-500 [&_a]:underline [&_a:hover]:text-red-500 custom-list [&_a]:underline"
             dangerouslySetInnerHTML={{ __html: paragraphsHtml }}
           />
 
