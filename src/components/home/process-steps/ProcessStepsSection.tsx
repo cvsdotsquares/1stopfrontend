@@ -50,7 +50,7 @@ export default function ProcessStepsSection({ data, sidebar }: Readonly<ProcessS
                 />
               )}
               <div
-                className="text-slate-600 dark:text-slate-400 leading-relaxed [&_p]:mb-3 [&_p:last-child]:mb-0 [&_a]:underline"
+                className="text-slate-600 dark:text-slate-400 leading-relaxed [&_p]:mb-3 [&_p:last-child]:mb-0 [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-2"
                 dangerouslySetInnerHTML={{ __html: step.description || '' }}
               />
             </div>

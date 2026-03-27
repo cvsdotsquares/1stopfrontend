@@ -24,6 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head><meta name="robots" content="noindex, nofollow, noarchive, nosnippet"></meta></head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <QueryProvider>
           <div className="flex flex-col min-h-screen">
