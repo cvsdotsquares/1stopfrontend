@@ -48,9 +48,11 @@ export default function PriceCardSection({ data }: { data: PriceCardSectionData 
               <p className="text-slate-500 text-sm text-center mb-6 whitespace-pre-line">{card.time}</p>
 
               {/* Price */}
-              <div className="text-center mb-8">
-                <span className="text-5xl font-extrabold">£{card.price}</span>
-              </div>
+              {card.price && (
+                <div className="text-center mb-8">
+                  <span className="text-5xl font-extrabold">£{card.price}</span>
+                </div>
+              )}
 
               {/* Features List */}
               <div
