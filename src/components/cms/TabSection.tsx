@@ -85,7 +85,7 @@ export default function TabSection({ data }: Readonly<{ data: TabSectionData }>)
                     {activeTabData.label}
                   </h3>
                   <div
-                    className="[&_p]:mb-3 [&_p:last-child]:mb-0 [&_b]:font-bold [&_b]:text-black [&_a]:underline"
+                    className="[&_p]:mb-3 [&_p:last-child]:mb-0 [&_b]:font-bold [&_b]:text-black [&_a]:underline [&_ul]:ml-6 [&_li]:before:content-['✓'] [&_li]:before:inline-flex [&_li]:before:items-center [&_li]:before:justify-center [&_li]:before:w-4 [&_li]:before:h-4 [&_li]:before:mr-1 [&_li]:before:md:mr-3 [&_li]:before:rounded-full [&_li]:before:bg-green-100 [&_li]:before:text-green-700 [&_li]:before:text-xs"
                     dangerouslySetInnerHTML={{ __html: activeTabData.content }}
                   />
                 </div>

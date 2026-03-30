@@ -26,7 +26,7 @@ export default function ContentCardsSection({ data }: Readonly<{ data: ContentCa
         <div className="grid grid-cols-1">
           {/* Header */}
           <div
-            className="max-w-[900px] mx-auto text-center pb-4 [&_h2]:text-3xl [&_h2]:mb-4 [&_h2]:text-black [&_p]:text-gray-600 [&_div]:contents"
+            className="max-w-[900px] mx-auto text-center pb-4 [&_h2]:text-3xl [&_h2]:mb-4 [&_h2]:text-black [&_p]:text-gray-600 [&_div]:contents [&_a]:underline"
             dangerouslySetInnerHTML={{ __html: data.content_text }}
           />
 
@@ -69,7 +69,7 @@ export default function ContentCardsSection({ data }: Readonly<{ data: ContentCa
                 <div className={`w-full p-8 lg:p-12 flex flex-col justify-between ${hasImage ? 'md:w-2/3 lg:w-3/4' : ''}`}>
                   <div className="text-gray-500 space-y-4">
                     <h3 className="text-2xl font-bold text-black">{card.title}</h3>
-                    <div dangerouslySetInnerHTML={{ __html: card.description }} />
+                    <div className="[&_ul]:ml-6 [&_li]:before:content-['✓'] [&_li]:before:inline-flex [&_li]:before:items-center [&_li]:before:justify-center [&_li]:before:w-4 [&_li]:before:h-4 [&_li]:before:mr-1 [&_li]:before:md:mr-3 [&_li]:before:rounded-full [&_li]:before:bg-green-100 [&_li]:before:text-green-700 [&_li]:before:text-xs" dangerouslySetInnerHTML={{ __html: card.description }} />
                   </div>
 
 {(card.red_button?.text && card.red_button?.url) || (card.blue_button?.text && card.blue_button?.url) ? (
