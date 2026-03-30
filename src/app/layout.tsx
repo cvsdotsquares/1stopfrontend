@@ -11,12 +11,6 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-export const metadata: Metadata = {
-  title: "1Stop Instruction - Motorcycle Training London",
-  description: "Leading motorcycle training school in London. CBT, DAS, and advanced riding courses. Book online with instant confirmation.",
-  keywords: "CBT training London, motorcycle training, DAS course, direct access scheme, motorbike lessons",
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -24,7 +18,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head><meta name="robots" content="noindex, nofollow, noarchive, nosnippet"></meta></head>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+      </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <QueryProvider>
           <div className="flex flex-col min-h-screen">

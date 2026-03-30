@@ -732,11 +732,65 @@ export default function OnePageBookingCheckout() {
       // 2. Photocard is confirmed for current attendee
       if (isCurrentComplete && isPhotocardConfirmed) {
         if (currentIndex < attendees - 1) {
+          // Ensure attendees section is expanded then move to next attendee
+          setExpandedSections(prev => ({ ...prev, 4: true }));
           setExpandedAttendeeIndex(currentIndex + 1);
         }
       }
     }
   }, [attendeeDetails, photocardConfirmed, expandedAttendeeIndex, attendees]);
+
+  // to scroll on id "attendee-1" when clicked on input with id "confirmPhotocard-1"
+  useEffect(() => {
+    if (expandedAttendeeIndex <= 0) return;
+
+    const isAboveConfirmed = photocardConfirmed?.[expandedAttendeeIndex - 1] === true;
+
+    if (isAboveConfirmed) {
+      // Attendee DOM ids are zero-based: attendee-0, attendee-1, ...
+      // Use a short delay so the newly-expanded attendee has a chance to render/animate open
+      setTimeout(() => {
+        const targetId = `attendee-${expandedAttendeeIndex}`;
+        const el = document.getElementById(targetId);
+        if (el) {
+          try {
+            // Robust scrolling: compute target top with an offset, perform the scroll,
+            // then retry a couple of times (after layout/animation) and apply a temporary
+            // highlight so it's easy to visually confirm which element was targeted.
+            const headerOffset = 80; // px — increase if you have a taller sticky header
+
+            const attemptScroll = () => {
+              const rect = el.getBoundingClientRect();
+              const absoluteTop = window.scrollY + rect.top - headerOffset;
+              window.scrollTo({ top: Math.max(0, absoluteTop), behavior: 'smooth' });
+            };
+
+            // First attempt immediately, then retry after the expansion animation may finish
+            attemptScroll();
+            setTimeout(attemptScroll, 120);
+            setTimeout(() => {
+              // Final fallback: use native scrollIntoView to ensure the element is visible
+              if (document.getElementById(targetId)) {
+                document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }, 360);
+          } catch (err) {
+            // If everything else fails, fall back to scrollIntoView
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        } else {
+          // Debug logging to help diagnose why the element isn't found
+          try {
+            // list existing attendee ids in DOM
+            const nodes = Array.from(document.querySelectorAll('[id^="attendee-"]')) as HTMLElement[];
+            const ids = nodes.map(n => n.id).slice(0, 50); // limit output
+          } catch (err) {
+            console.log('[booking] scroll: error while collecting debug info', err);
+          }
+        }
+      }, 80);
+    }
+  }, [expandedAttendeeIndex, photocardConfirmed]);
 
   // Reset attendees to 1 only when the user picks a DIFFERENT date (not on first selection from null)
   useEffect(() => {
@@ -919,6 +973,8 @@ export default function OnePageBookingCheckout() {
         if (ipCheck.blocked) {
           setIpBlocked(true);
           setBlockMessage(ipCheck.message || 'Your IP is temporarily blocked');
+          // Ensure UI renders the block message instead of remaining in loading state
+          setLoading(false);
           return;
         }
 
@@ -1020,6 +1076,42 @@ export default function OnePageBookingCheckout() {
 
     window.addEventListener('storage', handleStorageEvent);
     return () => window.removeEventListener('storage', handleStorageEvent);
+  }, []);
+
+  // If the user clicks the same navigation link while already on this page,
+  // some routers don't remount the component. Detect clicks on anchors that
+  // point to the current URL and reload the page to reset the booking form.
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      try {
+        // Only handle simple left-click without modifier keys
+        if ((e as any).button !== 0) return;
+        if ((e as any).metaKey || (e as any).ctrlKey || (e as any).shiftKey || (e as any).altKey) return;
+
+        const target = (e.target as HTMLElement)?.closest ? (e.target as HTMLElement).closest('a') : null;
+        if (!target) return;
+        const href = target.getAttribute('href');
+        if (!href) return;
+        // Ignore hash-only anchors and external links
+        if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+
+        const url = new URL(href, window.location.href);
+        if (url.origin !== window.location.origin) return;
+
+        // If the clicked link points to the current pathname+search, reload to reset form
+        if (url.pathname === window.location.pathname && url.search === window.location.search) {
+          // Small delay to allow any router handlers to run first
+          setTimeout(() => {
+            window.location.reload();
+          }, 50);
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
   }, []);
 
   // Load locations when course changes
@@ -1413,7 +1505,9 @@ export default function OnePageBookingCheckout() {
       if (!isOtherLicense && attendee.licenseNumber && attendee.licenseNumber.length === 16) {
         const isBlacklisted = await checkBlacklisted(attendee.licenseNumber);
         if (isBlacklisted) {
-          toast.error(`Attendee ${idx + 1}: This driving licence number is not allowed to book`);
+          const msg = `Attendee ${idx + 1}: This driving licence number is not allowed to book`;
+          // Show server-side error modal instead of only a toast
+          setCourseLocationError(msg);
           return;
         }
       }
@@ -1512,9 +1606,12 @@ export default function OnePageBookingCheckout() {
             });
         }
       } else if (error?.status === 400 && (!error?.data || !error?.data?.message)) {
-        toast.error('We couldn’t create the booking. Please review your details and try again.');
+        const msg = 'We couldn’t create the booking. Please review your details and try again.';
+        toast.error(msg);
+        setCourseLocationError(msg);
       } else {
         toast.error(`Booking failed: ${errMsg}`);
+        setCourseLocationError(errMsg);
 
         // Refresh availability if error mentions spaces/availability
         const lowerErrMsg = String(errMsg).toLowerCase();
@@ -1550,17 +1647,6 @@ export default function OnePageBookingCheckout() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {courseLocationError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 mb-4 flex items-center justify-between">
-          <p className="text-sm">{courseLocationError}</p>
-          <button
-            onClick={() => setCourseLocationError(null)}
-            className="text-red-500 hover:text-red-700"
-          >
-            ×
-          </button>
-        </div>
-      )}
       <div className="mx-auto max-w-6xl px-4 py-8 md:py-12">
         {/* Page Header */}
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -1611,8 +1697,7 @@ export default function OnePageBookingCheckout() {
                           className="absolute top-3 right-3 inline-flex items-center justify-center w-5 h-5 rounded-full transition transform hover:scale-100 z-10"
                           title="Course information"
                         >
-                        <svg fill="#000000" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg"
-                          width="500px" height="500px" viewBox="0 0 488.484 488.484">
+                        <svg fill="#000000" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488.484 488.484">
                         <g>
                           <g>
                             <path d="M244.236,0.002C109.562,0.002,0,109.565,0,244.238c0,134.679,109.563,244.244,244.236,244.244
@@ -2333,6 +2418,43 @@ export default function OnePageBookingCheckout() {
         ))}
       </form>
 
+      {/* Server-side error modal */}
+      {(courseLocationError || ipBlocked) && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => { setCourseLocationError(null); setIpBlocked(false); setBlockMessage(''); }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl max-w-xl w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">{ipBlocked ? 'Access blocked' : 'Booking error'}</h3>
+                <p className="text-sm text-slate-500 mt-1">{ipBlocked ? 'You cannot continue at this time.' : 'A problem occurred while processing your booking.'}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setCourseLocationError(null); setIpBlocked(false); setBlockMessage(''); }}
+                className="ml-4 text-slate-400 hover:text-slate-600 transition-colors"
+                aria-label="Close"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mt-4 text-sm text-red-700">
+              <p><span><i className="fa fa-exclamation-triangle" aria-hidden="true" /></span> {ipBlocked ? blockMessage : courseLocationError}</p>
+            </div>
+
+            <div className="mt-6">
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Course Description Modal */}
       {showCourseInfo && selectedCourseInfo && (
         <div
@@ -2383,13 +2505,6 @@ export default function OnePageBookingCheckout() {
 
             {/* Modal Footer */}
             <div className="p-6 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => setShowCourseInfo(false)}
-                className="w-full sm:w-auto px-6 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition"
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>

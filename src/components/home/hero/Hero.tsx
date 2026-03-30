@@ -328,10 +328,9 @@ export default function Hero({ data }: { data: HeroData }) {
       {/* Bottom banner */}
       {data.footerText && (
         <div className="w-full bg-black py-6 text-center px-3">
-          <div
-            className="text-2xl md:text-4xl text-white"
-            dangerouslySetInnerHTML={{ __html: data.footerText }}
-          />
+          <h1 className="text-white mb-0">
+            {data.footerText.replace(/<[^>]*>/g, "")}
+          </h1>
         </div>
       )}
     </section>

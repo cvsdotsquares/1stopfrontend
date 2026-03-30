@@ -82,9 +82,9 @@
 
   --color-blue-600:#393092;
   --color-blue-700:#171767;
-  --color-blue-800:#060038;  
+  --color-blue-800:#060038;
   --color-blue-900:#090340;
-  --color-gray-100:#F6F6F6;  
+  --color-gray-100:#F6F6F6;
   --color-red-500:#EB2D39;
   --color-red-600:#E02933;
   --color-red-200:#FFC1C4;
@@ -134,7 +134,7 @@
   * {
     @apply border-border outline-ring/50;
   }
- 
+
 }
 
 /* Line clamp utilities for text truncation */
@@ -146,7 +146,7 @@
     -webkit-line-clamp: 1;
     line-clamp: 1;
   }
-  
+
   .line-clamp-2 {
     overflow: hidden;
     display: -webkit-box;
@@ -154,7 +154,7 @@
     -webkit-line-clamp: 2;
     line-clamp: 2;
   }
-  
+
   .line-clamp-3 {
     overflow: hidden;
     display: -webkit-box;
@@ -188,12 +188,12 @@
       font-size: 1.6rem;
       font-weight: bold;
       margin-bottom: 0.6rem;
-    }  
+    }
     h4{
       font-size: 1.2rem;
       font-weight: bold;
       margin-bottom: 0.6rem;
-    } 
+    }
     ::placeholder {
       @apply text-gray-500 ;
     }
@@ -212,7 +212,7 @@ body{
 @media (min-width:768px){
 .text26{
     font-size: 1.625rem;
-} 
+}
 .text50{
     font-size: 3.125rem;
 }
@@ -268,6 +268,9 @@ select {
   padding-right: 2.5rem !important;
 }
 
+.contact-us-page select {
+  background-image: none; /* Remove custom arrow for contact us page */
+}
 /* Date input styling for Safari */
 input[type="date"] {
   position: relative;

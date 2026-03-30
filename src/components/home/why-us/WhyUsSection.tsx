@@ -14,31 +14,21 @@ interface WhyUsData {
 
 export default function WhyUsSection({ data }: { data: WhyUsData }) {
   // Decode multiple levels of HTML entities
-  const decodeHtml = (html: string) => {
-    let decoded = html;
-    // Decode multiple times for heavily encoded content
-    for (let i = 0; i < 5; i++) {
-      const txt = document.createElement('textarea');
-      txt.innerHTML = decoded;
-      decoded = txt.value;
-    }
-    return decoded;
-  };
 
   return (
     <section className="bg-white pt-6 pb-8 md:py-16 md:pt-0">
       <div className="mx-auto max-w-[1400px] px-6">
         {/* Title */}
-        <div 
+        <div
           className="mb-5 text-center"
-          dangerouslySetInnerHTML={{ __html: decodeHtml(data.title) }}
+          dangerouslySetInnerHTML={{ __html: data.title }}
         />
-        
+
 
         {/* Description */}
-        <div 
+        <div
           className="mx-auto mb-6 md:mb-6 max-w-6xl text-center text-gray-500 leading-relaxed prose prose-lg [&_a]:text-blue-600 [&_a]:hover:text-red-500 [&_p:last-child]:text-xl"
-          dangerouslySetInnerHTML={{ __html: decodeHtml(data.description) }}
+          dangerouslySetInnerHTML={{ __html: data.description }}
         />
 
         {/* Courses Grid */}
@@ -71,9 +61,9 @@ export default function WhyUsSection({ data }: { data: WhyUsData }) {
         </div>
 
         {/* Footer Text */}
-        <div 
+        <div
           className="mx-auto max-w-6xl text-center text-gray-500 leading-relaxed prose prose-lg [&_a]:text-blue-600 [&_a]:hover:text-red-500"
-          dangerouslySetInnerHTML={{ __html: decodeHtml(data.footerText) }}
+          dangerouslySetInnerHTML={{ __html: data.footerText }}
         />
       </div>
     </section>
