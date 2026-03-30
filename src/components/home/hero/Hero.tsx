@@ -175,7 +175,7 @@ export default function Hero({ data }: { data: HeroData }) {
     <section className="relative w-full overflow-hidden">
       <div className="relative flex flex-wrap lg:flex-nowrap">
       {/* Background Images */}
-      <div className={`relative w-full lg:w-2/3 ${data.search ? 'min-h-[300px] md:min-h-[400px] lg:min-h-[700px]' : 'min-h-[300px] md:min-h-[400px] lg:min-h-[500px]'}`}>
+      <div className={`relative w-full lg:w-2/3 ${data.search ? 'min-h-[300px] md:min-h-[400px] lg:min-h-[700px]' : 'min-h-[300px] md:min-h-[400px] xl:min-h-[500px]'}`}>
         {hasMultipleImages ? (
           <>
             <div className="absolute inset-0 bg-black/50 z-10" />
@@ -199,7 +199,7 @@ export default function Hero({ data }: { data: HeroData }) {
         )}
       </div>
       {/* Right panel */}
-      <div className="bg-blue-600 py-6 px-2 md:px-9 w-full lg:w-1/3">
+      <div className="bg-blue-600 py-4 px-4 xl:px-9 w-full lg:w-1/3">
 
 
       {/* Right-side content */}
@@ -208,11 +208,11 @@ export default function Hero({ data }: { data: HeroData }) {
 
           {/* CBT floating card */}
           {nextCBT && (
-            <div className="mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center rounded-lg">
-              <div className="text26 text-xl font-semibold text-red-600">
-                {data.nextCourse?.label || nextCBT.course_name || 'Next CBT Course'}
-                <br />
-                {getDateDisplay()}
+            <div className="mb-2 bg-white/70 py-6 px-4  xl:px-10 xl:py-7 text-center rounded-lg">
+              <div className="text26 xl:text-xl font-semibold text-red-600">
+                {data.nextCourse?.label || nextCBT.course_name || 'Next CBT Course'} 
+                
+                &nbsp; {getDateDisplay()}
               </div>
               <a
                 href={getBookingURL()}
@@ -224,7 +224,7 @@ export default function Hero({ data }: { data: HeroData }) {
           )}
 
           {/* Purple panel */}
-          <div className="pt-6 md:py-10 text-white">
+          <div className="md:pt-3 lg:pt-6 md:py-10 text-white">
 
             {/* Search */}
             {data.search && (
@@ -293,18 +293,18 @@ export default function Hero({ data }: { data: HeroData }) {
               {data.promotion?.title || 'Summer Special test'}
             </h2>
 
-            <p className="mt-4 text-xl md:text-3xl">
+            <p className="mt-2 mb-2 xl:mb-4 xl:mt-4 text-xl xl:text-3xl">
               {data.promotion?.subtitle || 'Get Your CBT For Only £189'}
             </p>
 
-            <p className="mt-5 md:text-xl">
+            <p className="mt-2  mb-2 xl:mb-4 xl:mt-5 xl:text-xl">
               Use Promo Code{" "}
-              <span className="text-xl md:text-2xl font-bold">
+              <span className="text-xl xl:text-2xl font-bold">
                 {data.promotion?.promoCode || 'SUMMER10'}
               </span>
             </p>
 
-            <div className="mt-4 md:mt-10 flex gap-3 md:gap-4 flex-wrap ">
+            <div className="mt-4 xl:mt-10 flex gap-3 md:gap-4 flex-wrap ">
               <a
                 href={data.promotion?.primaryCta?.link || '/bookings'}
                 className="min-w-[210px] radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-base md:text-lg text-center text-white hover:bg-red-500"

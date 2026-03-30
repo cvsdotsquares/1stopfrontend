@@ -209,7 +209,7 @@ body{
   color: #000;
   font-size: 16px;
 }
-@media (min-width:768px){
+@media (min-width:1280px){
 .text26{
     font-size: 1.625rem;
 } 
