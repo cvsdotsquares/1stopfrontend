@@ -201,7 +201,7 @@ function AllLocationsContent() {
 
   // Format date display
   const getDateDisplay = () => {
-    if (!nextCBT?.next_available?.date) return 'TOMORROW';
+    if (!nextCBT?.next_available?.date) return 'Coming Soon';
 
     const today = new Date();
     const tomorrow = new Date(today);
@@ -246,7 +246,7 @@ function AllLocationsContent() {
           </div>
           <div className="z-10 w-11/12 sm:max-w-[562px] ml-auto mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center radius20-left radius20-left-bottom text-center">
             <div className="text26 text-xl font-semibold text-red-600">
-              Our Next Available CBT Course Is {getDateDisplay()}
+              { getDateDisplay ? `Our Next Available CBT Course Is ${getDateDisplay()}` : 'Our Next CBT Course Is Coming Soon' }
             </div>
             <div className="text-center">
               <a

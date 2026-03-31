@@ -207,10 +207,10 @@ export default function Hero({ data }: { data: HeroData }) {
         <div className="w-11/12 md:w-full sm:max-w-[562px]">
 
           {/* CBT floating card */}
-          {nextCBT && (
+          { nextCBT || getDateDisplay() ? (
             <div className="mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center rounded-lg">
               <div className="text26 text-xl font-semibold text-red-600">
-                {data.nextCourse?.label || nextCBT.course_name || 'Next CBT Course'}
+                {data.nextCourse?.label || nextCBT?.course_name || 'Next CBT Course'}
                 <br />
                 {getDateDisplay()}
               </div>
@@ -221,78 +221,77 @@ export default function Hero({ data }: { data: HeroData }) {
                 {data.nextCourse?.ctaText || 'Book Now'}
               </a>
             </div>
-          )}
+          ) : null }
 
           {/* Purple panel */}
           <div className="pt-6 md:py-10 text-white">
 
             {/* Search */}
-            {data.search && (
-              <div className="mb-6 md:mb-5">
-                <p className="mb-3">
-                  {data.search.title}
-                </p>
+              {/* {data.search && (
+                <div className="mb-6 md:mb-5">
+                  <p className="mb-3">
+                    {data.search.title}
+                  </p>
 
-                <div className="relative max-w-[400px]">
-                  <input
-                    type="text"
-                    placeholder={data.search.placeholder}
-                  aria-label={data.search.placeholder}
-                  value={postcode}
-                  onChange={(e) => setPostcode(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                  <div className="relative max-w-[400px]">
+                    <input
+                      type="text"
+                      placeholder={data.search.placeholder}
+                    aria-label={data.search.placeholder}
+                    value={postcode}
+                    onChange={(e) => setPostcode(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const term = postcode.trim();
+                        router.push(`/all-locations${term ? `?postcode=${encodeURIComponent(term)}` : ''}`);
+                        setShowSuggestions(false);
+                      }
+                      if (e.key === 'Escape') {
+                        setShowSuggestions(false);
+                      }
+                    }}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    className="w-full  bg-white px-4 py-3 pr-12 text-gray-800  focus:outline-none"
+                  />
+
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-b-md shadow-lg z-50 max-h-48 overflow-y-auto">
+                      {suggestions.map((suggestion, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => {
+                            setPostcode(suggestion);
+                            setShowSuggestions(false);
+                            router.push(`/all-locations?postcode=${encodeURIComponent(suggestion)}`);
+                          }}
+                          className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    aria-label="Search locations by postcode"
+                    onClick={() => {
                       const term = postcode.trim();
                       router.push(`/all-locations${term ? `?postcode=${encodeURIComponent(term)}` : ''}`);
                       setShowSuggestions(false);
-                    }
-                    if (e.key === 'Escape') {
-                      setShowSuggestions(false);
-                    }
-                  }}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                  className="w-full  bg-white px-4 py-3 pr-12 text-gray-800  focus:outline-none"
-                />
-
-                {showSuggestions && suggestions.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-b-md shadow-lg z-50 max-h-48 overflow-y-auto">
-                    {suggestions.map((suggestion, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => {
-                          setPostcode(suggestion);
-                          setShowSuggestions(false);
-                          router.push(`/all-locations?postcode=${encodeURIComponent(suggestion)}`);
-                        }}
-                        className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  aria-label="Search locations by postcode"
-                  onClick={() => {
-                    const term = postcode.trim();
-                    router.push(`/all-locations${term ? `?postcode=${encodeURIComponent(term)}` : ''}`);
-                    setShowSuggestions(false);
-                  }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-600 hover:text-indigo-800 hover:scale-105 transform transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-400 rounded"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search h-5 w-5" aria-hidden="true"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
-                </button>
-              </div>
-              </div>
-            )}
+                    }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-600 hover:text-indigo-800 hover:scale-105 transform transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-400 rounded"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search h-5 w-5" aria-hidden="true"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
+                  </button>
+                </div>
+                </div>
+              )} */}
             {/* Summer Special */}
             <h2 className="text50 font-bold leading-none">
               {data.promotion?.title || 'Summer Special test'}
             </h2>
-
             <p className="mt-4 text-xl md:text-3xl">
               {data.promotion?.subtitle || 'Get Your CBT For Only £189'}
             </p>

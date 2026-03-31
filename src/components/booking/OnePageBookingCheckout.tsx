@@ -45,8 +45,10 @@ function generateCalendarWeeksFrom(startRefDate = new Date(), courseEvents: Cour
 
   // Calculate the start date based on month offset
   const baseDate = new Date(today);
-  baseDate.setMonth(baseDate.getMonth() + monthOffset);
+  // Set to first day first to avoid month rollover issues when the startRefDate
+  // is at the end of a month (e.g. Jan 31 -> adding 1 month can skip Feb).
   baseDate.setDate(1); // Start from first day of the month
+  baseDate.setMonth(baseDate.getMonth() + monthOffset);
 
   // Get the last day of the month
   const lastDay = new Date(baseDate);
@@ -1779,6 +1781,8 @@ export default function OnePageBookingCheckout() {
                   >
                     ← {(() => {
                       const prevMonth = new Date();
+                      // Avoid end-of-month rollover (e.g., 31 Mar -> add 1 month => 1 May)
+                      prevMonth.setDate(1);
                       prevMonth.setMonth(prevMonth.getMonth() + calendarMonthOffset - 1);
                       return prevMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
                     })()}
@@ -1786,6 +1790,8 @@ export default function OnePageBookingCheckout() {
                   <span className="text-sm font-semibold text-slate-900">
                     {(() => {
                       const currentMonth = new Date();
+                      // Avoid end-of-month rollover
+                      currentMonth.setDate(1);
                       currentMonth.setMonth(currentMonth.getMonth() + calendarMonthOffset);
                       return currentMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
                     })()}
@@ -1798,6 +1804,8 @@ export default function OnePageBookingCheckout() {
                   >
                     {(() => {
                       const nextMonth = new Date();
+                      // Avoid end-of-month rollover
+                      nextMonth.setDate(1);
                       nextMonth.setMonth(nextMonth.getMonth() + calendarMonthOffset + 1);
                       return nextMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
                     })()} →
@@ -1821,9 +1829,10 @@ export default function OnePageBookingCheckout() {
                       {weeks.flat().map((cell, idx) => {
                         const isSelected = selectedDate && new Date(selectedDate).toDateString() === cell.date.toDateString();
                         const currentMonth = new Date();
+                        // Avoid end-of-month rollover when computing the current month for comparison
+                        currentMonth.setDate(1);
                         currentMonth.setMonth(currentMonth.getMonth() + calendarMonthOffset);
                         const inCurrentMonth = cell.date.getMonth() === currentMonth.getMonth() && cell.date.getFullYear() === currentMonth.getFullYear();
-
                         return (
                           <button
                             key={idx}
