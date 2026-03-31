@@ -68,7 +68,8 @@ export default function Hero({ data }: { data: HeroData }) {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/booking/next-availability-cbt`);
         const data = await response.json();
-        if (data.success) {
+        const available = data.data.next_available.available;
+        if (data.success && available) {
           setNextCBT(data.data);
         }
       } catch (error) {
@@ -171,6 +172,7 @@ export default function Hero({ data }: { data: HeroData }) {
 
     return `/bookings?${params.toString()}`;
   };
+
   return (
     <section className="relative w-full overflow-hidden">
       <div className="relative flex flex-wrap lg:flex-nowrap">
