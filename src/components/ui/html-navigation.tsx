@@ -144,7 +144,7 @@ export function HtmlNavigation({ className, children }: NavigationProps) {
 
   return (
     <nav ref={navRef} className={cn("relative flex max-w-max flex-1 items-center justify-center", className)}>
-      <ul className="group flex flex-1 list-none items-center justify-center lg:gap-3 xl:gap-6">
+      <ul className="group flex flex-1 list-none items-center justify-center lg:gap-1 xl:gap-1">
         {children}
       </ul>
     </nav>
@@ -167,7 +167,7 @@ export function HtmlNavigationLink({ href, className, children, onClick }: Navig
   return (
     <Link
       href={href}
-      className={cn("text-black text-sm xl:text-base hover:text-red-600", className)}
+      className={cn("text-black text-sm xl:text-base hover:text-white hover:bg-blue-600 px-4 py-3 rounded-md", className)}
       onClick={onClick}
     >
       {children}
@@ -195,7 +195,7 @@ export function HtmlNavigationLinkWithDropdown({ href, className, children }: { 
   return (
     <Link
       href={href}
-      className={cn("inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-red-600", className)}
+      className={cn("inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-white hover:bg-blue-600 px-4 py-3 rounded-md", className)}
     >
       {children}
       <span className="menu-toggle-icon">
