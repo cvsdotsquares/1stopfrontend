@@ -200,7 +200,7 @@ export default function ContactUsClient({
       // Get reCAPTCHA v3 token
       let recaptchaToken = "";
       const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
-      
+
       if (siteKey && (window as any).grecaptcha && (window as any).grecaptcha.execute) {
         try {
           recaptchaToken = await (window as any).grecaptcha.execute(siteKey, { action: 'submit' });
@@ -237,7 +237,7 @@ export default function ContactUsClient({
   const selectedOffice = offices.find((o) => o.id === selectedOfficeId);
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 py-8">
+    <div className="max-w-[1400px] mx-auto px-4 py-8 contact-us-page">
 
 
       <h1>{page_title}</h1>

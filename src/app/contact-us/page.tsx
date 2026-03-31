@@ -25,7 +25,6 @@ export default async function Page() {
     if (!res.ok) throw new Error(`API request failed: ${res.status} ${res.statusText}`);
     const json = await res.json();
     const data = json?.data ?? {};
-    const pageData = json; // Use complete response for homepage components
 
     return (
       <>

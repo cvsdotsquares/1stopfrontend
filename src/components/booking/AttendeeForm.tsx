@@ -46,6 +46,8 @@ interface AttendeeFormProps {
   totalAttendees: number;
   isExpanded: boolean;
   onToggle: () => void;
+  /** Optional: ask parent to expand the next attendee (index+1) */
+  onExpandNext?: () => void;
   isComplete: boolean;
   photocardConfirmed: boolean;
   onPhotocardChange: (confirmed: boolean) => void;
@@ -65,6 +67,7 @@ export default function AttendeeForm({
   totalAttendees,
   isExpanded,
   onToggle,
+  onExpandNext,
   isComplete,
   photocardConfirmed,
   onPhotocardChange,
@@ -322,9 +325,8 @@ export default function AttendeeForm({
     if (attendee.password.length < 8) incompleteReasons.push('Use a password with at least 8 characters');
     if (attendee.password !== attendee.confirmPassword) incompleteReasons.push('Password and confirm password must match');
   }
-
   return (
-    <div className={`border rounded-xl overflow-hidden ${disabled ? 'border-slate-100 bg-slate-50/60 opacity-70' : 'border-slate-200 bg-slate-50'}`}>
+    <div id ={`attendee-${index}`} className={`border rounded-xl overflow-hidden ${disabled ? 'border-slate-100 bg-slate-50/60 opacity-70' : 'border-slate-200 bg-slate-50'}`}>
       <button
         type="button"
         onClick={disabled ? undefined : onToggle}
@@ -368,8 +370,11 @@ export default function AttendeeForm({
         </svg>
       </button>
 
-      {isExpanded && (
-        <div className="p-6 pt-0">
+      <div
+        className="p-6 pt-0 transition-all duration-500 ease-in-out overflow-hidden"
+        style={{ maxHeight: isExpanded ? '1200px' : '0px', padding: isExpanded ? undefined : '0px' }}
+        aria-hidden={!isExpanded}
+      >
 
       {/* First name and Last name - 2 columns */}
       <div className="grid gap-4 sm:grid-cols-2 mb-4">
@@ -702,21 +707,26 @@ export default function AttendeeForm({
             type="checkbox"
             className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 disabled:cursor-not-allowed"
             checked={photocardConfirmed}
-            onChange={(e) => onPhotocardChange(e.target.checked)}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              onPhotocardChange(checked);
+              if (checked && totalAttendees > 1 && index < totalAttendees - 1 && typeof onExpandNext === 'function') {
+                onExpandNext();
+              }
+            }}
             disabled={!isComplete}
           />
           <label htmlFor={`confirmPhotocard-${index}`} className="text-sm text-slate-700">
             Please tick to confirm that this attendee will be able to present their photocard driving licence on the day of the course.
-            {!isComplete && (
-              <span className="block text-xs text-amber-600 mt-1">
-                {incompleteReasons[0] || 'Please complete the required fields above to enable this confirmation.'}
-              </span>
-            )}
+              {!isComplete && (
+                <span className="block text-xs text-amber-600 mt-1">
+                  {incompleteReasons[0] || 'Please complete the required fields above to enable this confirmation.'}
+                </span>
+              )}
           </label>
         </div>
       </div>
       </div>
-      )}
     </div>
   );
 }

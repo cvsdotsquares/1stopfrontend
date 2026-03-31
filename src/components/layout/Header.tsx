@@ -199,8 +199,8 @@ export default function Header() {
     <header className="bg-white shadow-sm relative z-40 min-h-[160px] md:min-h-[145px]">
       {/* Top bar */}
         <div className="flex italic bg-gray-100 justify-center text-center text-sm px-2 py-3 md:hidden">“Roadcraft Professionals For All Categories Of Driving”</div>
-        <div className="w-full flex justify-end md:pl-[140px]">
-          <div className="flex w-full text-black p-3 flex items-center justify-between gap-3">
+        <div className="w-full flex justify-end pl-[110px] md:pl-[140px]">
+          <div className="flex w-full text-black p-3 flex items-center justify-end gap-3">
 
             <div className="flex italic hidden md:block flex-grow text-center">“Roadcraft Professionals For All Categories Of Driving”</div>
             <div className="flex items-center space-x-4">

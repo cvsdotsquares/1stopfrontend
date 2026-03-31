@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { cmsApi } from '@/services/api';
 import styles from './TestimonialsCarousel.module.css';
@@ -32,6 +32,8 @@ interface TestimonialsApiResponse {
 export default function TestimonialsCarousel({ limit = 13, className = '' }: TestimonialsCarouselProps) {
   // Carousel state
   const [currentSlide, setCurrentSlide] = useState(0);
+  // Responsive slides per view (mobile:1, desktop/tablet:4)
+  const [slidesPerView, setSlidesPerView] = useState<number>(4);
 
   // Fetch testimonials data
   const { data: testimonials, isLoading, error } = useQuery({
@@ -39,71 +41,29 @@ export default function TestimonialsCarousel({ limit = 13, className = '' }: Tes
     queryFn: () => cmsApi.getTestimonials({ limit, status: 'active' }),
   });
 
-  // Default testimonials for fallback
-  const defaultTestimonials: Testimonial[] = [
-    {
-      id: 1,
-      review: "Having never ridden a bike before, these guys have turned me into a fully fledged biker. Thank you so much!",
-      review_name: "J Mitchell",
-      status: 1,
-      created: "2017-01-17T11:38:02.000Z"
-    },
-    {
-      id: 2,
-      review: "The only place to get professional training!",
-      review_name: "Tyrone J",
-      status: 1,
-      created: "2017-04-19T16:02:17.000Z"
-    },
-    {
-      id: 3,
-      review: "Did my bike and LGV training here...superb!",
-      review_name: "Alison Williams",
-      status: 1,
-      created: "2017-04-21T11:39:08.000Z"
-    },
-    {
-      id: 4,
-      review: "Don't hesitate...let these guys educate.",
-      review_name: "6west",
-      status: 1,
-      created: "2017-04-21T11:42:20.000Z"
-    },
-    {
-      id: 5,
-      review: "Excellent instructors and great facilities. Highly recommend!",
-      review_name: "Sarah Johnson",
-      status: 1,
-      created: "2017-04-23T07:41:19.000Z"
-    },
-    {
-      id: 6,
-      review: "Professional service from start to finish. Passed first time!",
-      review_name: "Mike Davis",
-      status: 1,
-      created: "2017-04-23T07:42:42.000Z"
-    },
-    {
-      id: 7,
-      review: "Best motorcycle training school in London. Worth every penny!",
-      review_name: "Emma Thompson",
-      status: 1,
-      created: "2017-08-25T16:21:34.000Z"
-    },
-    {
-      id: 8,
-      review: "The instructors are patient and knowledgeable. Great experience!",
-      review_name: "James Wilson",
-      status: 1,
-      created: "2017-08-25T16:22:20.000Z"
-    }
-  ];
-
   // Get testimonials data (API or fallback)
-  const testimonialsData = testimonials || defaultTestimonials;
+  const testimonialsData = testimonials || []; // Use empty array if API fails or returns no data
+
+  // Update slidesPerView on resize / media change
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const update = () => setSlidesPerView(mq.matches ? 1 : 4);
+    update();
+    if (mq.addEventListener) mq.addEventListener('change', update);
+    else mq.addListener(update);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', update);
+      else mq.removeListener(update);
+    };
+  }, []);
 
   // For sliding carousel: total possible positions is (total items - visible items + 1)
-  const maxSlideIndex = Math.max(0, testimonialsData.length - 4);
+  const maxSlideIndex = Math.max(0, testimonialsData.length - slidesPerView);
+
+  // Clamp currentSlide when slidesPerView or testimonialsData change
+  useEffect(() => {
+    setCurrentSlide((prev) => Math.min(prev, Math.max(0, testimonialsData.length - slidesPerView)));
+  }, [slidesPerView, testimonialsData.length]);
 
   // Carousel navigation functions - slide 1 testimonial at a time
   const nextSlide = () => {
@@ -195,7 +155,7 @@ export default function TestimonialsCarousel({ limit = 13, className = '' }: Tes
           <div
             className={styles.carouselContainer}
             style={{
-              transform: `translateX(-${currentSlide * 25}%)`,
+              transform: `translateX(-${currentSlide * (100 / slidesPerView)}%)`,
             }}
           >
             {testimonialsData.map((testimonial, index) =>

@@ -11,7 +11,6 @@ interface ServicesData {
     link: string;
   }>;
 }
-
 export default function ServicesSection({ data }: { data: ServicesData }) {
   if (!data.header || !data.services) return null;
   return (

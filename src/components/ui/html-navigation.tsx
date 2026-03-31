@@ -167,7 +167,7 @@ export function HtmlNavigationLink({ href, className, children, onClick }: Navig
   return (
     <Link
       href={href}
-      className={cn("text-black text-sm xl:text-base hover:text-white hover:bg-blue-600 px-4 py-3 rounded-md", className)}
+      className={cn("text-black text-sm xl:text-base hover:text-white hover:bg-blue-600 px-2 xl:px-4 py-3 rounded-md", className)}
       onClick={onClick}
     >
       {children}
@@ -195,7 +195,7 @@ export function HtmlNavigationLinkWithDropdown({ href, className, children }: { 
   return (
     <Link
       href={href}
-      className={cn("inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-white hover:bg-blue-600 px-4 py-3 rounded-md", className)}
+      className={cn("inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-white hover:bg-blue-600 px-2 xl:px-4 py-3 rounded-md", className)}
     >
       {children}
       <span className="menu-toggle-icon">
