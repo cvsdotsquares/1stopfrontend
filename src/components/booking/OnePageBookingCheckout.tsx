@@ -184,6 +184,43 @@ function useCalendarWeeks(courseEvents: CourseEvent[], monthOffset: number) {
   return useMemo(() => generateCalendarWeeksFrom(new Date(), courseEvents, monthOffset), [courseEvents, monthOffset]);
 }
 
+// Helper: Find the first month (0-2) that has at least one available date
+function findFirstAvailableMonth(courseEvents: CourseEvent[]): number {
+  if (!courseEvents || courseEvents.length === 0) return 0;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Check each of the 3 months (0=current, 1=next, 2=next+1)
+  for (let offset = 0; offset <= 2; offset++) {
+    const baseDate = new Date(today);
+    baseDate.setDate(1);
+    baseDate.setMonth(baseDate.getMonth() + offset);
+
+    const monthStart = new Date(baseDate);
+    const monthEnd = new Date(baseDate);
+    monthEnd.setMonth(monthEnd.getMonth() + 1);
+    monthEnd.setDate(0);
+
+    // Check if any event in this month is available
+    const hasAvailable = courseEvents.some(event => {
+      const eventDate = new Date(event.date);
+      eventDate.setHours(0, 0, 0, 0);
+      return (
+        eventDate >= monthStart &&
+        eventDate <= monthEnd &&
+        event.available &&
+        event.available_spaces > 0
+      );
+    });
+
+    if (hasAvailable) return offset;
+  }
+
+  // No available dates found, default to current month
+  return 0;
+}
+
 // ---------- Small UI Helpers ----------
 interface SectionProps {
   index: number;
@@ -533,7 +570,7 @@ export default function OnePageBookingCheckout() {
     const isConfirmEmailValid = emailRegex.test(confirmEmail);
     const phone = attendee.phone.trim();
     const normalizedPhone = phone.replace(/[\s()-]/g, '');
-    const dob = attendee.dateOfBirth.trim();
+    const dob = attendee.dateOfBirth ? attendee.dateOfBirth.trim() : '';
     const dobMatch = dob.match(dobRegex);
     const isDobValid = (() => {
       if (!dobMatch) return false;
@@ -1219,6 +1256,14 @@ export default function OnePageBookingCheckout() {
         const availability = response.data.availability;
         setCourseEvents(availability);
         availabilityFetchedRef.current = { courseId: selectedCourse.id, locationId };
+
+        // Auto-jump to first month with available dates
+        if (availability && availability.length > 0) {
+          const firstAvailMonth = findFirstAvailableMonth(availability);
+          setCalendarMonthOffset(firstAvailMonth);
+        } else {
+          setCalendarMonthOffset(0);
+        }
 
         // Only auto-select first available date if there was a date parameter in URL
         const urlParams = new URLSearchParams(window.location.search);
