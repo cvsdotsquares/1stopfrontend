@@ -39,10 +39,10 @@ export default async function Page() {
 
         {/* Page Static Banner when banner_type is 1 */}
         {data.banner_type == 1 && data.carousel_static_image && (
-          <div className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+          <div className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white ">
             {data.carousel_static_image && (
               <div
-                className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                className="absolute inset-0 bg-cover bg-center bg-no-repeat "
                 style={{ backgroundImage: `url(${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/${data.carousel_static_image})` }}
               >
                 <div className="absolute inset-0 bg-black/40" />
@@ -53,7 +53,7 @@ export default async function Page() {
               {data.overlay_caption == 1 && data.overlay_caption_text && (
                 <p className="text-xl md:text-2xl text-gray-200 max-w-2xl" dangerouslySetInnerHTML={{ __html: data.overlay_caption_text }} />
               )}
-              {data.carousel_static_caption && <p className="text-lg text-gray-300 mt-4" dangerouslySetInnerHTML={{ __html: data.carousel_static_caption }} />}
+              {data.carousel_static_caption && <p className="text-lg text-white mt-4 [&_span]:p-2 [&_span]:text-black" dangerouslySetInnerHTML={{ __html: data.carousel_static_caption }} />}
             </div>
           </div>
         )}
