@@ -1,9 +1,19 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { ChevronDownIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// Context: true when rendered inside a dropdown — child links skip active class
+const InsideDropdownContext = createContext(false);
+
+// Normalize a path: remove trailing slashes, lowercase — handles DB slugs with trailing slashes / mixed case
+function normalizeHref(p: string | null | undefined): string {
+  if (!p) return '/';
+  return p.replace(/\/+$/, '').toLowerCase() || '/';
+}
 
 interface NavigationProps {
   className?: string;
@@ -21,6 +31,13 @@ interface NavigationLinkProps {
   className?: string;
   children: React.ReactNode;
   onClick?: () => void;
+}
+
+interface NavigationLinkWithDropdownProps {
+  href: string;
+  className?: string;
+  children: React.ReactNode;
+  activePaths?: string[];
 }
 
 interface NavigationDropdownProps {
@@ -164,10 +181,26 @@ export function HtmlNavigationItem({ className, children, hasDropdown = false }:
 
 // Navigation Link/Trigger
 export function HtmlNavigationLink({ href, className, children, onClick }: NavigationLinkProps) {
+  const pathname = usePathname();
+  const insideDropdown = useContext(InsideDropdownContext);
+
+  // Normalize both paths before comparison to handle trailing slashes / case differences
+  const normPath = normalizeHref(pathname);
+  const normHref = normalizeHref(href);
+
+  // Active only on top-level links (not inside a dropdown)
+  const isActive =
+    !insideDropdown &&
+    (normPath === normHref || (normHref !== '/' && normPath.startsWith(normHref + '/')));
+
   return (
     <Link
       href={href}
-      className={cn("text-black text-sm xl:text-base hover:text-white hover:bg-blue-600 px-2 xl:px-4 py-3 rounded-md", className)}
+      className={cn(
+        "text-black text-sm xl:text-base hover:text-white hover:bg-blue-600 px-2 xl:px-4 py-3 rounded-md",
+        isActive && "text-white bg-blue-600 active",
+        className
+      )}
       onClick={onClick}
     >
       {children}
@@ -191,11 +224,32 @@ export function HtmlNavigationTrigger({ className, children }: { className?: str
 }
 
 // Navigation Link with Dropdown (clickable link + dropdown)
-export function HtmlNavigationLinkWithDropdown({ href, className, children }: { href: string; className?: string; children: React.ReactNode }) {
+export function HtmlNavigationLinkWithDropdown({ href, className, children, activePaths = [] }: NavigationLinkWithDropdownProps) {
+  const pathname = usePathname();
+
+  // Normalize both paths before comparison
+  const normPath = normalizeHref(pathname);
+  const normHref = normalizeHref(href);
+
+  const isDescendantActive = activePaths.some((p) => {
+    const normalized = normalizeHref(p);
+    return normPath === normalized || (normalized !== '/' && normPath.startsWith(normalized + '/'));
+  });
+
+  // Parent is active if the current page is this exact page or any child page
+  const isActive =
+    normPath === normHref ||
+    (normHref !== '/' && normPath.startsWith(normHref + '/')) ||
+    isDescendantActive;
+
   return (
     <Link
       href={href}
-      className={cn("inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-white hover:bg-blue-600 px-2 xl:px-4 py-3 rounded-md", className)}
+      className={cn(
+        "inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-white hover:bg-blue-600 px-2 xl:px-4 py-3 rounded-md",
+        isActive && "text-white bg-blue-600 active",
+        className
+      )}
     >
       {children}
       <span className="menu-toggle-icon">
@@ -211,16 +265,19 @@ export function HtmlNavigationLinkWithDropdown({ href, className, children }: { 
 // Navigation Dropdown Content
 export function HtmlNavigationDropdown({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
-    <div
-      className={cn(
-        "absolute top-full left-0 min-w-[320px] max-w-[320px] p-4",
-        "bg-white border border-gray-200 rounded-md shadow-lg z-[9999]",
-        "hidden group-hover/item:block @media(hover:none):block",
-        className
-      )}
-    >
-      {children}
-    </div>
+    // Wrap in context so any HtmlNavigationLink inside here skips the active class
+    <InsideDropdownContext.Provider value={true}>
+      <div
+        className={cn(
+          "absolute top-full left-0 min-w-[320px] max-w-[320px] p-4",
+          "bg-white border border-gray-200 rounded-md shadow-lg z-[9999]",
+          "hidden group-hover/item:block @media(hover:none):block",
+          className
+        )}
+      >
+        {children}
+      </div>
+    </InsideDropdownContext.Provider>
   );
 }
 
@@ -275,6 +332,23 @@ export function HtmlMobileNavigationItem({
   const itemRef = useRef<HTMLDivElement>(null);
   const title = item?.link_title || item?.page_title;
   const slug = item?.slug || item?.page_slug;
+  const pathname = usePathname();
+
+  // Compute active state: only on top-level (level 0)
+  // If item has children, active when pathname starts with its slug (so parent is highlighted for child pages)
+  // If item has no children, active when pathname matches exactly
+  const href = slug ? `/${slug}` : null;
+
+  // Normalize and compare — handles trailing slashes / case differences
+  const normPath = normalizeHref(pathname);
+  const normHref = href ? normalizeHref(href) : null;
+
+  const isActive =
+    level === 0 &&
+    !!normHref &&
+    (hasChildren
+      ? normPath === normHref || normPath.startsWith(normHref + '/')
+      : normPath === normHref);
 
   useEffect(() => {
     if (level !== 0) return;
@@ -309,7 +383,8 @@ export function HtmlMobileNavigationItem({
           className={cn(
             "py-2 hover:text-blue-600 block flex-1",
             levelStyles[level as keyof typeof levelStyles] || levelStyles[3],
-            borderStyles[level as keyof typeof borderStyles] || borderStyles[3]
+            borderStyles[level as keyof typeof borderStyles] || borderStyles[3],
+            isActive && "text-blue-600 active"
           )}
           onClick={onClose}
         >

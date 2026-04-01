@@ -114,6 +114,26 @@ const buildCompleteMenuHierarchy = (menuPages: MenuPage[], footerPages: MenuPage
   return menuPages.map(page => buildNestedStructure(page));
 };
 
+// Collect all descendant URLs for active-state propagation to parent menu items
+const collectDescendantPaths = (item: any): string[] => {
+  if (!item?.children?.length) return [];
+
+  const paths: string[] = [];
+  const walk = (nodes: any[]) => {
+    nodes.forEach((node) => {
+      if (node?.page_slug) {
+        paths.push(`/${node.page_slug}`);
+      }
+      if (node?.children?.length) {
+        walk(node.children);
+      }
+    });
+  };
+
+  walk(item.children);
+  return paths;
+};
+
 
 
 // Recursive component to render menu items with unlimited nesting
@@ -122,11 +142,12 @@ const renderMenuItem = (item: any, level: number = 0): React.ReactNode => {
 
   if (level === 0) {
     // Top level menu items
+    const descendantPaths = hasChildren ? collectDescendantPaths(item) : [];
     return (
       <HtmlNavigationItem key={item.id} hasDropdown={hasChildren}>
         {hasChildren ? (
           <>
-            <HtmlNavigationLinkWithDropdown href={`/${item.page_slug}`}>
+            <HtmlNavigationLinkWithDropdown href={`/${item.page_slug}`} activePaths={descendantPaths}>
               {item.page_title}
             </HtmlNavigationLinkWithDropdown>
             <HtmlNavigationDropdown className="p-1">
