@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 interface WhyUsData {
   title: string;
   description: string;
@@ -8,6 +6,8 @@ interface WhyUsData {
     title: string;
     description: string;
     icon: string;
+    linkUrl: string;
+    linkTitle: string;
   }>;
   footerText: string;
 }

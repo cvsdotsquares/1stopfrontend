@@ -326,7 +326,7 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mb-12">
             <div className="bg-white rounded-lg border border-gray-200 px-3 py-5 sm:p-6 text-center">
               <div className="text-4xl font-bold text-blue-600 mb-2">
-                {counterData.taining_centers ? <CounterAnimation end={counterData.taining_centers} /> : filteredLocations.length}
+                {counterData.taining_centers ? <CounterAnimation end={counterData.taining_centers} /> : '13'}
               </div>
               <div className="border-2 border-red-200 border-w mx-auto w-[60px]"></div>
               <div className="text-lg text-gray-500 mt-4">Training Centers</div>

@@ -4,6 +4,7 @@ interface FeatureData {
   description: string;
   image: string;
   marker_text?: string;
+  marker_link?: string;
   cta?: {
     text: string;
     link: string;
