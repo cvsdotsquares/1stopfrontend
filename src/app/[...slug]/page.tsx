@@ -119,14 +119,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'")
       .replace(/<[^>]*>/g, '')
+      .replace(/&ndash;/g, '-')
+      .replace(/&mdash;/g, '—')
+      .replace(/&pound;/g, '£')
       .trim();
   };
 
   const rawTitle = page.meta_title || page.link_title || page.page_title || '';
   const title = stripHtml(rawTitle);
-  const description = page.meta_desc || page.meta?.description || undefined;
+  const description = stripHtml(page.meta_desc || page.meta?.description || '');
   const canonical = page.meta?.canonical || undefined;
-  const ogImage = page.meta?.ogImage || page.carousel_static_image || undefined;
+  const ogImage = page.meta?.ogImage || page.carousel_static_image || '';
 
   const metadata: Metadata = {
     title,

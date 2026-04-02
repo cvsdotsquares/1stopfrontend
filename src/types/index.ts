@@ -95,6 +95,7 @@ export interface Page {
   page_title: string;
   slug: string;
   page_content: string;
+  page_ex_rhs?: string;
   internal_css?: string;
   meta_title?: string;
   meta_keyword?: string;
