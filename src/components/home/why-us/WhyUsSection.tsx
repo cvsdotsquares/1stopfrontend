@@ -58,9 +58,11 @@ export default function WhyUsSection({ data }: { data: WhyUsData }) {
               </p>
 
               {/* Link */}
-              <a className="px-6 py-3 text-lg text-red-600 min-w-[180px] text-center" href={course.linkUrl}>
-                { `${course.linkTitle}` } <i className="fa-solid fa-chevron-right"></i>
-              </a>
+              { course.linkUrl && course.linkTitle != ''&& (
+                <a className="px-6 py-3 text-lg text-red-600 min-w-[180px] text-center" href={course.linkUrl}>
+                  { `${course.linkTitle}` } <i className="fa-solid fa-chevron-right"></i>
+                </a>
+              )}
             </div>
           ))}
         </div>
