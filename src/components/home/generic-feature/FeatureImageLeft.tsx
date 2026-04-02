@@ -58,7 +58,7 @@ export default function FeatureImageLeft({ data }: { data: FeatureData }) {
             {data.marker_link && data.marker_text && (
               <a
                 href={data.marker_link}
-                className="mt-4 inline-block radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-white hover:bg-red-700 min-w-[180px] text-center no-underline"
+                className="mt-4 inline-block radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-white hover:bg-red-700 min-w-[180px] text-center !no-underline"
               >
                 {data.marker_text}
               </a>
