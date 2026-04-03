@@ -9,6 +9,7 @@ import CryptoJS from 'crypto-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import StripePaymentForm from './StripePaymentForm';
+import { trackAddToCart, trackBeginCheckout } from '@/lib/gtm';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
@@ -1586,6 +1587,17 @@ export default function OnePageBookingCheckout() {
     // }
 
     setIsPaying(true);
+    // GTM: begin_checkout
+    trackBeginCheckout(
+      {
+        item_id: selectedCourseEventId ?? 'unknown',
+        item_name: selectedCourse?.course_name ?? 'Course',
+        item_category: 'Booking',
+        item_variant: selectedDate ? selectedDate.toLocaleDateString('en-GB') : undefined,
+        price: total > 0 ? total : undefined,
+      },
+      total > 0 ? total : undefined,
+    );
     try {
       // Encrypt passwords using AES
       const encryptPassword = (password: string) => {
@@ -1886,6 +1898,17 @@ export default function OnePageBookingCheckout() {
                             onClick={() => {
                               setSelectedDate(cell.date);
                               setSelectedCourseEventId(cell.courseEventId || null);
+                              // GTM: add_to_cart
+                              trackAddToCart(
+                                {
+                                  item_id: cell.courseEventId ?? 'unknown',
+                                  item_name: selectedCourse?.course_name ?? 'Course',
+                                  item_category: 'Booking',
+                                  item_variant: cell.date.toLocaleDateString('en-GB'),
+                                  price: total > 0 ? total : undefined,
+                                },
+                                total > 0 ? total : undefined,
+                              );
                             }}
                             title={cell.available && inCurrentMonth ? `${cell.spots} spots left` : "Not available"}
                             className={`aspect-square rounded-lg border text-sm tabular-nums transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${

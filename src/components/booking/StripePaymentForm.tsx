@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
+import { trackAddPaymentInfo } from '@/lib/gtm';
 
 interface StripePaymentFormProps {
   onSuccess: (bookingRefs: string[]) => void;
@@ -48,6 +49,17 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amo
       if (!cardElement) {
         throw new Error('Card details are not available');
       }
+
+      // GTM: add_payment_info
+      trackAddPaymentInfo(
+        {
+          item_id: creationResult.bookingRef ?? 'unknown',
+          item_name: 'Course Booking',
+          item_category: 'Booking',
+          price: amount / 100,
+        },
+        amount / 100,
+      );
 
       const { error } = await stripe.confirmCardPayment(creationResult.clientSecret, {
         payment_method: { card: cardElement },
