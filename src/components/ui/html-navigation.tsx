@@ -161,7 +161,7 @@ export function HtmlNavigation({ className, children }: NavigationProps) {
 
   return (
     <nav ref={navRef} className={cn("relative flex max-w-max flex-1 items-center justify-center", className)}>
-      <ul className="group flex flex-1 list-none items-center justify-center lg:gap-1 xl:gap-1">
+      <ul className="group flex flex-1 list-none items-center justify-center">
         {children}
       </ul>
     </nav>
@@ -246,7 +246,7 @@ export function HtmlNavigationLinkWithDropdown({ href, className, children, acti
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-white hover:bg-blue-600 px-2 xl:px-4 py-3 rounded-md",
+        "inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-white hover:bg-blue-600 px-2 xl:px-3 py-3 rounded-md",
         isActive && "text-white bg-blue-600 active",
         className
       )}

@@ -95,7 +95,7 @@ export default function TabSection({ data }: Readonly<{ data: TabSectionData }>)
 
           {/* Image */}
           {data.image && (
-            <div className="flex items-center justify-center" style={contentHeight ? { height: contentHeight } : {}}>
+            <div className="flex items-start justify-center">
               <img
                 src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/${data.image}`}
                 alt="Directions Map"
