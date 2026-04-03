@@ -1,5 +1,6 @@
 import React from "react";
 import Script from "next/script";
+import { cmsApi } from '@/services/api';
 import ContactUsClient from "./ContactUsClient";
 import CarouselBanner from '@/components/cms/CarouselBanner';
 import AccreditationsSection from "@/components/accreditations/AccreditationsSection";
@@ -16,6 +17,35 @@ import GenericCta from "@/components/home/generic-cta/GenericCta";
 export const revalidate = 60; // revalidate data periodically
 
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+
+const stripHtml = (html?: string) => {
+  if (!html) return "";
+
+  return html
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&amp;", "&")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'")
+    .replaceAll(/<[^>]*>/g, "")
+    .replaceAll("&ndash;", "-")
+    .replaceAll("&mdash;", "—")
+    .replaceAll("&pound;", "£")
+    .trim();
+};
+
+export async function generateMetadata() {
+  const pageData = await cmsApi.getPage("contact-us");
+  const pageContent = pageData?.data;
+
+  return {
+    title: stripHtml(pageContent?.meta_title),
+    description: stripHtml(pageContent?.meta_desc),
+    keywords: stripHtml(pageContent?.meta_keyword),
+    viewport: "width=device-width, initial-scale=1, user-scalable=no",
+    robots: "noindex, nofollow, noarchive, nosnippet"
+  };
+}
 
 export default async function Page() {
   try {

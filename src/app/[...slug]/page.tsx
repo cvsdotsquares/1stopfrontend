@@ -20,6 +20,7 @@ import ServiceAreasSection from '@/components/home/service-areas/ServiceAreasSec
 import AccordionSection from '@/components/home/accordion/AccordionSection';
 import ContentCardsSection from '@/components/home/content-cards/ContentCardsSection';
 import ProcessStepsSection from '@/components/home/process-steps/ProcessStepsSection';
+import CounterAnimation from '@/components/ui/CounterAnimation';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
@@ -84,6 +85,7 @@ type CmsPage = {
   cbt_test_london?: any;
   features?: any;
   banners?: any;
+  display_counter?: string | number;
 };
 
 async function fetchCmsPage(slug: string): Promise<CmsPage | null> {
@@ -117,14 +119,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'")
       .replace(/<[^>]*>/g, '')
+      .replace(/&ndash;/g, '-')
+      .replace(/&mdash;/g, '—')
+      .replace(/&pound;/g, '£')
       .trim();
   };
 
   const rawTitle = page.meta_title || page.link_title || page.page_title || '';
   const title = stripHtml(rawTitle);
-  const description = page.meta_desc || page.meta?.description || undefined;
+  const description = stripHtml(page.meta_desc || page.meta?.description || '');
   const canonical = page.meta?.canonical || undefined;
-  const ogImage = page.meta?.ogImage || page.carousel_static_image || undefined;
+  const ogImage = page.meta?.ogImage || page.carousel_static_image || '';
 
   const metadata: Metadata = {
     title,
@@ -135,8 +140,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   return metadata;
 }
-
-
 
 export default async function CmsCatchAllPage({ params }: { params: Promise<{ slug: string[] }> }) {
   const { slug } = await params;
@@ -154,6 +157,21 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
   const sidebarSection = sortedSections.find(section => section.type === 'cms_sidebar');
   const contentSections = sortedSections.filter(section => section.type !== 'cms_sidebar' && section.type !== 'hero');
   const hasSidebar = !!sidebarSection;
+
+    // Fetch counter data
+    // fetch(`${process.env.NEXT_PUBLIC_API_URL}/helper/counter-data`)
+    //   .then(res => res.json())
+    //   .then(data => {
+    //     if (data.success) {
+    //       setCounterData(data.data);
+    //     }
+    //   })
+    //   .catch(err => console.error('Failed to fetch counter data:', err));
+
+    // Fetch the above counter data on the server side to avoid hydration mismatch
+    const counterRes = await fetch(`${API_BASE}/helper/counter-data`);
+    const counterJson = await counterRes.json();
+    const counterData = counterJson.success ? counterJson.data : {};
 
   // Render component based on section type
   const renderSection = (section: { type: string; order: number; data: any }, index: number) => {
@@ -204,7 +222,7 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
                   <h2 className="text-center">{section.data.section_title}</h2>
                   <span className="flex justify-center items-center gap-8 flex-wrap">
                     {[...section.data.items].sort((a: CmsItem, b: CmsItem) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map((item: CmsItem) => (
-                      <span key={item.id} className="text-center">
+                      <span key={item.id}>
                         {item.item_image && <img src={`${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/dynamic_content/${item.item_image}`} alt={item.item_title} className="max-w-sm h-auto rounded-lg mb-4" />}
                         {item.item_content && <span className="block text-lg text-gray-700 mb-4" dangerouslySetInnerHTML={{ __html: item.item_content }} />}
                         {item.item_url && <Link className="inline-block text-white bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-lg font-semibold transition-colors" href={item.item_url}>{item.item_title}</Link>}
@@ -303,6 +321,47 @@ export default async function CmsCatchAllPage({ params }: { params: Promise<{ sl
         </>
       )}
 
+
+      {/* Show Counter */}
+      {page.display_counter == 1 && (
+        /* Quick Stats */
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mb-12">
+            <div className="bg-white rounded-lg border border-gray-200 px-3 py-5 sm:p-6 text-center">
+              <div className="text-4xl font-bold text-blue-600 mb-2">
+                {counterData.taining_centers ? <CounterAnimation end={counterData.taining_centers} /> : '13'}
+              </div>
+              <div className="border-2 border-red-200 border-w mx-auto w-[60px]"></div>
+              <div className="text-lg text-gray-500 mt-4">Training Centers</div>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-200 px-3 py-5 sm:p-6 text-center">
+              <div className="text-4xl font-bold text-blue-600 mb-2">
+                {counterData.qualified_instructors ? <CounterAnimation end={counterData.qualified_instructors} suffix="+" /> : '50+'}
+              </div>
+              <div className="border-2 border-red-200 border-w mx-auto w-[60px]"></div>
+              <div className="text-lg text-gray-500 mt-4">Qualified Instructors</div>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-200 px-3 py-5 sm:p-6 text-center">
+              <div className="text-4xl font-bold text-blue-600 mb-2">
+                {counterData.passing_rate ? (
+                  <><CounterAnimation end={parseFloat(counterData.passing_rate)} /><span className="text-red-600">% +</span></>
+                ) : (
+                  <>90<span className="text-red-600">% +</span></>
+                )}
+              </div>
+              <div className="border-2 border-red-200 border-w mx-auto w-[105px]"></div>
+              <div className="text-lg text-gray-500 mt-4">Pass Rate</div>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-200 px-3 py-5 sm:p-6 text-center">
+              <div className="text-4xl font-bold text-blue-600 mb-2">
+                {counterData.student_tainined ? <CounterAnimation end={counterData.student_tainined} suffix="k +" /> : '15k +'}
+              </div>
+              <div className="border-2 border-red-200 border-w mx-auto w-[96px]"></div>
+              <div className="text-lg text-gray-500 mt-4">Students Trained</div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Static bottom components - always at full width */}
       {page.featured_display == 1 && <FeaturedServices />}
       {page.testimonial_display == 1 && <TestimonialsCarousel />}

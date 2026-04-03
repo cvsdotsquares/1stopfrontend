@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 interface WhyUsData {
   title: string;
   description: string;
@@ -8,6 +6,8 @@ interface WhyUsData {
     title: string;
     description: string;
     icon: string;
+    linkUrl: string;
+    linkTitle: string;
   }>;
   footerText: string;
 }
@@ -56,6 +56,13 @@ export default function WhyUsSection({ data }: { data: WhyUsData }) {
               <p className="text-sm text-gray-500 leading-relaxed">
                 {course.description}
               </p>
+
+              {/* Link */}
+              { course.linkUrl && course.linkTitle != ''&& (
+                <a className="px-6 py-3 text-lg text-red-600 min-w-[180px] text-center" href={course.linkUrl}>
+                  { `${course.linkTitle}` } <i className="fa-solid fa-chevron-right"></i>
+                </a>
+              )}
             </div>
           ))}
         </div>

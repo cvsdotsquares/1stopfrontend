@@ -12,7 +12,7 @@ interface ServicesData {
   }>;
 }
 export default function ServicesSection({ data }: { data: ServicesData }) {
-  if (!data.header || !data.services) return null;
+  if (!data.header || !data.services || data.services.length === 0) return null;
   return (
     <section className="bg-gray-50 py-8 md:py-16">
       <div className="mx-auto max-w-[1400px] px-6">

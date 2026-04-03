@@ -4,6 +4,7 @@ interface FeatureData {
   description: string;
   image: string;
   marker_text?: string;
+  marker_link?: string;
   cta?: {
     text: string;
     link: string;
@@ -30,7 +31,7 @@ export default function FeatureImageRight({ data }: { data: FeatureData }) {
           {/* Content - Left */}
           <div>
             {/* Marker text */}
-            {data.marker_text && (
+            {!data.marker_link && data.marker_text && (
               <div className="mb-4 inline-block bg-red-600 text-white px-4 py-2 rounded-md shadow-lg text-left leading-tight">
                 <div className="text-xl md:text-sm font-bold" dangerouslySetInnerHTML={{ __html: data.marker_text }} />
               </div>
@@ -54,6 +55,15 @@ export default function FeatureImageRight({ data }: { data: FeatureData }) {
               className="prose prose-lg max-w-none text-black [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-gray-900 [&_ul]:space-y-2 [&_ul]:pb-3 [&_li]:items-start custom-list "
               dangerouslySetInnerHTML={{ __html: data.description }}
             />
+
+            {data.marker_link && data.marker_text && (
+              <a
+                href={data.marker_link}
+                className="mt-4 inline-block radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-white hover:bg-red-700 min-w-[180px] text-center !no-underline"
+              >
+                {data.marker_text}
+              </a>
+            )}
 
             {data.cta && (
               <a

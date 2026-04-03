@@ -15,16 +15,21 @@ import homepageData from "@/data/homepage.json";
 
 
 // helper for metadata
-function stripHtml(html: string) {
-  return html
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/<[^>]*>/g, "")
-    .trim();
-}
+  const stripHtml = (html?: string) => {
+    if (!html) return '';
+
+    return html
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&amp;', '&')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&#39;', "'")
+      .replaceAll(/<[^>]*>/g, '')
+      .replaceAll('&ndash;', '-')
+      .replaceAll('&mdash;', '—')
+      .replaceAll('&pound;', '£')
+      .trim();
+  };
 
 
 // SEO metadata (server side)
@@ -35,14 +40,13 @@ export async function generateMetadata() {
   const pageContent = pageData?.data;
   return {
     title:
-      stripHtml(pageContent?.page_title) ||
-      "Default Title",
+      stripHtml(pageContent?.meta_title),
 
     description:
-      pageContent?.meta_desc || "Default description",
+      stripHtml(pageContent?.meta_desc),
 
     keywords:
-      pageContent?.meta_keyword || "default, keywords",
+      stripHtml(pageContent?.meta_keyword),
 
     viewport: "width=device-width, initial-scale=1, user-scalable=no",
 

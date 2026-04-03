@@ -209,11 +209,11 @@ export default function Hero({ data }: { data: HeroData }) {
         <div className="w-11/12 md:w-full sm:max-w-[562px]">
 
           {/* CBT floating card */}
-          { nextCBT || getDateDisplay() ? (         
+          { nextCBT || getDateDisplay() ? (
             <div className="mb-2 bg-white/70 py-6 px-4  xl:px-10 xl:py-7 text-center rounded-lg">
               <div className="text26 xl:text-xl font-semibold text-red-600">
-                {data.nextCourse?.label || nextCBT.course_name || 'Next CBT Course'} 
-                
+                {data.nextCourse?.label || nextCBT.course_name || 'Next CBT Course'}
+
                 &nbsp; {getDateDisplay()}
               </div>
               <a
@@ -299,12 +299,14 @@ export default function Hero({ data }: { data: HeroData }) {
               {data.promotion?.subtitle || 'Get Your CBT For Only £189'}
             </p>
 
-            <p className="mt-2  mb-2 xl:mb-4 xl:mt-5 xl:text-xl">
-              Use Promo Code{" "}
-              <span className="text-xl xl:text-2xl font-bold">
-                {data.promotion?.promoCode || 'SUMMER10'}
-              </span>
-            </p>
+            { data.promotion?.promoCode && (
+              <p className="mt-2  mb-2 xl:mb-4 xl:mt-5 xl:text-xl">
+                Use Promo Code{" "}
+                <span className="text-xl xl:text-2xl font-bold">
+                  {data.promotion?.promoCode || 'SUMMER10'}
+                </span>
+              </p>
+            )}
 
             <div className="mt-4 xl:mt-10 flex gap-3 md:gap-4 flex-wrap ">
               <a

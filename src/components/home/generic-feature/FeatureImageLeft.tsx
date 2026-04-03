@@ -4,6 +4,7 @@ interface FeatureData {
   description: string;
   image: string;
   marker_text?: string;
+  marker_link?: string;
   cta?: {
     text: string;
     link: string;
@@ -26,7 +27,7 @@ export default function FeatureImageLeft({ data }: { data: FeatureData }) {
                 alt="CBT Training London"
                 className="w-full h-full object-cover"
               />
-              {data.marker_text && (
+              {!data.marker_link && data.marker_text && (
                 <div className="absolute bottom-4 right-4 bg-red-600 text-white px-6 py-2.5 rounded-sm shadow-lg">
                   <div className="text-sm md:text-base font-semibold uppercase tracking-wide" dangerouslySetInnerHTML={{ __html: data.marker_text }} />
                 </div>
@@ -54,6 +55,14 @@ export default function FeatureImageLeft({ data }: { data: FeatureData }) {
               dangerouslySetInnerHTML={{ __html: data.description }}
             />
 
+            {data.marker_link && data.marker_text && (
+              <a
+                href={data.marker_link}
+                className="mt-4 inline-block radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-white hover:bg-red-700 min-w-[180px] text-center !no-underline"
+              >
+                {data.marker_text}
+              </a>
+            )}
             {data.cta && (
               <a
                 href={data.cta.link}

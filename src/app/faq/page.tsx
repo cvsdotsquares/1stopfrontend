@@ -1,6 +1,5 @@
-'use client';
-
-import { useEffect, useState } from 'react';
+import { cmsApi } from '@/services/api';
+import { cache } from 'react';
 
 interface FAQCategory {
   id: number;
@@ -15,25 +14,118 @@ interface FAQCategory {
 interface FAQData {
   title: string;
   subtitle: string;
+  page_ex_rhs: string;
   categories: FAQCategory[];
 }
 
-export default function FAQPage() {
-  const [faqData, setFaqData] = useState<FAQData | null>(null);
-  const [loading, setLoading] = useState(true);
+interface FAQPageApiResponse {
+  success: boolean;
+  data?: FAQData;
+}
 
-  useEffect(() => {
-    fetch(process.env.NEXT_PUBLIC_API_URL + '/faq')
-      .then(res => res.json())
-      .then(json => {
-        if (json.success) setFaqData(json.data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+const getFaqCmsPage = cache(async () => cmsApi.getPage('faq'));
 
-  if (loading) return <div className="py-20 text-center">Loading FAQs...</div>;
-  if (!faqData) return <div className="py-20 text-center text-red-600">Failed to load FAQs.</div>;
+/* ------------------ helpers ------------------ */
+
+const stripHtml = (html?: string) => {
+  if (!html) return "";
+
+  return html
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&amp;", "&")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'")
+    .replaceAll(/<[^>]*>/g, "")
+    .replaceAll("&ndash;", "-")
+    .replaceAll("&mdash;", "—")
+    .replaceAll("&pound;", "£")
+    .trim();
+};
+
+const extractTitleSubtitleFromPageContent = (html?: string) => {
+  if (!html) {
+    return { title: "", subtitle: "" };
+  }
+
+  const titleMatch = /<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/i.exec(html);
+  const subtitleMatch = /<p[^>]*>([\s\S]*?)<\/p>/i.exec(html);
+
+  return {
+    title: stripHtml(titleMatch?.[1]),
+    subtitle: stripHtml(subtitleMatch?.[1])
+  };
+};
+
+
+/* ------------------ SEO metadata (SERVER) ------------------ */
+
+export async function generateMetadata() {
+
+  const pageData = await getFaqCmsPage();
+
+  const pageContent = pageData?.data;
+
+  return {
+    title:
+      stripHtml(pageContent?.meta_title),
+
+    description:
+      stripHtml(pageContent?.meta_desc),
+
+    keywords:
+      stripHtml(pageContent?.meta_keyword),
+
+    viewport:
+      "width=device-width, initial-scale=1, user-scalable=no",
+
+    robots:
+      "noindex, nofollow, noarchive, nosnippet"
+  };
+}
+
+
+/* ------------------ PAGE (SERVER COMPONENT) ------------------ */
+
+export default async function FAQPage() {
+
+  let faqData: FAQData | null = null;
+  let cmsTitle = "";
+  let cmsSubtitle = "";
+  let cmsSidebar = "";
+
+  try {
+    const pageData = await getFaqCmsPage();
+    const pageContentHtml = pageData?.data?.page_content || "";
+    const parsedHeader = extractTitleSubtitleFromPageContent(pageContentHtml);
+    const sidebarHtml = (pageData?.data as { page_ex_rhs?: string } | undefined)?.page_ex_rhs || "";
+    cmsTitle = parsedHeader.title;
+    cmsSubtitle = parsedHeader.subtitle;
+    cmsSidebar = sidebarHtml;
+  } catch (error) {
+    console.error('Error fetching FAQ page metadata content:', error);
+  }
+
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/faq`, {
+      cache: 'no-store'
+    });
+
+    if (response.ok) {
+      const payload: FAQPageApiResponse = await response.json();
+      faqData = payload.data ?? null;
+    }
+  } catch (error) {
+    console.error('Error fetching FAQ data:', error);
+    faqData = null;
+  }
+
+  if (!faqData)
+    return (
+      <div className="py-20 text-center text-red-600">
+        Failed to load FAQs.
+      </div>
+    );
 
   return (
     <section className="py-10 lg:py-16 bg-gray-50">
@@ -43,11 +135,11 @@ export default function FAQPage() {
         <div className="py-12">
 
           <h1 className="text-4xl font-bold mb-2 text-center">
-            {faqData.title}
+            {cmsTitle || faqData.title}
           </h1>
 
           <p className="text-lg text-gray-600 mb-10 text-center">
-            {faqData.subtitle}
+            {cmsSubtitle || faqData.subtitle}
           </p>
 
 
@@ -56,7 +148,7 @@ export default function FAQPage() {
             {/* LEFT CONTENT */}
             <div className="lg:w-3/4">
 
-              {faqData.categories.map(category => (
+              {faqData.categories.map((category: FAQCategory) => (
 
                 <div key={category.id} className="mb-12">
 
@@ -66,9 +158,12 @@ export default function FAQPage() {
 
                   <ul className="space-y-6">
 
-                    {category.questions.map(q => (
+                    {category.questions.map((q) => (
 
-                      <li key={q.id} className="bg-white rounded-xl shadow p-6">
+                      <li
+                        key={q.id}
+                        className="bg-white rounded-xl shadow p-6"
+                      >
 
                         <div className="font-bold text-lg mb-2 text-gray-900">
                           {q.question}
@@ -76,7 +171,9 @@ export default function FAQPage() {
 
                         <div
                           className="text-gray-700"
-                          dangerouslySetInnerHTML={{ __html: q.answer }}
+                          dangerouslySetInnerHTML={{
+                            __html: q.answer
+                          }}
                         />
 
                       </li>
@@ -94,69 +191,9 @@ export default function FAQPage() {
 
             {/* RIGHT SIDEBAR */}
             <div className="lg:w-1/4">
-
-              <section className="bg-blue-50 p-6 space-y-8 rounded-xl">
-
-                {/* About */}
-                <div>
-
-                  <h4 className="text-sm font-bold uppercase tracking-widest text-red-600 mb-6 flex items-center gap-2">
-                    About 1 Stop
-                    <span className="flex-1 h-px bg-red-600"></span>
-                  </h4>
-                  <a href="/">
-                    <img
-                        className="max-w-[120px] mb-3"
-                        src={`${process.env.NEXT_PUBLIC_FILES_URL}/app/webroot/cmImages/images/1-stop-logo-square.jpg`}
-                        alt="1-stop-logo"
-                    />
-                  </a>
-                  <p className="text-sm text-gray-700">
-                    1 Stop Instruction are Roadcraft Professionals For All Categories Of Driving...
-                    So whatever you want to ride or drive on the road, we can help you!
-                  </p>
-
-                </div>
-
-
-                {/* Popular Posts */}
-                <div>
-
-                  <h4 className="text-sm font-bold uppercase tracking-widest text-red-600 mb-6 flex items-center gap-2">
-                    Want to Book a Course?
-                    <span className="flex-1 h-px bg-red-600"></span>
-                  </h4>
-
-                  <div className="space-y-4">
-
-                    <a href="/bookings" className="block font-semibold hover:text-blue-600 transition">
-                      Booking
-                    </a>
-
-                  </div>
-
-                </div>
-
-
-                {/* Social */}
-                <div>
-
-                  <h4 className="text-sm font-bold uppercase tracking-widest text-red-600 mb-6 flex items-center gap-2">
-                    Follow Us
-                    <span className="flex-1 h-px bg-red-600"></span>
-                  </h4>
-                  <a href="https://www.facebook.com/1stopinstruction/">
-                    <img
-                        src={`${process.env.NEXT_PUBLIC_FILES_URL}/app/webroot/cmImages/images/find-us-on-facebook%283%29.png`}
-                        alt="facebook"
-                        className="max-w-[180px]"
-                    />
-                  </a>
-
-                </div>
-
-              </section>
-
+              <div
+                dangerouslySetInnerHTML={{ __html: cmsSidebar }}
+              />
             </div>
 
           </div>

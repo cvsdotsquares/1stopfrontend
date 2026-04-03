@@ -35,12 +35,14 @@ export default function GenericCta({
 
         <div className="relative z-10 flex gap-5 flex-wrap md:flex-nowrap justify-center text-center md:text-left items-center md:justify-between px-5 mx-auto max-w-[1400px]">
           <div className={`text-2xl font-bold ${[1, true, "1", "true"].includes(titleColor as any) ? 'text-white' : 'text-gray-900'} md:text-3xl`} dangerouslySetInnerHTML={{ __html: title }} />
-          <a
-            href={cta.link}
-            className="radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-lg text-white hover:bg-red-500 min-w-[180px] text-center"
-          >
-            {cta.text}
-          </a>
+          {cta.link && cta.text && (
+            <a
+              href={cta.link}
+              className="radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-lg text-white hover:bg-red-500 min-w-[180px] text-center"
+            >
+              {cta.text}
+            </a>
+          )}
         </div>
       </section>
     );
@@ -55,13 +57,14 @@ export default function GenericCta({
         >
           {backgroundImage && <div className="absolute inset-0 bg-black/40 rounded-2xl" />}
 
-          <div className={`text-2xl font-bold md:text-3xl relative z-10 ${[1, true, "1", "true"].includes(titleColor as any) ? 'text-white' : 'text-gray-900'} md:text-3xl`} dangerouslySetInnerHTML={{ __html: title }} />
-
-          <a
-            href={cta.link}
-            className="radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-lg text-white hover:bg-red-500 min-w-[180px] text-center">
-            {cta.text}
-          </a>
+          { title && <div className={`text-2xl font-bold md:text-3xl relative z-10 ${[1, true, "1", "true"].includes(titleColor as any) ? 'text-white' : 'text-gray-900'} md:text-3xl`} dangerouslySetInnerHTML={{ __html: title }} /> }
+          {cta && (
+            <a
+              href={cta.link}
+              className="radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-lg text-white hover:bg-red-500 min-w-[180px] text-center">
+              {cta.text}
+            </a>
+          )}
         </div>
       </div>
     </section>
