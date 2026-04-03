@@ -32,11 +32,11 @@ export default function WhyUsSection({ data }: { data: WhyUsData }) {
         />
 
         {/* Courses Grid */}
-        <div className="mb-6 md:mb-6 grid grid-cols-2 gap-3 md:gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="flex flex-wrap justify-center gap-5">
           {data.courses.map((course) => (
             <div
               key={course.id}
-              className="group rounded-lg bg-white border border-gray-300 p-2 md:p-6 py-4 text-center transition-all hover:bg-gray-100 hover:shadow-md"
+              className="group rounded-lg bg-white border border-gray-300 p-2 md:p-6 py-4 text-center transition-all hover:bg-gray-100 hover:shadow-md w-full sm:w-[calc(50%-1rem)] lg:w-[calc(25%-1rem)]"
             >
               {/* Icon */}
               <div className="mx-auto mb-4 flex h-[80px] w-[80px] items-center justify-center rounded-xl bg-red-100">
@@ -62,7 +62,7 @@ export default function WhyUsSection({ data }: { data: WhyUsData }) {
 
         {/* Footer Text */}
         <div
-          className="mx-auto max-w-6xl text-center text-gray-500 leading-relaxed prose prose-lg [&_a]:text-blue-600 [&_a]:hover:text-red-500"
+          className="mx-auto max-w-6xl pt-4 text-center text-gray-500 leading-relaxed prose prose-lg [&_a]:text-blue-600 [&_a]:hover:text-red-500"
           dangerouslySetInnerHTML={{ __html: data.footerText }}
         />
       </div>

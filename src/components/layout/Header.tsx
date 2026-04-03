@@ -218,6 +218,7 @@ export default function Header() {
 
   return (
     <header className="bg-white shadow-sm relative z-40 min-h-[160px] md:min-h-[145px]">
+      <div className="mx-auto max-w-[1400px] relative xl:px-3">
       {/* Top bar */}
         <div className="flex italic bg-gray-100 justify-center text-center text-sm px-2 py-3 md:hidden">“Roadcraft Professionals For All Categories Of Driving”</div>
         <div className="w-full flex justify-end pl-[110px] md:pl-[140px]">
@@ -253,7 +254,7 @@ export default function Header() {
       <div className="w-full px-3 ">
         <div className="flex justify-end lg:justify-between items-center pt-0 pb-2 md:py-4 pl-[130px]">
           {/* Logo */}
-          <Link href="/" className="flex items-center flex-shrink-0 absolute max-w-[100px] md:max-w-[125px] top-[50px] md:top-2 left-2">
+          <Link href="/" className="flex items-center flex-shrink-0 absolute max-w-[100px] md:max-w-[125px] top-[50px] md:top-2 left-2 xl:left-6">
             <Image
             src="/logo.png"
             alt="Logo"
@@ -349,6 +350,7 @@ export default function Header() {
             </Button>
           )}
         </HtmlMobileNavigation>
+      </div>
       </div>
     </header>
   );
