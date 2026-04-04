@@ -36,7 +36,6 @@ interface AttendeeFormProps {
     theoryNumber: string;
     notes: string;
     registerAsUser: boolean;
-    isPrimaryUser: boolean;
     password: string;
     confirmPassword: string;
   };
@@ -56,6 +55,8 @@ interface AttendeeFormProps {
   selectedDate: Date | null;
   disabled?: boolean;
   isLoggedIn?: boolean;
+  canShowRegisterAsUserOption?: boolean;
+  emailCheckState?: 'idle' | 'checking' | 'exists' | 'available' | 'error';
 }
 
 export default function AttendeeForm({
@@ -76,6 +77,8 @@ export default function AttendeeForm({
   selectedDate,
   disabled = false,
   isLoggedIn = false,
+  canShowRegisterAsUserOption = false,
+  emailCheckState = 'idle',
 }: AttendeeFormProps) {
   const [ageWarning, setAgeWarning] = React.useState<string | null>(null);
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -87,6 +90,20 @@ export default function AttendeeForm({
   const isConfirmEmailValid = confirmEmailValue ? emailRegex.test(confirmEmailValue) : false;
   const areEmailsMatching =
     emailValue && confirmEmailValue && emailValue.toLowerCase() === confirmEmailValue.toLowerCase();
+  const shouldCheckExistingUser =
+    index === 0 &&
+    !isLoggedIn &&
+    emailValue !== '' &&
+    confirmEmailValue !== '' &&
+    isEmailValid &&
+    isConfirmEmailValid &&
+    areEmailsMatching;
+  const requiresRegistrationPassword = canShowRegisterAsUserOption && attendee.registerAsUser;
+  const showRegisterAsUserCheckbox = !isLoggedIn && canShowRegisterAsUserOption;
+  const showUserLookupFeedback =
+    shouldCheckExistingUser &&
+    (emailCheckState === 'checking' || emailCheckState === 'error') &&
+    !showRegisterAsUserCheckbox;
 
   const isValidDob = (dob: string) => {
     const match = dob.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -321,7 +338,7 @@ export default function AttendeeForm({
       incompleteReasons.push('Use a valid 16-character driving licence number');
     }
   }
-  if (attendee.registerAsUser) {
+  if (requiresRegistrationPassword) {
     if (attendee.password.length < 8) incompleteReasons.push('Use a password with at least 8 characters');
     if (attendee.password !== attendee.confirmPassword) incompleteReasons.push('Password and confirm password must match');
   }
@@ -617,9 +634,10 @@ export default function AttendeeForm({
         />
       </div>
 
-      {(!isLoggedIn || totalAttendees > 1 || attendee.registerAsUser) && (
-        <div className="mt-4 pt-4 border-t border-slate-300">
-          {!isLoggedIn && (
+      {(showRegisterAsUserCheckbox || showUserLookupFeedback || requiresRegistrationPassword) && (
+
+        <div className="mt-4 pt-4">
+          {showRegisterAsUserCheckbox && (
             <div className="flex items-start gap-3">
               <input
                 id={`registerAsUser-${index}`}
@@ -634,22 +652,20 @@ export default function AttendeeForm({
             </div>
           )}
 
-          {totalAttendees > 1 && (
-            <div className="flex items-start gap-3 mt-3">
-              <input
-                id={`isPrimaryUser-${index}`}
-                type="checkbox"
-                className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                checked={attendee.isPrimaryUser}
-                onChange={(e) => onChange('isPrimaryUser', e.target.checked)}
-              />
-              <label htmlFor={`isPrimaryUser-${index}`} className="text-sm text-slate-700">
-                Set as Primary User (main leader for all attendees)
-              </label>
+          {showUserLookupFeedback && (
+            <div className={`${showRegisterAsUserCheckbox ? 'mt-3' : ''}`}>
+              {emailCheckState === 'checking' && (
+                <p className="text-sm text-slate-500">Checking whether this email is already registered…</p>
+              )}
+              {emailCheckState === 'error' && (
+                <p className="text-sm text-amber-700">
+                  We couldn&apos;t verify whether this email is already registered right now.
+                </p>
+              )}
             </div>
           )}
 
-          {attendee.registerAsUser && (
+          {requiresRegistrationPassword && (
             <div className="grid gap-4 sm:grid-cols-2 mt-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -700,7 +716,7 @@ export default function AttendeeForm({
         </div>
       )}
 
-      <div className="mt-4 pt-4 border-t border-slate-300">
+      <div className={`mt-4 pt-4 ${showRegisterAsUserCheckbox || showUserLookupFeedback || requiresRegistrationPassword ? 'border-t border-slate-300' : ''}`}>
         <div className={`flex items-start gap-3 ${!isComplete ? 'opacity-60' : ''}`}>
           <input
             id={`confirmPhotocard-${index}`}
@@ -718,13 +734,19 @@ export default function AttendeeForm({
           />
           <label htmlFor={`confirmPhotocard-${index}`} className="text-sm text-slate-700">
             Please tick to confirm that this attendee will be able to present their photocard driving licence on the day of the course.
-              {!isComplete && (
-                <span className="block text-xs text-amber-600 mt-1">
-                  {incompleteReasons[0] || 'Please complete the required fields above to enable this confirmation.'}
-                </span>
-              )}
           </label>
         </div>
+
+        {!isComplete && incompleteReasons.length > 0 && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-sm font-medium text-amber-900">Please complete the following before continuing:</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-800">
+              {incompleteReasons.slice(0, 4).map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
       </div>
     </div>

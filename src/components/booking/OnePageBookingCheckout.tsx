@@ -45,10 +45,8 @@ function generateCalendarWeeksFrom(startRefDate = new Date(), courseEvents: Cour
 
   // Calculate the start date based on month offset
   const baseDate = new Date(today);
-  // Set to first day first to avoid month rollover issues when the startRefDate
-  // is at the end of a month (e.g. Jan 31 -> adding 1 month can skip Feb).
-  baseDate.setDate(1); // Start from first day of the month
   baseDate.setMonth(baseDate.getMonth() + monthOffset);
+  baseDate.setDate(1); // Start from first day of the month
 
   // Get the last day of the month
   const lastDay = new Date(baseDate);
@@ -179,46 +177,17 @@ function resolvePaymentType(
   };
 }
 
+function toProperCase(str) {
+  return str
+    .toLowerCase()
+    .split(" ")
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 // ---------- Hook wrapper for calendar ----------
 function useCalendarWeeks(courseEvents: CourseEvent[], monthOffset: number) {
   return useMemo(() => generateCalendarWeeksFrom(new Date(), courseEvents, monthOffset), [courseEvents, monthOffset]);
-}
-
-// Helper: Find the first month (0-2) that has at least one available date
-function findFirstAvailableMonth(courseEvents: CourseEvent[]): number {
-  if (!courseEvents || courseEvents.length === 0) return 0;
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // Check each of the 3 months (0=current, 1=next, 2=next+1)
-  for (let offset = 0; offset <= 2; offset++) {
-    const baseDate = new Date(today);
-    baseDate.setDate(1);
-    baseDate.setMonth(baseDate.getMonth() + offset);
-
-    const monthStart = new Date(baseDate);
-    const monthEnd = new Date(baseDate);
-    monthEnd.setMonth(monthEnd.getMonth() + 1);
-    monthEnd.setDate(0);
-
-    // Check if any event in this month is available
-    const hasAvailable = courseEvents.some(event => {
-      const eventDate = new Date(event.date);
-      eventDate.setHours(0, 0, 0, 0);
-      return (
-        eventDate >= monthStart &&
-        eventDate <= monthEnd &&
-        event.available &&
-        event.available_spaces > 0
-      );
-    });
-
-    if (hasAvailable) return offset;
-  }
-
-  // No available dates found, default to current month
-  return 0;
 }
 
 // ---------- Small UI Helpers ----------
@@ -361,6 +330,8 @@ function Money({ value }: MoneyProps) {
   return <span className="tabular-nums">£{Number(value).toFixed(2)}</span>;
 }
 
+type ExistingUserLookupStatus = 'idle' | 'checking' | 'exists' | 'available' | 'error';
+
 // ---------- Main Component ----------
 export default function OnePageBookingCheckout() {
   // Force scroll to top on mount and disable browser scroll restoration
@@ -408,6 +379,8 @@ export default function OnePageBookingCheckout() {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [showCourseInfo, setShowCourseInfo] = useState(false);
   const [selectedCourseInfo, setSelectedCourseInfo] = useState<Course | null>(null);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [termsContent, setTermsContent] = useState<string>('');
   // const [showCourseInfo, setShowCourseInfo] = useState(false);
   // const [selectedCourseInfo, setSelectedCourseInfo] = useState<Course | null>(null);
 
@@ -439,7 +412,6 @@ export default function OnePageBookingCheckout() {
     theoryNumber: string;
     notes: string;
     registerAsUser: boolean;
-    isPrimaryUser: boolean;
     password: string;
     confirmPassword: string;
   }>>([{
@@ -456,10 +428,16 @@ export default function OnePageBookingCheckout() {
     theoryNumber: "",
     notes: "",
     registerAsUser: false,
-    isPrimaryUser: false,
     password: "",
     confirmPassword: "",
   }]);
+  const [firstAttendeeUserLookup, setFirstAttendeeUserLookup] = useState<{
+    email: string;
+    status: ExistingUserLookupStatus;
+  }>({
+    email: '',
+    status: 'idle',
+  });
 
   // Booking Flow State
   const [ipBlocked, setIpBlocked] = useState(false);
@@ -473,6 +451,7 @@ export default function OnePageBookingCheckout() {
 
   // Stripe payment state
   const [bookingRef, setBookingRef] = useState<string>('');
+  const [paymentKey, setPaymentKey] = useState(0);
 
   // WorldPay Form State
   const [paymentFormUrl, setPaymentFormUrl] = useState<string>('');
@@ -539,12 +518,29 @@ export default function OnePageBookingCheckout() {
       dateOfBirth: '', email: user?.email || '', confirmEmail: '',
       phone: user?.phone || '', alternativePhone: '', vehicleType: '', licenseType: '',
       licenseNumber: '', theoryNumber: '', notes: '',
-      registerAsUser: false, isPrimaryUser: false, password: '', confirmPassword: '',
+      registerAsUser: false, password: '', confirmPassword: '',
     }]);
+    setFirstAttendeeUserLookup({ email: '', status: 'idle' });
     // Keep section 3 expanded so user can pick a new date
     setExpandedSections(prev => ({ ...prev, 3: true, 4: false, 5: false }));
     step5FetchedRef.current = null;
   };
+
+  const getMatchedEmailForLookup = React.useCallback((attendee?: typeof attendeeDetails[0]) => {
+    if (!attendee || isAuthenticated) return '';
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const email = attendee.email?.trim().toLowerCase() || '';
+    const confirmEmail = attendee.confirmEmail?.trim().toLowerCase() || '';
+
+    if (!email || !confirmEmail) return '';
+    if (!emailRegex.test(email) || !emailRegex.test(confirmEmail)) return '';
+    if (email !== confirmEmail) return '';
+
+    return email;
+  }, [isAuthenticated]);
+
+  const canOfferFastCheckoutRegistration = !isAuthenticated && firstAttendeeUserLookup.status === 'available';
 
   // Reset Step 2 and everything below (location, availability, plus all of step 3+)
   const resetStep2AndBelow = () => {
@@ -557,7 +553,7 @@ export default function OnePageBookingCheckout() {
   };
 
   // Check if an attendee form is complete (all required fields filled)
-  const isAttendeeComplete = (attendee: typeof attendeeDetails[0]) => {
+  const isAttendeeComplete = (attendee: typeof attendeeDetails[0], index: number) => {
     const phoneRegex = /^\+?[0-9\s()-]+$/;
     const licenseRegex = /^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -570,7 +566,7 @@ export default function OnePageBookingCheckout() {
     const isConfirmEmailValid = emailRegex.test(confirmEmail);
     const phone = attendee.phone.trim();
     const normalizedPhone = phone.replace(/[\s()-]/g, '');
-    const dob = attendee.dateOfBirth ? attendee.dateOfBirth.trim() : '';
+    const dob = attendee.dateOfBirth.trim();
     const dobMatch = dob.match(dobRegex);
     const isDobValid = (() => {
       if (!dobMatch) return false;
@@ -611,7 +607,7 @@ export default function OnePageBookingCheckout() {
     if (!basicFieldsComplete || !licenseComplete) return false;
 
     // If registering as user, check password fields
-    if (attendee.registerAsUser) {
+    if (index === 0 && canOfferFastCheckoutRegistration && attendee.registerAsUser) {
       return attendee.password.length >= 8 && attendee.password === attendee.confirmPassword;
     }
 
@@ -623,7 +619,7 @@ export default function OnePageBookingCheckout() {
     1: !!selectedCourse,
     2: !!locationId,
     3: !!selectedDate && attendees > 0 && dateTimeConfirmed,
-    4: attendeeDetails.slice(0, attendees).every(a => isAttendeeComplete(a)) && photocardConfirmed.slice(0, attendees).every(c => c),
+    4: attendeeDetails.slice(0, attendees).every((a, index) => isAttendeeComplete(a, index)) && photocardConfirmed.slice(0, attendees).every(c => c),
     5: false, // Final section never auto-completes
   };
 
@@ -709,7 +705,7 @@ export default function OnePageBookingCheckout() {
 
   useEffect(() => {
     // Only expand section 5 if section 4 is truly complete (all attendees have complete details AND confirmed photocards)
-    const allAttendeesComplete = attendeeDetails.slice(0, attendees).every(a => isAttendeeComplete(a));
+    const allAttendeesComplete = attendeeDetails.slice(0, attendees).every((a, index) => isAttendeeComplete(a, index));
     const allPhotocardsConfirmed = photocardConfirmed.slice(0, attendees).every(c => c);
     const shouldBeExpanded = allAttendeesComplete && allPhotocardsConfirmed;
 
@@ -763,7 +759,7 @@ export default function OnePageBookingCheckout() {
     // Only proceed if we have a valid current index
     if (currentIndex >= 0 && currentIndex < attendees) {
       const currentAttendee = attendeeDetails[currentIndex];
-      const isCurrentComplete = isAttendeeComplete(currentAttendee);
+      const isCurrentComplete = isAttendeeComplete(currentAttendee, currentIndex);
       const isPhotocardConfirmed = photocardConfirmed[currentIndex];
 
       // Only auto-expand next attendee if BOTH conditions are met:
@@ -779,9 +775,79 @@ export default function OnePageBookingCheckout() {
     }
   }, [attendeeDetails, photocardConfirmed, expandedAttendeeIndex, attendees]);
 
-  // to scroll on id "attendee-1" when clicked on input with id "confirmPhotocard-1"
+  useEffect(() => {
+    const matchedEmail = getMatchedEmailForLookup(attendeeDetails[0]);
+
+    if (!matchedEmail) {
+      setFirstAttendeeUserLookup(current => current.status === 'idle' && current.email === ''
+        ? current
+        : { email: '', status: 'idle' });
+      return;
+    }
+
+    let isCancelled = false;
+    const lookupTimer = globalThis.setTimeout(async () => {
+      setFirstAttendeeUserLookup({ email: matchedEmail, status: 'checking' });
+
+      try {
+        const result = await authApi.checkUserExists(matchedEmail);
+        if (isCancelled) return;
+
+        setFirstAttendeeUserLookup({
+          email: matchedEmail,
+          status: result.exists ? 'exists' : 'available',
+        });
+      } catch {
+        if (isCancelled) return;
+
+        setFirstAttendeeUserLookup({
+          email: matchedEmail,
+          status: 'error',
+        });
+      }
+    }, 300);
+
+    return () => {
+      isCancelled = true;
+      globalThis.clearTimeout(lookupTimer);
+    };
+  }, [attendeeDetails[0]?.email, attendeeDetails[0]?.confirmEmail, getMatchedEmailForLookup]);
+
+  useEffect(() => {
+    setAttendeeDetails(prev => {
+      let hasChanges = false;
+
+      const next = prev.map((attendee, index) => {
+        const shouldClearRegistration = index > 0 || !canOfferFastCheckoutRegistration;
+
+        if (!shouldClearRegistration) {
+          return attendee;
+        }
+
+        if (!attendee.registerAsUser && !attendee.password && !attendee.confirmPassword) {
+          return attendee;
+        }
+
+        hasChanges = true;
+        return {
+          ...attendee,
+          registerAsUser: false,
+          password: '',
+          confirmPassword: '',
+        };
+      });
+
+      return hasChanges ? next : prev;
+    });
+  }, [canOfferFastCheckoutRegistration]);
+
+  // Scroll newly-expanded attendee cards into view after confirming the previous attendee.
   useEffect(() => {
     if (expandedAttendeeIndex <= 0) return;
+
+    if (sectionComplete[4]) {
+      return;
+    }
 
     const isAboveConfirmed = photocardConfirmed?.[expandedAttendeeIndex - 1] === true;
 
@@ -829,7 +895,7 @@ export default function OnePageBookingCheckout() {
         }
       }, 80);
     }
-  }, [expandedAttendeeIndex, photocardConfirmed]);
+  }, [expandedAttendeeIndex, photocardConfirmed, attendees, sectionComplete[4]]);
 
   // Reset attendees to 1 only when the user picks a DIFFERENT date (not on first selection from null)
   useEffect(() => {
@@ -863,7 +929,6 @@ export default function OnePageBookingCheckout() {
             theoryNumber: "",
             notes: "",
             registerAsUser: false,
-            isPrimaryUser: false,
             password: "",
             confirmPassword: "",
           });
@@ -1081,6 +1146,25 @@ export default function OnePageBookingCheckout() {
     initializeBooking();
   }, []);
 
+  // Fetch Terms & Conditions content
+  useEffect(() => {
+    const fetchTermsContent = async () => {
+      try {
+        const response = await fetch(`${BASE_URL}/cmspages/termsandconditions`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data?.page_content) {
+            setTermsContent(data.data.page_content);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch terms content:', error);
+      }
+    };
+
+    fetchTermsContent();
+  }, []);
+
   // Sync form data across tabs
   useEffect(() => {
     function handleStorageEvent(e: StorageEvent) {
@@ -1257,14 +1341,6 @@ export default function OnePageBookingCheckout() {
         setCourseEvents(availability);
         availabilityFetchedRef.current = { courseId: selectedCourse.id, locationId };
 
-        // Auto-jump to first month with available dates
-        if (availability && availability.length > 0) {
-          const firstAvailMonth = findFirstAvailableMonth(availability);
-          setCalendarMonthOffset(firstAvailMonth);
-        } else {
-          setCalendarMonthOffset(0);
-        }
-
         // Only auto-select first available date if there was a date parameter in URL
         const urlParams = new URLSearchParams(window.location.search);
         const dateParam = urlParams.get('date');
@@ -1307,6 +1383,25 @@ export default function OnePageBookingCheckout() {
     },
     [attendeeDetails, attendees]
   );
+
+  // Reset payment intent whenever any booking-relevant field changes so that
+  // a stale booking/payment intent is never reused after the user edits their selection.
+  const isFirstPaymentResetRender = useRef(true);
+  useEffect(() => {
+    if (isFirstPaymentResetRender.current) {
+      isFirstPaymentResetRender.current = false;
+      return;
+    }
+    setBookingRef('');
+    setPaymentKey(k => k + 1);
+  }, [
+    selectedCourse?.id,
+    locationId,
+    selectedCourseEventId,
+    attendees,
+    pricingDeps,
+    promoData,
+  ]);
 
   useEffect(() => {
     const calculatePricing = async () => {
@@ -1536,7 +1631,9 @@ export default function OnePageBookingCheckout() {
         }
       }
 
-      if (attendee.registerAsUser) {
+      const canRegisterAttendee = idx === 0 && canOfferFastCheckoutRegistration && attendee.registerAsUser;
+
+      if (canRegisterAttendee) {
         if (!attendee.password.trim()) {
           toast.error(`Attendee ${idx + 1}: Password cannot be empty or contain only spaces`);
           return;
@@ -1600,9 +1697,9 @@ export default function OnePageBookingCheckout() {
         location_id: locationId,
         selected_date: selectedDate!.toISOString().split('T')[0],
         promo_code: promoData?.valid ? promoCode.trim() : undefined,
-        attendees: attendeeDetails.slice(0, attendees).map((attendee) => ({
-          first_name: attendee.firstName,
-          sur_name: attendee.lastName,
+        attendees: attendeeDetails.slice(0, attendees).map((attendee, index) => ({
+          first_name: toProperCase(attendee.firstName),
+          sur_name: toProperCase(attendee.lastName),
           date_of_birth: attendee.dateOfBirth,
           email: attendee.email,
           contact1: attendee.phone,
@@ -1611,8 +1708,9 @@ export default function OnePageBookingCheckout() {
           license_type: Number(attendee.licenseType) || 1,
           vehicle_type: Number(attendee.vehicleType) || 0,
           theory_number: attendee.theoryNumber || undefined,
-          password: attendee.registerAsUser && attendee.password ? encryptPassword(attendee.password) : undefined,
-          is_primary_user: attendee.isPrimaryUser || false,
+          password: index === 0 && canOfferFastCheckoutRegistration && attendee.registerAsUser && attendee.password
+            ? encryptPassword(attendee.password)
+            : undefined,
           notes: attendee.notes || undefined,
         })),
         photocard_confirmed: photocardConfirmed.slice(0, attendees).every(c => c),
@@ -1826,8 +1924,6 @@ export default function OnePageBookingCheckout() {
                   >
                     ← {(() => {
                       const prevMonth = new Date();
-                      // Avoid end-of-month rollover (e.g., 31 Mar -> add 1 month => 1 May)
-                      prevMonth.setDate(1);
                       prevMonth.setMonth(prevMonth.getMonth() + calendarMonthOffset - 1);
                       return prevMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
                     })()}
@@ -1835,8 +1931,6 @@ export default function OnePageBookingCheckout() {
                   <span className="text-sm font-semibold text-slate-900">
                     {(() => {
                       const currentMonth = new Date();
-                      // Avoid end-of-month rollover
-                      currentMonth.setDate(1);
                       currentMonth.setMonth(currentMonth.getMonth() + calendarMonthOffset);
                       return currentMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
                     })()}
@@ -1849,9 +1943,7 @@ export default function OnePageBookingCheckout() {
                   >
                     {(() => {
                       const nextMonth = new Date();
-                      // Avoid end-of-month rollover
-                      nextMonth.setDate(1);
-                      nextMonth.setMonth(nextMonth.getMonth() + calendarMonthOffset + 1);
+                      nextMonth.setMonth(nextMonth.getMonth() + calendarMonthOffset);
                       return nextMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
                     })()} →
                   </button>
@@ -1874,8 +1966,6 @@ export default function OnePageBookingCheckout() {
                       {weeks.flat().map((cell, idx) => {
                         const isSelected = selectedDate && new Date(selectedDate).toDateString() === cell.date.toDateString();
                         const currentMonth = new Date();
-                        // Avoid end-of-month rollover when computing the current month for comparison
-                        currentMonth.setDate(1);
                         currentMonth.setMonth(currentMonth.getMonth() + calendarMonthOffset);
                         const inCurrentMonth = cell.date.getMonth() === currentMonth.getMonth() && cell.date.getFullYear() === currentMonth.getFullYear();
                         return (
@@ -2191,6 +2281,20 @@ export default function OnePageBookingCheckout() {
                 </div>
               )}
 
+              {!isAuthenticated && firstAttendeeUserLookup.status === 'exists' && firstAttendeeUserLookup.email && (
+                <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-sm text-amber-900">
+                    An account already exists for <span className="font-medium">{firstAttendeeUserLookup.email}</span>.{' '}
+                    <a
+                      href={`/auth/forgot-password?email=${encodeURIComponent(firstAttendeeUserLookup.email)}`}
+                      className="font-medium underline underline-offset-2 hover:text-amber-700"
+                    >
+                      Forgot password?
+                    </a>
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-4">
                 {attendeeDetails.slice(0, attendees).map((attendee, index) => {
                   // Check if this attendee's license number is used by another attendee
@@ -2208,16 +2312,6 @@ export default function OnePageBookingCheckout() {
                       onChange={(field, value) => {
                         setAttendeeDetails(prev => {
                           const newDetails = [...prev];
-                          // If setting isPrimaryUser to true, unset it for all others
-                          if (field === 'isPrimaryUser' && value === true) {
-                            const previousPrimaryIndex = newDetails.findIndex((a, i) => i !== index && a.isPrimaryUser);
-                            if (previousPrimaryIndex !== -1) {
-                              toast.warning(`Attendee ${index + 1} is now the Primary User. Attendee ${previousPrimaryIndex + 1} is no longer considered as Primary.`);
-                            }
-                            newDetails.forEach((a, i) => {
-                              if (i !== index) a.isPrimaryUser = false;
-                            });
-                          }
                           newDetails[index] = { ...newDetails[index], [field]: value };
                           return newDetails;
                         });
@@ -2234,14 +2328,14 @@ export default function OnePageBookingCheckout() {
                           return;
                         }
                         // Always allow going back to a previously completed attendee for edits
-                        if (index < expandedAttendeeIndex || isAttendeeComplete(attendeeDetails[index])) {
+                        if (index < expandedAttendeeIndex || isAttendeeComplete(attendeeDetails[index], index)) {
                           manualToggleRef.current = true;
                           setExpandedAttendeeIndex(index);
                           return;
                         }
                         // Gate: only allow expanding forward if all previous attendees are complete
                         for (let i = 0; i < index; i++) {
-                          if (!isAttendeeComplete(attendeeDetails[i]) || !photocardConfirmed[i]) {
+                          if (!isAttendeeComplete(attendeeDetails[i], i) || !photocardConfirmed[i]) {
                             toast.error(`Please complete all required fields for Attendee ${i + 1} before proceeding.`);
                             return;
                           }
@@ -2249,14 +2343,16 @@ export default function OnePageBookingCheckout() {
                         manualToggleRef.current = true;
                         setExpandedAttendeeIndex(index);
                       }}
-                      isComplete={isAttendeeComplete(attendee)}
+                      isComplete={isAttendeeComplete(attendee, index)}
                       photocardConfirmed={photocardConfirmed[index] || false}
                       onPhotocardChange={(confirmed) => handlePhotocardChange(index, confirmed)}
                       licenseValidated={licenseValidated[index] || false}
                       duplicateLicenseIndex={duplicateLicenseIndex >= 0 ? duplicateLicenseIndex : null}
                       selectedDate={selectedDate}
-                      disabled={index > 0 && !attendeeDetails.slice(0, index).every((a, i) => isAttendeeComplete(a) && photocardConfirmed[i])}
+                      disabled={index > 0 && !attendeeDetails.slice(0, index).every((a, i) => isAttendeeComplete(a, i) && photocardConfirmed[i])}
                       isLoggedIn={isAuthenticated}
+                      canShowRegisterAsUserOption={index === 0 && canOfferFastCheckoutRegistration}
+                      emailCheckState={index === 0 ? firstAttendeeUserLookup.status : 'idle'}
                     />
                   );
                 })}
@@ -2370,12 +2466,12 @@ export default function OnePageBookingCheckout() {
 
               <div className="mt-4 flex items-start gap-4">
                 <input id="terms" type="checkbox" className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} />
-                <label htmlFor="terms" className="text-sm text-slate-700">I agree to the <a className="text-teal-700 underline-offset-2 hover:underline" href="#">Terms & Conditions</a> and <a className="text-teal-700 underline-offset-2 hover:underline" href="#">Privacy Policy</a>.</label>
+                <label htmlFor="terms" className="text-sm text-slate-700">I have read <button type="button" onClick={(e) => { e.preventDefault(); setShowCourseInfo(true); setSelectedCourseInfo(selectedCourse); }} className="text-teal-700 underline-offset-2 hover:underline">Course Description</button> and agree to the <button type="button" onClick={(e) => { e.preventDefault(); setShowTermsModal(true); }} className="text-teal-700 underline-offset-2 hover:underline">Terms & Conditions</button></label>
               </div>
 
               <div className="mt-6">
                 {acceptTerms ? (
-                  <Elements stripe={stripePromise}>
+                  <Elements key={paymentKey} stripe={stripePromise}>
                     <StripePaymentForm
                       onCreatePaymentIntent={handleCreateBooking}
                       onSuccess={(refs) => {
@@ -2395,7 +2491,7 @@ export default function OnePageBookingCheckout() {
                   </Elements>
                 ) : (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                    Please accept the Terms & Conditions and Privacy Policy to proceed to payment.
+                    Please accept the Course Description and Terms & Conditions to proceed to payment.
                   </div>
                 )}
               </div>
@@ -2559,6 +2655,72 @@ export default function OnePageBookingCheckout() {
 
             {/* Modal Footer */}
             <div className="p-6 border-t border-slate-200">
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Terms & Conditions Modal */}
+      {showTermsModal && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowTermsModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between p-6 border-b border-slate-200">
+              <div className="flex-1">
+                <h3 className="text-xl font-semibold text-slate-900">
+                  Terms & Conditions
+                </h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Please read our terms carefully
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="ml-4 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {termsContent ? (
+                <div
+                  className="prose prose-sm sm:prose max-w-none
+                    prose-headings:text-slate-900 prose-headings:font-semibold
+                    prose-p:text-slate-700 prose-p:leading-relaxed
+                    prose-ul:text-slate-700 prose-ol:text-slate-700
+                    prose-li:text-slate-700
+                    prose-strong:text-slate-900 prose-strong:font-semibold
+                    prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+                    [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5"
+                  dangerouslySetInnerHTML={{ __html: termsContent }}
+                />
+              ) : (
+                <div className="text-center py-8 text-slate-500">
+                  <p>Loading terms and conditions...</p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

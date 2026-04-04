@@ -23,6 +23,11 @@ export const authApi = {
     return response.data;
   },
 
+  checkUserExists: async (email: string) => {
+    const response = await api.post<ApiResponse<{ exists: boolean; email: string }>>('/auth/check-user-exists', { email });
+    return response.data.data;
+  },
+
   sendOtp: async (email: string) => {
     const response = await api.post<ApiResponse<any>>('/auth/send-otp', { email });
     return response.data;
