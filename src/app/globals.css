@@ -306,6 +306,15 @@ input[type="date"]::-moz-calendar-picker-indicator {
   @apply list-disc pl-5 text-gray-700;
 }
 
+.contact-info-tel-email p{
+  margin: 0;
+}
+.contact-info-tel-email span{
+  min-width: 100px;
+      display: inline-block;
+}
+
+
 
 @media (max-width:767px) {
       h1{
@@ -317,4 +326,14 @@ input[type="date"]::-moz-calendar-picker-indicator {
       .about-sec-home h2{
         font-size: 1.5rem;
       }
+}
+@media (max-width:639px) {
+.contact-info-table tr {
+    display: block;
+  }
+
+  .contact-info-table td {
+    display: block;
+    width: 100%;
+  }
 }

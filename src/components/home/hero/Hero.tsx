@@ -177,10 +177,10 @@ export default function Hero({ data }: { data: HeroData }) {
     <section className="relative w-full overflow-hidden">
       <div className="relative flex flex-wrap lg:flex-nowrap">
       {/* Background Images */}
-      <div className={`relative w-full lg:w-2/3 ${data.search ? 'min-h-[300px] md:min-h-[400px] xl:min-h-[550px]' : 'min-h-[300px] md:min-h-[400px] xl:min-h-[500px]'}`}>
+      <div className={`relative w-full lg:w-2/3 min-h-[300px] md:min-h-[400px] xl:min-h-[550px]`}>
         {hasMultipleImages ? (
           <>
-            <div className="absolute inset-0 bg-black/50 z-10" />
+            
             {data.backgroundImages.map((image, index) => (
               <div
                 key={index}

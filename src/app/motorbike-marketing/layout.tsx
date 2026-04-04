@@ -1,7 +1,7 @@
 // Simple placeholder components
 function Hero() {
   return (
-     <div className="bg-white relative h-[400px] md:h-[548px] flex items-center from-blue-600 to-blue-800 text-white">
+     <div className="bg-white relative min-h-[300px] md:min-h-[400px] xl:min-h-[550px] flex items-center from-blue-600 to-blue-800 text-white">
           <div className="z-0 absolute inset-0 transition-opacity bg-black duration-1000 opacity-50"></div>
           <div className="z-10 w-11/12 sm:max-w-[562px] ml-auto mb-2 bg-white/70 py-6 px-4  md:px-10 md:py-7 text-center radius20-left radius20-left-bottom text-center">
             <div className="text26 text-xl font-semibold text-red-600">

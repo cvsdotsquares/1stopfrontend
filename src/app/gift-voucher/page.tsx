@@ -267,7 +267,7 @@ export default function GiftVoucherPage() {
             <div className="mt-6 flex justify-end">
               <button
                 onClick={handlePreview}
-                className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition font-semibold shadow-sm"
+                className="px-6 py-3 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-blue-600 transition font-semibold shadow-sm"
               >
                 Proceed
               </button>

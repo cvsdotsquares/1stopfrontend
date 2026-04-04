@@ -326,12 +326,12 @@ export default function AttendeeForm({
     if (attendee.password !== attendee.confirmPassword) incompleteReasons.push('Password and confirm password must match');
   }
   return (
-    <div id ={`attendee-${index}`} className={`border rounded-xl overflow-hidden ${disabled ? 'border-slate-100 bg-slate-50/60 opacity-70' : 'border-slate-200 bg-slate-50'}`}>
+    <div id ={`attendee-${index}`} className={`border rounded-xl overflow-hidden ${disabled ? 'border-slate-100 bg-white opacity-70' : 'border-slate-200 bg-white'}`}>
       <button
         type="button"
         onClick={disabled ? undefined : onToggle}
         disabled={disabled}
-        className={`w-full flex items-center justify-between p-4 transition ${
+        className={`w-full flex items-center justify-between p-4 bg-slate-50 transition ${
           disabled ? 'cursor-not-allowed' : 'hover:bg-slate-100 cursor-pointer'
         }`}
       >
@@ -371,7 +371,7 @@ export default function AttendeeForm({
       </button>
 
       <div
-        className="p-6 pt-0 transition-all duration-500 ease-in-out overflow-hidden"
+        className="p-6 pt-3 transition-all duration-500 ease-in-out overflow-hidden"
         style={{ maxHeight: isExpanded ? '1200px' : '0px', padding: isExpanded ? undefined : '0px' }}
         aria-hidden={!isExpanded}
       >

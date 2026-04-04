@@ -240,7 +240,7 @@ function AllLocationsContent() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <div className="bg-white relative h-[400px] md:h-[548px] flex items-center from-blue-600 to-blue-800 text-white">
+      <div className="bg-white relative min-h-[300px] md:min-h-[400px] xl:min-h-[550px] flex items-center from-blue-600 to-blue-800 text-white">
           <div className="z-0 absolute inset-0 transition-opacity bg-black duration-1000 opacity-50">
             <img src="/all-location/location-banner.png" alt="All Locations Hero" className="w-full h-full object-cover object-center" />
           </div>
