@@ -30,10 +30,10 @@ export default function DynamicBanner({
   // Banner Type 1 = Static Banner
   if (bannerType === 1) {
     // Construct full URL for static image
-    const fullImageUrl = staticImage 
-      ? `https://1stopinstruction.com/uploads/${staticImage}`
+    const fullImageUrl = staticImage
+      ? `${process.env.NEXT_PUBLIC_FILES_URL}/uploads/${staticImage}`
       : undefined;
-      
+
     return (
       <StaticBanner
         backgroundImage={fullImageUrl}

@@ -3,9 +3,11 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useAuthStore } from '@/store/auth';
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
+  const { isAuthenticated } = useAuthStore();
   const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [bookingDetails, setBookingDetails] = useState<any>(null);
   const [attendees, setAttendees] = useState<any[]>([]);
@@ -201,7 +203,8 @@ function PaymentSuccessContent() {
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href="/dashboard"
+              href={isAuthenticated ? '/dashboard' : '/auth/login'}
+              title={isAuthenticated ? undefined : 'Please login'}
               className="inline-flex items-center justify-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-teal-700 transition"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

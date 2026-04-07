@@ -49,7 +49,7 @@ export default function Hero({ data }: { data: HeroData }) {
   // Get current background image
   const getCurrentBackground = () => {
     if (!data.backgroundImages || data.backgroundImages.length === 0) {
-      return '/home/hero-motorbike.jpg';
+      return '/default_hero_banner.jpg';
     }
     const currentImage = data.backgroundImages[currentImageIndex];
     return `${process.env.NEXT_PUBLIC_FILES_URL || ''}${currentImage.src}`;

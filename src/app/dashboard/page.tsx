@@ -13,6 +13,12 @@ interface DashboardData {
   recentBookings: Array<{
     id: string;
     courseTitle: string;
+    type_of_book: any;
+    first_name: string;
+    sur_name: string;
+    event_start_time: string;
+    payment_due: any;
+    admin_payment_received: any;
     date: string;
     status: number;
     amount: number;
@@ -24,7 +30,7 @@ interface DashboardData {
     created: string;
   }>;
   upcomingCourses: Array<{ id: string; title: string; date: string; location: string }>;
-  giftVouchers: Array<{ id: number; voucherRef: string; value: number; courseName: string; recipientName: string; validTill: string; status: string }>;
+  giftVouchers: Array<{ id: number; voucherRef: string; value: number; courseName: string; recipientName: string; validTill: string; status: string; redeemed: string }>;
 }
 
 export default function Dashboard() {
@@ -112,10 +118,15 @@ export default function Dashboard() {
               },
               recentBookings: (apiData.recent_bookings || []).map((b: any) => ({
                 id: b.id,
+                Name: b.first_name + ' ' + b.sur_name,
                 courseTitle: b.course_name,
+                type_of_book: b.type_of_book,
                 date: b.event_date,
                 status: b.status,
                 amount: b.total_amount,
+                admin_payment_received: b.admin_payment_received,
+                payment_due: b.payment_due,
+                event_start_time: b.event_start_time,
                 locationName: b.location_name,
                 address1: b.address1,
                 address2: b.address2,
@@ -127,7 +138,7 @@ export default function Dashboard() {
                 id: c.booking_id,
                 title: c.course_name,
                 date: c.event_date,
-                location: `${c.location_name || ''}, ${c.postcode || ''}`.trim().replace(/^,\s*|,\s*$/g, '')
+                location: `${c.location_name || ''}, ${c.postcode || ''}`.trim().replaceAll(/^,\s*|,\s*$/g, '')
               })),
               giftVouchers: (apiData.gift_vouchers || []).map((v: any) => ({
                 id: v.id,
@@ -136,7 +147,8 @@ export default function Dashboard() {
                 courseName: v.course_name,
                 recipientName: v.recipient_name,
                 validTill: v.valid_till,
-                status: v.status
+                status: v.status,
+                redeemed: v.redeemed
               }))
             });
           }
@@ -160,6 +172,13 @@ export default function Dashboard() {
     return null;
   }
 
+  const currentGiftVouchers = data.giftVouchers.filter(voucher =>
+    String(voucher.redeemed || '').trim().toLowerCase() !== 'yes'
+  );
+  const expiredGiftVouchers = data.giftVouchers.filter(voucher =>
+    String(voucher.redeemed || '').trim().toLowerCase() === 'yes'
+  );
+
   return (
     <div className="container mx-auto p-6">
       <div className="mb-8 flex items-center justify-between">
@@ -173,7 +192,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-gray-600">Total Bookings</CardTitle>
@@ -200,77 +219,36 @@ export default function Dashboard() {
             <div className="text-2xl font-bold">£{data.stats.totalSpent}</div>
           </CardContent>
         </Card>
-      </div>
+      </div> */}
 
       {/* Recent Bookings & Upcoming Courses */}
+      <h2 className="text-2xl font-semibold mb-4">Courses</h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 relative">
         <div className="overflow-visible">
         <Card>
           <CardHeader>
-            <CardTitle>Recent Bookings</CardTitle>
+            <CardTitle>Previous Bookings</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4 max-h-80 overflow-y-auto">
               {data.recentBookings.map(booking => (
-                <div key={booking.id} className="group relative flex justify-between items-center border-b pb-2 hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
-                  <div>
-                    <p className="text-sm font-medium">{booking.courseTitle}</p>
-                    <p className="text-xs text-gray-500">{new Date(booking.date).toLocaleDateString('en-GB')}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold">£{booking.amount}</p>
-                    <p className="text-xs text-gray-500">{booking.status === 1 ? 'Confirmed' : booking.status === 3 ? 'Pending' : 'Status ' + booking.status}</p>
-                  </div>
-
-                  {/* Tooltip - using fixed positioning */}
-                  <div className="fixed w-80 bg-white border border-gray-200 rounded-lg shadow-2xl p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none group-hover:pointer-events-auto" style={{ zIndex: 9999, transform: 'translateY(10px)' }}>
-                    <h4 className="font-semibold text-sm mb-2 border-b pb-2">Booking Details</h4>
-                    <div className="space-y-1 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Booking ID:</span>
-                        <span className="font-medium">#{booking.id}</span>
+                <Link key={booking.id} href={`/dashboard/bookings/${booking.id}`} className="block">
+                  <div className="flex justify-between items-center border-b pb-2 hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
+                    <div>
+                      <p className="text-sm font-medium">{booking.courseTitle}</p>
+                      <p className="text-xs text-gray-500">{new Date(booking.date).toLocaleDateString('en-GB')}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-sm font-bold">£{booking.amount}</p>
+                        {/* <p className="text-xs text-gray-500">{booking.status === 1 ? 'Confirmed' : booking.status === 3 ? 'Pending' : 'Status ' + booking.status}</p> */}
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Course:</span>
-                        <span className="font-medium">{booking.courseTitle}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Event Date:</span>
-                        <span className="font-medium">{new Date(booking.date).toLocaleDateString('en-GB')}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Location:</span>
-                        <span className="font-medium">{booking.locationName}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Address:</span>
-                        <span className="font-medium text-right">{booking.address1}, {booking.address2}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Postcode:</span>
-                        <span className="font-medium">{booking.postcode}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Amount:</span>
-                        <span className="font-medium">£{booking.amount}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Status:</span>
-                        <span className="font-medium">{booking.status === 1 ? 'Confirmed' : booking.status === 3 ? 'Pending' : 'Status ' + booking.status}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Booked On:</span>
-                        <span className="font-medium">{new Date(booking.created).toLocaleDateString('en-GB')}</span>
-                      </div>
-                      {booking.transactionId && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Transaction:</span>
-                          <span className="font-medium text-xs truncate max-w-[180px]" title={booking.transactionId}>{booking.transactionId}</span>
-                        </div>
-                      )}
+                      <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </CardContent>
@@ -279,15 +257,22 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Upcoming Courses</CardTitle>
+            <CardTitle>Upcoming Bookings</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4 max-h-80 overflow-y-auto">
               {data.upcomingCourses.map(course => (
-                <div key={course.id} className="border-b pb-2">
-                  <p className="text-sm font-medium">{course.title}</p>
-                  <p className="text-xs text-gray-500">{new Date(course.date).toLocaleDateString('en-GB')} - {course.location}</p>
-                </div>
+                <Link key={course.id} href={`/dashboard/bookings/${course.id}`} className="block">
+                  <div className="flex justify-between items-center border-b pb-2 hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
+                    <div>
+                      <p className="text-sm font-medium">{course.title}</p>
+                      <p className="text-xs text-gray-500">{new Date(course.date).toLocaleDateString('en-GB')} - {course.location}</p>
+                    </div>
+                    <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </Link>
               ))}
             </div>
           </CardContent>
@@ -295,29 +280,71 @@ export default function Dashboard() {
       </div>
 
       {/* Gift Vouchers */}
-      {data.giftVouchers.length > 0 && (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Gift Vouchers</CardTitle>
+            <CardTitle>Current Gift Vouchers</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4 max-h-80 overflow-y-auto">
-              {data.giftVouchers.map(voucher => (
-                <div key={voucher.id} className="flex justify-between items-center border-b pb-2">
-                  <div>
-                    <p className="text-sm font-medium">{voucher.voucherRef}</p>
-                    <p className="text-xs text-gray-500">{voucher.courseName} - {voucher.recipientName}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold">£{voucher.value}</p>
-                    <p className="text-xs text-gray-500">Valid till: {new Date(voucher.validTill).toLocaleDateString('en-GB')}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {currentGiftVouchers.length === 0 ? (
+              <p className="text-sm text-gray-500">No current gift vouchers.</p>
+            ) : (
+              <div className="space-y-4 max-h-80 overflow-y-auto">
+                {currentGiftVouchers.map(voucher => (
+                  <Link key={voucher.id} href={`/dashboard/gift-vouchers/${voucher.id}`} className="block">
+                    <div className="flex justify-between items-center border-b pb-2 hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
+                      <div>
+                        <p className="text-sm font-medium">{voucher.voucherRef}</p>
+                        <p className="text-xs text-gray-500">{voucher.courseName} - {voucher.recipientName}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-sm font-bold">£{voucher.value}</p>
+                        </div>
+                        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Expired Gift Vouchers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {expiredGiftVouchers.length === 0 ? (
+              <p className="text-sm text-gray-500">No expired gift vouchers.</p>
+            ) : (
+              <div className="space-y-4 max-h-80 overflow-y-auto">
+                {expiredGiftVouchers.map(voucher => (
+                  <Link key={voucher.id} href={`/dashboard/gift-vouchers/${voucher.id}`} className="block">
+                    <div className="flex justify-between items-center border-b pb-2 hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
+                      <div>
+                        <p className="text-sm font-medium">{voucher.voucherRef}</p>
+                        <p className="text-xs text-gray-500">{voucher.courseName} - {voucher.recipientName}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-sm font-bold">£{voucher.value}</p>
+                        </div>
+                        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

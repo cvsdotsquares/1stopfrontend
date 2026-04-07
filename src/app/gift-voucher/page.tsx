@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
@@ -29,6 +29,7 @@ export default function GiftVoucherPage() {
   const [voucherRef, setVoucherRef] = useState('');
   const [templateData, setTemplateData] = useState<TemplateData | null>(null);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(true);
+  const pageWrapperRef = useRef<HTMLDivElement | null>(null);
 
   // Fetch template data on component mount
   useEffect(() => {
@@ -48,6 +49,33 @@ export default function GiftVoucherPage() {
 
     fetchTemplate();
   }, []);
+
+  useEffect(() => {
+    if (step !== 2) {
+      return;
+    }
+
+    const scrollPageWrapperIntoView = () => {
+      const target = pageWrapperRef.current;
+      if (!target) {
+        return;
+      }
+
+      const absoluteTop = globalThis.scrollY + target.getBoundingClientRect().top - 24;
+      globalThis.scrollTo({
+        top: Math.max(0, absoluteTop),
+        behavior: 'smooth',
+      });
+    };
+
+    const immediateTimer = globalThis.setTimeout(scrollPageWrapperIntoView, 0);
+    const followUpTimer = globalThis.setTimeout(scrollPageWrapperIntoView, 250);
+
+    return () => {
+      globalThis.clearTimeout(immediateTimer);
+      globalThis.clearTimeout(followUpTimer);
+    };
+  }, [step]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -110,7 +138,7 @@ export default function GiftVoucherPage() {
   const total = voucherTotal;
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8">
+    <div ref={pageWrapperRef} className="min-h-screen bg-slate-50 py-8">
       <div className="mx-auto max-w-4xl px-4">
         {/* Header */}
         <div className="mb-8 text-center">
