@@ -88,7 +88,7 @@ export default function CarouselBanner({
         <div className="relative h-[400px]">
           <div
             className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url('https://1stopinstruction.com/uploads/${item.carousel_banner}')` }}
+            style={{ backgroundImage: `url('${process.env.PHP_SITE_URL}/uploads/${item.carousel_banner}')` }}
           >
             <div className="absolute inset-0 bg-black/40"></div>
           </div>
@@ -158,7 +158,7 @@ export default function CarouselBanner({
             >
               <div
                 className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                style={{ backgroundImage: `url('https://1stopinstruction.com/uploads/${item.carousel_banner}')` }}
+                style={{ backgroundImage: `url('${process.env.PHP_SITE_URL}/uploads/${item.carousel_banner}')` }}
               >
                 <div className="absolute inset-0 bg-black/40"></div>
               </div>
