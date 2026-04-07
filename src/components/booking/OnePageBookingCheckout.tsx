@@ -2188,7 +2188,7 @@ export default function OnePageBookingCheckout() {
                         document.getElementById('section-4')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                       }, 150);
                     }}
-                    className="w-full px-6 py-3 bg-teal-600 text-white rounded-xl font-medium hover:bg-teal-700 transition"
+                    className="w-full cursor-pointer px-6 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-blue-600 transition"
                   >
                     Confirm Date & Time
                   </button>

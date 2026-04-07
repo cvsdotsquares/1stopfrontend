@@ -197,7 +197,7 @@ export function HtmlNavigationLink({ href, className, children, onClick }: Navig
     <Link
       href={href}
       className={cn(
-        "text-black text-sm xl:text-base hover:text-white hover:bg-blue-600 px-2 xl:px-4 py-3 rounded-md",
+        "text-black text-sm xl:text-base hover:text-white hover:bg-blue-600 px-1 xl:px-4 py-3 rounded-md",
         isActive && "text-white bg-blue-600 active",
         className
       )}
@@ -246,7 +246,7 @@ export function HtmlNavigationLinkWithDropdown({ href, className, children, acti
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-white hover:bg-blue-600 px-2 xl:px-3 py-3 rounded-md",
+        "inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-white hover:bg-blue-600 px-1 xl:px-3 py-3 rounded-md",
         isActive && "text-white bg-blue-600 active",
         className
       )}
