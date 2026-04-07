@@ -218,6 +218,7 @@ export default function Header() {
 
   return (
     <header className="bg-white shadow-sm relative z-40 min-h-[160px] md:min-h-[145px]">
+      <div className="mx-auto max-w-[1400px] relative xl:px-3">
       {/* Top bar */}
         <div className="flex italic bg-gray-100 justify-center text-center text-sm px-2 py-3 md:hidden">“Roadcraft Professionals For All Categories Of Driving”</div>
         <div className="w-full flex justify-end pl-[110px] md:pl-[140px]">
@@ -227,12 +228,12 @@ export default function Header() {
             <div className="flex items-center space-x-4">
               {isAuthenticated ? (
                 <div className="flex md:items-center space-y-2 flex-wrap justify-end">
-                  <span>Welcome, {user?.first_name}</span>
+                  <span className="text-sm">Welcome, {user?.first_name}</span>
                   <div className="inline-block">
-                    <Link href="/bookings" className="ml-3  inline-block px-2 py-1 min-w-[75px] bg-red-600 text-center text-white rounded-tl-lg rounded-br-lg hover:bg-blue-600 text-nowrap border border-red-600 hover:border-blue-600">Book Online Now</Link>
+                    <Link href="/bookings" className="ml-3 text-sm inline-block px-2 py-1 min-w-[75px] bg-red-600 text-center text-white rounded-tl-lg rounded-br-lg hover:bg-blue-600 text-nowrap border border-red-600 hover:border-blue-600">Book Online Now</Link>
                   </div>
-                  <Link href="/dashboard" className="ml-3  border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Dashboard</Link>
-                  <button onClick={logout} className="ml-3 mb-2 border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Logout</button>
+                  <Link href="/dashboard" className="ml-3 text-sm border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Dashboard</Link>
+                  <button onClick={logout} className="ml-3 text-sm mb-2 border border-blue-600 px-2 py-1 min-w-[75px] border-solid text-center hover:bg-blue-600 hover:text-white">Logout</button>
                 </div>
               ) : (
                 <div className="flex items-center gap-3 text-blue-600 text-sm flex-wrap md:flex-nowrap justify-end">
@@ -253,7 +254,7 @@ export default function Header() {
       <div className="w-full px-3 ">
         <div className="flex justify-end lg:justify-between items-center pt-0 pb-2 md:py-4 pl-[130px]">
           {/* Logo */}
-          <Link href="/" className="flex items-center flex-shrink-0 absolute max-w-[100px] md:max-w-[125px] top-[50px] md:top-2 left-2">
+          <Link href="/" className="flex items-center flex-shrink-0 absolute max-w-[100px] md:max-w-[125px] top-[50px] md:top-2 left-2 xl:left-6">
             <Image
             src="/logo.png"
             alt="Logo"
@@ -349,6 +350,7 @@ export default function Header() {
             </Button>
           )}
         </HtmlMobileNavigation>
+      </div>
       </div>
     </header>
   );

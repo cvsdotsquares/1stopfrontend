@@ -205,11 +205,11 @@ interface SectionProps {
 
 function Section({ index, title, subtitle, children, complete, collapsible = true, open, onToggle, expandDisabled = false }: SectionProps) {
   return (
-    <section id={`section-${index}`} className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex items-start gap-4">
+    <section id={`section-${index}`} className="relative rounded-2xl border border-slate-200 bg-white p-3 md:p-6 shadow-sm">
+      <div className="flex items-start gap-2 md:gap-4">
         <div className="flex flex-col items-center">
           <div
-            className={`h-10 w-10 shrink-0 rounded-full border-2 flex items-center justify-center text-sm font-semibold transition-all duration-300 ${complete ? "border border-gray-300 text-white bg-blue-600" : "border-blue-600 text-blue-600"
+            className={`h-7 w-7 md:h-10 md:w-10 shrink-0 rounded-full border-2 flex items-center justify-center text-sm font-semibold transition-all duration-300 ${complete ? "border border-gray-300 text-white bg-blue-600" : "border-blue-600 text-blue-600"
               }`}
             aria-hidden
           >
@@ -282,7 +282,7 @@ function RadioCard({ checked, onChange, onClick, title, caption, right, disabled
       type="button"
       onClick={handleClick}
       disabled={disabled}
-      className={`w-full rounded-xl border p-4 text-left transition-all ${disabled ? 'cursor-not-allowed opacity-60' : 'hover:shadow-sm'} focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${checked ? "border-green-500 bg-green-50" : "border-slate-200 bg-white"
+      className={`w-full rounded-xl border p-4 pr-8 text-left transition-all ${disabled ? 'cursor-not-allowed opacity-60' : 'hover:shadow-sm'} focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${checked ? "border-green-500 bg-green-50" : "border-slate-200 bg-white"
         }`}
       aria-pressed={!!checked}
       aria-disabled={disabled ? true : undefined}
@@ -1920,7 +1920,7 @@ export default function OnePageBookingCheckout() {
                     type="button"
                     onClick={() => setCalendarMonthOffset(Math.max(0, calendarMonthOffset - 1))}
                     disabled={calendarMonthOffset === 0}
-                    className="px-3 py-1.5 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-1.5 md:px-3 py-1.5 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     ← {(() => {
                       const prevMonth = new Date();
@@ -1928,7 +1928,7 @@ export default function OnePageBookingCheckout() {
                       return prevMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
                     })()}
                   </button>
-                  <span className="text-sm font-semibold text-slate-900">
+                  <span className="text-sm font-semibold text-slate-900 text-center">
                     {(() => {
                       const currentMonth = new Date();
                       currentMonth.setMonth(currentMonth.getMonth() + calendarMonthOffset);
@@ -1939,7 +1939,7 @@ export default function OnePageBookingCheckout() {
                     type="button"
                     onClick={() => setCalendarMonthOffset(calendarMonthOffset + 1)}
                     disabled={calendarMonthOffset >= 2}
-                    className="px-3 py-1.5 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-1.5 md:px-3 py-1.5 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {(() => {
                       const nextMonth = new Date();
