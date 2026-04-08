@@ -625,6 +625,16 @@ export default function OnePageBookingCheckout() {
 
   const canPayNow = sectionComplete[1] && sectionComplete[2] && sectionComplete[3] && sectionComplete[4];
 
+  const paymentBlockingMessages: string[] = [];
+  if (!selectedDate) {
+    paymentBlockingMessages.push('Please select a course date.');
+  } else if (!dateTimeConfirmed) {
+    paymentBlockingMessages.push('You changed the course date. Please click "Confirm Date & Time" in Step 3 to continue.');
+  }
+  if (!sectionComplete[4]) {
+    paymentBlockingMessages.push('Please complete all attendee details and photocard confirmations in Step 4.');
+  }
+
   // Check if all previous sections are complete
   const allPreviousSectionsComplete = (sectionIndex: number) => {
     for (let i = 1; i < sectionIndex; i++) {
@@ -2472,29 +2482,42 @@ export default function OnePageBookingCheckout() {
 
               <div className="mt-6">
                 {acceptTerms ? (
-                  <Elements key={paymentKey} stripe={stripePromise}>
-                    <StripePaymentForm
-                      onCreatePaymentIntent={handleCreateBooking}
-                      onSuccess={(refs) => {
-                        window.location.href = `/bookings/payment-success?refs=${refs.join(',')}`;
-                      }}
-                      onCancel={(ref) => {
-                        if (ref) {
-                          window.location.href = `/bookings/payment-cancel?ref=${ref}`;
-                        } else {
-                          toast.info('Payment cancelled');
-                        }
-                      }}
-                      bookingRef={bookingRef}
-                      amount={Math.round(total * 100)}
-                      billingDetails={{
-                        name: `${attendeeDetails[0]?.firstName || ''} ${attendeeDetails[0]?.lastName || ''}`.trim() || undefined,
-                        email: attendeeDetails[0]?.email?.trim() || undefined,
-                        phone: attendeeDetails[0]?.phone?.trim() || undefined,
-                      }}
-                      paymentDisabled={!canPayNow}
-                    />
-                  </Elements>
+                  <>
+                    {!canPayNow && paymentBlockingMessages.length > 0 && (
+                      <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                        <p className="font-medium">Payment is currently disabled.</p>
+                        <ul className="mt-1 list-disc pl-5 space-y-1">
+                          {paymentBlockingMessages.map((message) => (
+                            <li key={message}>{message}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <Elements key={paymentKey} stripe={stripePromise}>
+                      <StripePaymentForm
+                        onCreatePaymentIntent={handleCreateBooking}
+                        onSuccess={(refs) => {
+                          window.location.href = `/bookings/payment-success?refs=${refs.join(',')}`;
+                        }}
+                        onCancel={(ref) => {
+                          if (ref) {
+                            window.location.href = `/bookings/payment-cancel?ref=${ref}`;
+                          } else {
+                            toast.info('Payment cancelled');
+                          }
+                        }}
+                        bookingRef={bookingRef}
+                        amount={Math.round(total * 100)}
+                        billingDetails={{
+                          name: `${attendeeDetails[0]?.firstName || ''} ${attendeeDetails[0]?.lastName || ''}`.trim() || undefined,
+                          email: attendeeDetails[0]?.email?.trim() || undefined,
+                          phone: attendeeDetails[0]?.phone?.trim() || undefined,
+                        }}
+                        paymentDisabled={!canPayNow}
+                      />
+                    </Elements>
+                  </>
                 ) : (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                     Please accept the Course Description and Terms & Conditions to proceed to payment.
