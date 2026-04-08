@@ -1338,6 +1338,7 @@ export default function OnePageBookingCheckout() {
       try {
         const response = await bookingApi.getCourseAvailability(selectedCourse.id, locationId);
         const availability = response.data.availability;
+        console.log(availability);
         setCourseEvents(availability);
         availabilityFetchedRef.current = { courseId: selectedCourse.id, locationId };
 
@@ -2486,6 +2487,11 @@ export default function OnePageBookingCheckout() {
                       }}
                       bookingRef={bookingRef}
                       amount={Math.round(total * 100)}
+                      billingDetails={{
+                        name: `${attendeeDetails[0]?.firstName || ''} ${attendeeDetails[0]?.lastName || ''}`.trim() || undefined,
+                        email: attendeeDetails[0]?.email?.trim() || undefined,
+                        phone: attendeeDetails[0]?.phone?.trim() || undefined,
+                      }}
                       paymentDisabled={!canPayNow}
                     />
                   </Elements>

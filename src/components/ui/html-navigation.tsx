@@ -242,7 +242,23 @@ export function HtmlNavigationLinkWithDropdown({ href, className, children, acti
     (normHref !== '/' && normPath.startsWith(normHref + '/')) ||
     isDescendantActive;
 
-  return (
+  return href === "/#" ? (
+    <span
+      className={cn(
+        "inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-white hover:bg-blue-600 px-1 xl:px-3 py-3 rounded-md cursor-pointer",
+        isActive && "text-white bg-blue-600 active",
+        className
+      )}
+    >
+      {children}
+      <span className="menu-toggle-icon">
+        <ChevronDownIcon
+          className="relative top-[1px] ml-1 size-3 transition-transform duration-300 group-hover/item:rotate-180"
+          aria-hidden="true"
+        />
+      </span>
+    </span>
+  ) : (
     <Link
       href={href}
       className={cn(

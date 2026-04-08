@@ -12,9 +12,19 @@ import {
   FAQ,
   Carousel,
   SiteSettings,
-  MenuData,
   ApiResponse
 } from '@/types';
+
+const getNoCacheConfig = () => ({
+  headers: {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    Pragma: 'no-cache',
+    Expires: '0',
+  },
+  params: {
+    _t: Date.now(),
+  },
+});
 
 // Auth API
 export const authApi = {
@@ -39,9 +49,9 @@ export const authApi = {
   },
 
   setPassword: async (email: string, password: string) => {
-    const response = await api.post<ApiResponse<any>>('/auth/set-password', { 
-      email, 
-      password: encryptPassword(password) 
+    const response = await api.post<ApiResponse<any>>('/auth/set-password', {
+      email,
+      password: encryptPassword(password)
     });
     return response.data;
   },
@@ -203,7 +213,18 @@ export const bookingsApi = {
 
 // CMS API
 export const cmsApi = {
-  getHomepage: async () => {
+  getHomepage: async (): Promise<ApiResponse<{
+    homepage: Page;
+    featuredCourses: Course[];
+    testimonials: Testimonial[];
+    locations: Location[];
+    stats: {
+      studentsTrained: number;
+      passRate: number;
+      experienceYears: number;
+      instructors: number;
+    };
+  }>> => {
     const response = await api.get<ApiResponse<{
       homepage: Page;
       featuredCourses: Course[];
@@ -215,8 +236,8 @@ export const cmsApi = {
         experienceYears: number;
         instructors: number;
       };
-    }>>('/cms/homepage');
-    return response.data.data;
+    }>>('/cms/homepage', getNoCacheConfig());
+    return response.data;
   },
 
   getPages: async (params?: {
@@ -230,8 +251,8 @@ export const cmsApi = {
     return response.data;
   },
 
-  getPage: async (identifier: string | number) => {
-    const response = await api.get<ApiResponse<Page>>(`/cms/pages/${identifier}`);
+  getPage: async (identifier: string | number): Promise<ApiResponse<Page>> => {
+    const response = await api.get<ApiResponse<Page>>(`/cms/pages/${identifier}`, getNoCacheConfig());
     return response.data;
   },
 

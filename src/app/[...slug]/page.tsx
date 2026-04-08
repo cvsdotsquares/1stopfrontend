@@ -92,7 +92,9 @@ async function fetchCmsPage(slug: string): Promise<CmsPage | null> {
   try {
     // Encode each segment separately so slashes remain as path separators
     const encoded = slug.split('/').map(s => encodeURIComponent(s)).join('/');
-    const res = await fetch(`${API_BASE}/cmspages/${encoded}`, { next: { revalidate: 300 } });
+    const res = await fetch(`${API_BASE}/cmspages/${encoded}`, {
+      cache: "no-store"
+    });
     if (!res.ok) return null;
     const json = await res.json();
     if (!json.success) return null;
