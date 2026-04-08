@@ -292,7 +292,7 @@ export const cmsApi = {
   },
 
   getHomepageData: async () => {
-    const response = await api.get<ApiResponse<any>>('/homepage');
+    const response = await api.get<ApiResponse<any>>('/homepage', getNoCacheConfig());
     return response.data;
   },
 

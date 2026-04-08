@@ -13,6 +13,7 @@ import TestimonialsCarousel from "@/components/testimonials";
 import FeaturesSection from "@/components/home/features/FeaturesSection";
 import homepageData from "@/data/homepage.json";
 
+export const dynamic = 'force-dynamic';
 
 // helper for metadata
   const stripHtml = (html?: string) => {
