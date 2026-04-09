@@ -18,7 +18,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const gtmId = process.env.NEXT_PUBLIC_GA_ID || "GTM-WRC9PB6V";
+  const gtmId = process.env.NEXT_PUBLIC_GA_ID;
 
   return (
     <html lang="en">
@@ -37,7 +37,7 @@ export default function RootLayout({
               j.async=true;
               j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
               f.parentNode.insertBefore(j,f);
-              })(window,document,'script','dataLayer','GTM-WRC9PB6V');
+              })(window,document,'script','dataLayer','${gtmId}');
             `,
           }}
         />
@@ -45,7 +45,7 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans antialiased`}>
         <noscript>
           <iframe
-            src="https://www.googletagmanager.com/ns.html?id=GTM-WRC9PB6V"
+            src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
             height="0"
             width="0"
             style={{ display: "none", visibility: "hidden" }}
