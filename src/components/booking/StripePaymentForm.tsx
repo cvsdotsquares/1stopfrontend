@@ -9,6 +9,7 @@ interface StripePaymentFormProps {
   onCancel: (bookingRef?: string) => void;
   bookingRef?: string;
   itemVariant?: string;
+  attendeeNames?: string[];
   amount: number;
   billingDetails?: {
     name?: string;
@@ -19,7 +20,7 @@ interface StripePaymentFormProps {
   paymentDisabled?: boolean;
 }
 
-export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, itemVariant, amount, billingDetails, onCreatePaymentIntent, paymentDisabled = false }: Readonly<StripePaymentFormProps>) {
+export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, itemVariant, attendeeNames = [], amount, billingDetails, onCreatePaymentIntent, paymentDisabled = false }: Readonly<StripePaymentFormProps>) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -96,17 +97,41 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, ite
           || bookingRef
           || 'pending-booking';
 
-        const pendingPurchasePayload = {
-          transactionId: purchaseTransactionId,
-          item: {
+        const refs = creationResult.bookingRefs?.filter(Boolean) || (creationResult.bookingRef ? [creationResult.bookingRef] : []);
+        const itemCount = refs.length > 0 ? refs.length : 1;
+        const totalValue = amount / 100;
+        const baseItemPrice = Math.floor((totalValue / itemCount) * 100) / 100;
+        const priceRemainder = Number((totalValue - (baseItemPrice * itemCount)).toFixed(2));
+
+        const pendingItems = refs.length > 0
+          ? refs.map((ref, index) => {
+            const attendeeName = String(attendeeNames[index] || '').trim();
+            const itemName = attendeeName ? `Course Booking - ${attendeeName}` : 'Course Booking';
+            const itemPrice = Number((baseItemPrice + (index === refs.length - 1 ? priceRemainder : 0)).toFixed(2));
+            return {
+              item_id: ref,
+              item_name: itemName,
+              item_category: 'Booking',
+              item_variant: itemVariant,
+              quantity: 1,
+              price: itemPrice,
+              attendee_name: attendeeName || undefined,
+            };
+          })
+          : [{
             item_id: creationResult.bookingRef ?? 'unknown',
-            item_name: 'Course Booking',
+            item_name: attendeeNames[0] ? `Course Booking - ${attendeeNames[0]}` : 'Course Booking',
             item_category: 'Booking',
             item_variant: itemVariant,
-            price: amount / 100,
             quantity: 1,
-          },
-          value: amount / 100,
+            price: Number(totalValue.toFixed(2)),
+            attendee_name: attendeeNames[0] || undefined,
+          }];
+
+        const pendingPurchasePayload = {
+          transactionId: purchaseTransactionId,
+          items: pendingItems,
+          value: Number(totalValue.toFixed(2)),
           createdAt: Date.now(),
         };
 

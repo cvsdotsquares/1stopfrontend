@@ -2636,6 +2636,7 @@ export default function OnePageBookingCheckout() {
                         }}
                         bookingRef={bookingRef}
                         itemVariant={selectedDate ? selectedDate.toLocaleDateString('en-GB') : undefined}
+                        attendeeNames={attendeeDetails.slice(0, attendees).map((attendee) => `${attendee.firstName || ''} ${attendee.lastName || ''}`.trim())}
                         amount={Math.round(total * 100)}
                         billingDetails={{
                           name: `${attendeeDetails[0]?.firstName || ''} ${attendeeDetails[0]?.lastName || ''}`.trim() || undefined,

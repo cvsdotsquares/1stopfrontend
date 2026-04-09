@@ -12,6 +12,7 @@ function PaymentSuccessContent() {
   const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [bookingDetails, setBookingDetails] = useState<any>(null);
   const [attendees, setAttendees] = useState<any[]>([]);
+  const [purchaseTracked, setPurchaseTracked] = useState(false);
 
   useEffect(() => {
     const sessionId = searchParams.get('payment_intent');
@@ -26,30 +27,6 @@ function PaymentSuccessContent() {
     }
 
     if (!sessionId) {
-      try {
-        const rawPendingPurchase = sessionStorage.getItem('gtm_purchase_pending');
-        if (rawPendingPurchase) {
-          const pendingPurchase = JSON.parse(rawPendingPurchase);
-          const pendingTransactionId = String(pendingPurchase?.transactionId || '');
-          const expectedTransactionId = bookingRefs.length > 0 ? bookingRefs.join(',') : primaryRef;
-          if (pendingTransactionId && pendingTransactionId === expectedTransactionId) {
-            trackPurchase(
-              pendingTransactionId,
-              pendingPurchase?.item || {
-                item_id: primaryRef,
-                item_name: 'Course Booking',
-                item_category: 'Booking',
-                price: Number(pendingPurchase?.value || 0),
-              },
-              Number(pendingPurchase?.value || 0),
-            );
-            sessionStorage.removeItem('gtm_purchase_pending');
-          }
-        }
-      } catch {
-        // Non-blocking: ignore malformed storage data
-      }
-
       setBookingDetails({ booking_refs: bookingRefs, payment_status: 'confirmed' });
       setVerificationStatus('success');
       return;
@@ -65,20 +42,6 @@ function PaymentSuccessContent() {
           const data = await response.json();
           setBookingDetails({ ...data.data, booking_refs: bookingRefs });
           setVerificationStatus('success');
-          // GTM: purchase
-          const purchaseTransactionId = bookingRefs.length > 0 ? bookingRefs.join(',') : primaryRef;
-          trackPurchase(
-            purchaseTransactionId,
-            {
-              item_id: primaryRef,
-              item_name: 'Course Booking',
-              item_category: 'Booking',
-              item_variant: data?.data?.course_date || undefined,
-              price: data.data?.amount_paid ?? 0,
-            },
-            data.data?.amount_paid ?? 0,
-          );
-          sessionStorage.removeItem('gtm_purchase_pending');
         } else {
           setVerificationStatus('error');
         }
@@ -90,6 +53,85 @@ function PaymentSuccessContent() {
 
     verifyPayment();
   }, [searchParams]);
+
+  useEffect(() => {
+    if (purchaseTracked) return;
+    if (verificationStatus !== 'success' || !bookingDetails?.booking_refs?.length) return;
+
+    const refs: string[] = bookingDetails.booking_refs;
+    const transactionId = refs.join(',');
+    if (!transactionId) return;
+
+    const trackedKey = `gtm_purchase_tracked_${transactionId}`;
+    if (sessionStorage.getItem(trackedKey) === '1') {
+      setPurchaseTracked(true);
+      return;
+    }
+
+    let pendingPurchase: any = null;
+    try {
+      const rawPendingPurchase = sessionStorage.getItem('gtm_purchase_pending');
+      pendingPurchase = rawPendingPurchase ? JSON.parse(rawPendingPurchase) : null;
+    } catch {
+      pendingPurchase = null;
+    }
+
+    const pendingTransactionId = String(pendingPurchase?.transactionId || '');
+    const hasMatchingPending = pendingTransactionId === transactionId;
+
+    const eventValue = Number(
+      bookingDetails?.amount_paid
+      ?? pendingPurchase?.value
+      ?? 0
+    );
+
+    const variant = bookingDetails?.course_date || undefined;
+
+    let purchaseItems: any[] = [];
+
+    if (hasMatchingPending && Array.isArray(pendingPurchase?.items) && pendingPurchase.items.length > 0) {
+      purchaseItems = pendingPurchase.items;
+    } else if (Array.isArray(attendees) && attendees.length > 0) {
+      const fallbackCount = attendees.length;
+      const baseItemPrice = fallbackCount > 0
+        ? Math.floor((eventValue / fallbackCount) * 100) / 100
+        : 0;
+      const remainder = Number((eventValue - (baseItemPrice * fallbackCount)).toFixed(2));
+
+      purchaseItems = attendees.map((attendee: any, index: number) => {
+        const fullName = `${attendee?.name?.firstname || ''} ${attendee?.name?.surname || ''}`.trim();
+        return {
+          item_id: attendee?.booking_ref || refs[index] || refs[0],
+          item_name: fullName ? `Course Booking - ${fullName}` : 'Course Booking',
+          item_category: 'Booking',
+          item_variant: variant,
+          quantity: 1,
+          price: Number((baseItemPrice + (index === fallbackCount - 1 ? remainder : 0)).toFixed(2)),
+          attendee_name: fullName || undefined,
+        };
+      });
+    } else {
+      const fallbackCount = refs.length;
+      const baseItemPrice = fallbackCount > 0
+        ? Math.floor((eventValue / fallbackCount) * 100) / 100
+        : 0;
+      const remainder = Number((eventValue - (baseItemPrice * fallbackCount)).toFixed(2));
+
+      purchaseItems = refs.map((ref, index) => ({
+        item_id: ref,
+        item_name: 'Course Booking',
+        item_category: 'Booking',
+        item_variant: variant,
+        quantity: 1,
+        price: Number((baseItemPrice + (index === fallbackCount - 1 ? remainder : 0)).toFixed(2)),
+      }));
+    }
+
+    trackPurchase(transactionId, purchaseItems, eventValue);
+    sessionStorage.setItem(trackedKey, '1');
+    sessionStorage.removeItem('gtm_purchase_pending');
+    setPurchaseTracked(true);
+  }, [verificationStatus, bookingDetails, attendees, purchaseTracked]);
 
   // Fetch attendee names based on booking_refs
   useEffect(() => {

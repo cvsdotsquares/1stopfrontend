@@ -67,19 +67,24 @@ export function trackAddPaymentInfo(item: GTMItem, value?: number, currency = 'G
 
 export function trackPurchase(
   transactionId: string,
-  item: GTMItem,
+  itemOrItems: GTMItem | GTMItem[],
   value: number,
   currency = 'GBP',
   paymentType = 'Credit Card',
 ): void {
+  const normalizedItems = Array.isArray(itemOrItems)
+    ? itemOrItems.map((item) => ({ quantity: 1, ...item }))
+    : [{ quantity: 1, ...itemOrItems }];
+
   pushEvent({
     event: 'purchase',
     ecommerce: {
+      transaction_id: transactionId,
       booking_ref: transactionId,
       currency,
       value,
       payment_type: paymentType,
-      items: [{ quantity: 1, ...item }],
+      items: normalizedItems,
     },
   });
 }
