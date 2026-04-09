@@ -17,19 +17,25 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const gtmId = process.env.NEXT_PUBLIC_GA_ID || "";
+  const gtmId = process.env.NEXT_PUBLIC_GA_ID || "GTM-WRC9PB6V";
 
   return (
     <html lang="en">
-      {gtmId && <GoogleTagManager gtmId={gtmId} />}
+      <GoogleTagManager gtmId={gtmId} />
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
         <meta name="robots" content="noindex, nofollow, noarchive, nosnippet"></meta>
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
-        {gtmId && (
-          <noscript dangerouslySetInnerHTML={{ __html: `<iframe src="https://www.googletagmanager.com/ns.html?id=${gtmId}" height="0" width="0" style="display:none;visibility:hidden" title="Google Tag Manager"></iframe>` }} />
-        )}
+        <noscript>
+          <iframe
+            src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+            title="Google Tag Manager"
+          />
+        </noscript>
         <QueryProvider>
           <RouteChangeTracker />
           <div className="flex flex-col min-h-screen">
