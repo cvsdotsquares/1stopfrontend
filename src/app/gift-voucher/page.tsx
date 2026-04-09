@@ -215,7 +215,7 @@ export default function GiftVoucherPage() {
                 </label>
                 <div className="flex gap-2">
                   <input
-                    type="number"
+                    type="textfield"
                     value={formData.voucherValue}
                     onChange={(e) => handleInputChange('voucherValue', e.target.value)}
                     className="w-24 rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
