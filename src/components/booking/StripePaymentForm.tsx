@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
-import { trackAddPaymentInfo, trackPurchase } from '@/lib/gtm';
+import { trackAddPaymentInfo } from '@/lib/gtm';
 
 interface StripePaymentFormProps {
   onSuccess: (bookingRefs: string[]) => void;
@@ -68,26 +68,6 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, ite
         amount / 100,
       );
 
-      // GTM: purchase (requested at pay button click)
-      const purchaseTransactionId =
-        creationResult.bookingRefs?.filter(Boolean).join(',')
-        || creationResult.bookingRef
-        || bookingRef
-        || 'pending-booking';
-
-      trackPurchase(
-        purchaseTransactionId,
-        {
-          item_id: creationResult.bookingRef ?? 'unknown',
-          item_name: 'Course Booking',
-          item_category: 'Booking',
-          item_variant: itemVariant,
-          price: amount / 100,
-          quantity: 1,
-        },
-        amount / 100,
-      );
-
       const { error } = await stripe.confirmCardPayment(creationResult.clientSecret, {
         payment_method: {
           card: cardElement,
@@ -105,6 +85,34 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, ite
         toast.error(error.message || 'Payment failed');
         setIsProcessing(false);
         return;
+      }
+
+      // Store purchase payload and fire purchase only from success page.
+      // This avoids counting failed payment attempts as purchases.
+      try {
+        const purchaseTransactionId =
+          creationResult.bookingRefs?.filter(Boolean).join(',')
+          || creationResult.bookingRef
+          || bookingRef
+          || 'pending-booking';
+
+        const pendingPurchasePayload = {
+          transactionId: purchaseTransactionId,
+          item: {
+            item_id: creationResult.bookingRef ?? 'unknown',
+            item_name: 'Course Booking',
+            item_category: 'Booking',
+            item_variant: itemVariant,
+            price: amount / 100,
+            quantity: 1,
+          },
+          value: amount / 100,
+          createdAt: Date.now(),
+        };
+
+        sessionStorage.setItem('gtm_purchase_pending', JSON.stringify(pendingPurchasePayload));
+      } catch {
+        // Non-blocking: continue redirect flow even if storage is unavailable
       }
 
       toast.success('Payment successful!');

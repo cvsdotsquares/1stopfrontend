@@ -26,6 +26,30 @@ function PaymentSuccessContent() {
     }
 
     if (!sessionId) {
+      try {
+        const rawPendingPurchase = sessionStorage.getItem('gtm_purchase_pending');
+        if (rawPendingPurchase) {
+          const pendingPurchase = JSON.parse(rawPendingPurchase);
+          const pendingTransactionId = String(pendingPurchase?.transactionId || '');
+          const expectedTransactionId = bookingRefs.length > 0 ? bookingRefs.join(',') : primaryRef;
+          if (pendingTransactionId && pendingTransactionId === expectedTransactionId) {
+            trackPurchase(
+              pendingTransactionId,
+              pendingPurchase?.item || {
+                item_id: primaryRef,
+                item_name: 'Course Booking',
+                item_category: 'Booking',
+                price: Number(pendingPurchase?.value || 0),
+              },
+              Number(pendingPurchase?.value || 0),
+            );
+            sessionStorage.removeItem('gtm_purchase_pending');
+          }
+        }
+      } catch {
+        // Non-blocking: ignore malformed storage data
+      }
+
       setBookingDetails({ booking_refs: bookingRefs, payment_status: 'confirmed' });
       setVerificationStatus('success');
       return;
@@ -54,6 +78,7 @@ function PaymentSuccessContent() {
             },
             data.data?.amount_paid ?? 0,
           );
+          sessionStorage.removeItem('gtm_purchase_pending');
         } else {
           setVerificationStatus('error');
         }
