@@ -46,7 +46,7 @@ export default function NewsLetter() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="flex-1 px-4 py-3 text-gray-700 placeholder-gray-400 focus:outline-none bg-white border border-white focus:border-red-500"
+          className="min-w-[70px] flex-1 px-4 py-3 text-gray-700 placeholder-gray-400 focus:outline-none bg-white border border-white focus:border-red-500"
         />
         <button
           type="submit"

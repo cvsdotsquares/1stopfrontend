@@ -193,7 +193,7 @@ export default function MyAccount() {
           <div className="lg:col-span-2 space-y-6">
             {/* Profile Details */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              {/* <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Profile Information</CardTitle>
                 {!editing ? (
                   <Button onClick={() => setEditing(true)} variant="outline">Edit Profile</Button>
@@ -203,7 +203,7 @@ export default function MyAccount() {
                     <Button onClick={() => { setEditing(false); setFormData(profile); }} variant="outline">Cancel</Button>
                   </div>
                 )}
-              </CardHeader>
+              </CardHeader> */}
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -236,7 +236,7 @@ export default function MyAccount() {
                     />
                   </div>
                   <div>
-                    <Label className='mb-1'>Alternative Phone 2</Label>
+                    <Label className='mb-1'>Alternative Phone</Label>
                     <Input
                       value={editing ? (formData.phone2 || '') : (profile.phone2 || '')}
                       maxLength={11}
@@ -244,18 +244,9 @@ export default function MyAccount() {
                       disabled={!editing}
                     />
                   </div>
-                  <div>
-                    <Label className='mb-1'>Alternative Phone 3</Label>
-                    <Input
-                      value={editing ? (formData.phone3 || '') : (profile.phone3 || '')}
-                      maxLength={11}
-                      onChange={(e) => setFormData({...formData, phone3: e.target.value})}
-                      disabled={!editing}
-                    />
-                  </div>
                 </div>
 
-                <div className="space-y-4 pt-4 border-t">
+                {/* <div className="space-y-4 pt-4 border-t">
                   <h3 className="font-semibold">Address</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
@@ -291,7 +282,7 @@ export default function MyAccount() {
                       />
                     </div>
                   </div>
-                </div>
+                </div> */}
               </CardContent>
             </Card>
 

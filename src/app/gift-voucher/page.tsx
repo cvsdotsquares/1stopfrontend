@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
@@ -29,6 +29,7 @@ export default function GiftVoucherPage() {
   const [voucherRef, setVoucherRef] = useState('');
   const [templateData, setTemplateData] = useState<TemplateData | null>(null);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(true);
+  const pageWrapperRef = useRef<HTMLDivElement | null>(null);
 
   // Fetch template data on component mount
   useEffect(() => {
@@ -48,6 +49,33 @@ export default function GiftVoucherPage() {
 
     fetchTemplate();
   }, []);
+
+  useEffect(() => {
+    if (step !== 2) {
+      return;
+    }
+
+    const scrollPageWrapperIntoView = () => {
+      const target = pageWrapperRef.current;
+      if (!target) {
+        return;
+      }
+
+      const absoluteTop = globalThis.scrollY + target.getBoundingClientRect().top - 24;
+      globalThis.scrollTo({
+        top: Math.max(0, absoluteTop),
+        behavior: 'smooth',
+      });
+    };
+
+    const immediateTimer = globalThis.setTimeout(scrollPageWrapperIntoView, 0);
+    const followUpTimer = globalThis.setTimeout(scrollPageWrapperIntoView, 250);
+
+    return () => {
+      globalThis.clearTimeout(immediateTimer);
+      globalThis.clearTimeout(followUpTimer);
+    };
+  }, [step]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -110,7 +138,7 @@ export default function GiftVoucherPage() {
   const total = voucherTotal;
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8">
+    <div ref={pageWrapperRef} className="min-h-screen bg-slate-50 py-8">
       <div className="mx-auto max-w-4xl px-4">
         {/* Header */}
         <div className="mb-8 text-center">
@@ -159,6 +187,7 @@ export default function GiftVoucherPage() {
                     style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
                     className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 bg-white"
                   >
+                      <option value="">Select an option (optional)</option>
                     {templateData?.options?.map((option) => (
                       <option key={option} value={option}>
                         {'Gift Voucher For ' + option}
@@ -187,7 +216,7 @@ export default function GiftVoucherPage() {
                 </label>
                 <div className="flex gap-2">
                   <input
-                    type="number"
+                    type="textfield"
                     value={formData.voucherValue}
                     onChange={(e) => handleInputChange('voucherValue', e.target.value)}
                     className="w-24 rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
@@ -267,7 +296,7 @@ export default function GiftVoucherPage() {
             <div className="mt-6 flex justify-end">
               <button
                 onClick={handlePreview}
-                className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition font-semibold shadow-sm"
+                className="px-6 py-3 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-blue-600 transition font-semibold shadow-sm"
               >
                 Proceed
               </button>

@@ -69,21 +69,21 @@ export default async function Page() {
 
         {/* Page Static Banner when banner_type is 1 */}
         {data.banner_type == 1 && data.carousel_static_image && (
-          <div className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+          <div className="flex items-center relative bg-gradient-to-r from-blue-600 to-blue-800 text-white min-h-[300px] md:min-h-[400px] xl:min-h-[550px]">
             {data.carousel_static_image && (
               <div
-                className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                className="absolute inset-0 bg-cover bg-center bg-no-repeat "
                 style={{ backgroundImage: `url(${process.env.NEXT_PUBLIC_FILES_URL || ''}/uploads/${data.carousel_static_image})` }}
               >
                 <div className="absolute inset-0 bg-black/40" />
               </div>
             )}
-            <div className="relative container mx-auto px-4 py-16">
+            <div className="relative w-full max-w-[1400px] mx-auto px-4 py-8 md:py-16">
               <h1 className="text-4xl md:text-5xl font-bold mb-4">{data.link_title || data.page_title}</h1>
               {data.overlay_caption == 1 && data.overlay_caption_text && (
                 <p className="text-xl md:text-2xl text-gray-200 max-w-2xl" dangerouslySetInnerHTML={{ __html: data.overlay_caption_text }} />
               )}
-              {data.carousel_static_caption && <p className="text-lg text-gray-300 mt-4" dangerouslySetInnerHTML={{ __html: data.carousel_static_caption }} />}
+              {data.carousel_static_caption && <p className="text-lg text-white mt-4 [&_span]:p-2 [&_span]:text-black" dangerouslySetInnerHTML={{ __html: data.carousel_static_caption }} />}
             </div>
           </div>
         )}

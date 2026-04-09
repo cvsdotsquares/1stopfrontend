@@ -9,11 +9,16 @@ interface StripePaymentFormProps {
   onCancel: (bookingRef?: string) => void;
   bookingRef?: string;
   amount: number;
+  billingDetails?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  };
   onCreatePaymentIntent: () => Promise<{ clientSecret?: string; bookingRef: string; bookingRefs: string[]; paymentRequired: boolean } | undefined>;
   paymentDisabled?: boolean;
 }
 
-export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amount, onCreatePaymentIntent, paymentDisabled = false }: StripePaymentFormProps) {
+export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amount, billingDetails, onCreatePaymentIntent, paymentDisabled = false }: Readonly<StripePaymentFormProps>) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -62,7 +67,14 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amo
       );
 
       const { error } = await stripe.confirmCardPayment(creationResult.clientSecret, {
-        payment_method: { card: cardElement },
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name: billingDetails?.name,
+            email: billingDetails?.email,
+            phone: billingDetails?.phone,
+          }
+        },
       }, {
         handleActions: true,
       });
@@ -76,7 +88,8 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amo
       toast.success('Payment successful!');
       onSuccess(creationResult.bookingRefs);
     } catch (err) {
-      toast.error('Payment processing failed');
+      const errorMessage = err instanceof Error ? err.message : 'Payment processing failed';
+      toast.error(errorMessage);
       setIsProcessing(false);
     }
   };

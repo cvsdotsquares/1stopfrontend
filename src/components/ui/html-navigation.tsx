@@ -161,7 +161,7 @@ export function HtmlNavigation({ className, children }: NavigationProps) {
 
   return (
     <nav ref={navRef} className={cn("relative flex max-w-max flex-1 items-center justify-center", className)}>
-      <ul className="group flex flex-1 list-none items-center justify-center lg:gap-1 xl:gap-1">
+      <ul className="group flex flex-1 list-none items-center justify-center">
         {children}
       </ul>
     </nav>
@@ -197,7 +197,7 @@ export function HtmlNavigationLink({ href, className, children, onClick }: Navig
     <Link
       href={href}
       className={cn(
-        "text-black text-sm xl:text-base hover:text-white hover:bg-blue-600 px-2 xl:px-4 py-3 rounded-md",
+        "text-black text-sm xl:text-base hover:text-white hover:bg-blue-600 px-1 xl:px-4 py-3 rounded-md",
         isActive && "text-white bg-blue-600 active",
         className
       )}
@@ -242,11 +242,27 @@ export function HtmlNavigationLinkWithDropdown({ href, className, children, acti
     (normHref !== '/' && normPath.startsWith(normHref + '/')) ||
     isDescendantActive;
 
-  return (
+  return href === "/#" ? (
+    <span
+      className={cn(
+        "inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-white hover:bg-blue-600 px-1 xl:px-3 py-3 rounded-md cursor-pointer",
+        isActive && "text-white bg-blue-600 active",
+        className
+      )}
+    >
+      {children}
+      <span className="menu-toggle-icon">
+        <ChevronDownIcon
+          className="relative top-[1px] ml-1 size-3 transition-transform duration-300 group-hover/item:rotate-180"
+          aria-hidden="true"
+        />
+      </span>
+    </span>
+  ) : (
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-white hover:bg-blue-600 px-2 xl:px-4 py-3 rounded-md",
+        "inline-flex items-center justify-center text-sm xl:text-base text-black hover:text-white hover:bg-blue-600 px-1 xl:px-3 py-3 rounded-md",
         isActive && "text-white bg-blue-600 active",
         className
       )}
