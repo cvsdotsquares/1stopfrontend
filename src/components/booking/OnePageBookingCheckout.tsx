@@ -1452,6 +1452,57 @@ export default function OnePageBookingCheckout() {
     : 0;
   const total = Math.max(0, totalBeforeDiscount - discount);
 
+  const resolveEventDateKey = (value: Date | string | null | undefined): string | null => {
+    if (!value) return null;
+    const parsed = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return formatLocalDate(parsed);
+  };
+
+  const selectedEventForTracking = useMemo(() => {
+    if (!selectedDate || courseEvents.length === 0) return null;
+    if (selectedCourseEventId) {
+      const byId = courseEvents.find((event) => event.course_event_id === selectedCourseEventId);
+      if (byId) return byId;
+    }
+    const selectedDateKey = resolveEventDateKey(selectedDate);
+    return courseEvents.find((event) => resolveEventDateKey(event.date) === selectedDateKey) || null;
+  }, [selectedDate, selectedCourseEventId, courseEvents]);
+
+  const trackingFallbackValue = useMemo(() => {
+    const eventPricing = selectedEventForTracking?.pricing;
+    if (!eventPricing) return 0;
+
+    const getVehicleUnitAmount = (vehicleType?: string) => {
+      const vehicleTypeNum = Number.parseInt(String(vehicleType || ''), 10);
+      const isOwnVehicle = vehicleTypeNum === 3;
+      const chosenPricing = isOwnVehicle ? eventPricing.own_vehicle : eventPricing.school_vehicle;
+
+      if (chosenPricing.pricing_type === 'deposit') {
+        return Number(chosenPricing.deposit || chosenPricing.total || 0);
+      }
+
+      return Number(chosenPricing.price || 0);
+    };
+
+    const attendeeSlice = attendeeDetails.slice(0, Math.max(1, attendees));
+    const baseAmount = attendeeSlice.reduce((sum, attendee) => sum + getVehicleUnitAmount(attendee.vehicleType), 0);
+
+    if (!promoData?.valid) {
+      return Math.max(0, baseAmount);
+    }
+
+    const promoAmount = Number(promoData.discount_amount) || 0;
+    const promoDiscount = promoData.discount_type === 'percent_off'
+      ? (baseAmount * promoAmount) / 100
+      : (promoAmount * attendeeSlice.length);
+
+    return Math.max(0, baseAmount - promoDiscount);
+  }, [selectedEventForTracking, attendeeDetails, attendees, promoData]);
+
+  const trackingValue = total > 0 ? total : trackingFallbackValue;
+  const trackingItemPrice = trackingValue > 0 ? Number(trackingValue.toFixed(2)) : 0;
+
   const handleLogin = async () => {
     try {
       const { token, user } = await authApi.login(loginDetails.email, loginDetails.password);
@@ -1702,9 +1753,9 @@ export default function OnePageBookingCheckout() {
         item_name: selectedCourse?.course_name ?? 'Course',
         item_category: 'Booking',
         item_variant: selectedDate ? selectedDate.toLocaleDateString('en-GB') : undefined,
-        price: total > 0 ? total : undefined,
+        price: trackingItemPrice,
       },
-      total > 0 ? total : undefined,
+      trackingItemPrice,
     );
     try {
       // Encrypt passwords using AES
@@ -2006,9 +2057,9 @@ export default function OnePageBookingCheckout() {
                                   item_name: selectedCourse?.course_name ?? 'Course',
                                   item_category: 'Booking',
                                   item_variant: cell.date.toLocaleDateString('en-GB'),
-                                  price: total > 0 ? total : undefined,
+                                  price: trackingItemPrice,
                                 },
-                                total > 0 ? total : undefined,
+                                trackingItemPrice,
                               );
                             }}
                             title={cell.available && inCurrentMonth ? `${cell.spots} spots left` : "Not available"}

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
-import { trackAddPaymentInfo } from '@/lib/gtm';
+import { trackAddPaymentInfo, trackPurchase } from '@/lib/gtm';
 
 interface StripePaymentFormProps {
   onSuccess: (bookingRefs: string[]) => void;
@@ -62,6 +62,25 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amo
           item_name: 'Course Booking',
           item_category: 'Booking',
           price: amount / 100,
+        },
+        amount / 100,
+      );
+
+      // GTM: purchase (requested at pay button click)
+      const purchaseTransactionId =
+        creationResult.bookingRefs?.filter(Boolean).join(',')
+        || creationResult.bookingRef
+        || bookingRef
+        || 'pending-booking';
+
+      trackPurchase(
+        purchaseTransactionId,
+        {
+          item_id: creationResult.bookingRef ?? 'unknown',
+          item_name: 'Course Booking',
+          item_category: 'Booking',
+          price: amount / 100,
+          quantity: 1,
         },
         amount / 100,
       );
