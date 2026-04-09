@@ -8,6 +8,7 @@ interface StripePaymentFormProps {
   onSuccess: (bookingRefs: string[]) => void;
   onCancel: (bookingRef?: string) => void;
   bookingRef?: string;
+  courseEventId?: number | string;
   itemVariant?: string;
   attendeeCount?: number;
   amount: number;
@@ -20,7 +21,7 @@ interface StripePaymentFormProps {
   paymentDisabled?: boolean;
 }
 
-export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, itemVariant, attendeeCount = 1, amount, billingDetails, onCreatePaymentIntent, paymentDisabled = false }: Readonly<StripePaymentFormProps>) {
+export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, courseEventId, itemVariant, attendeeCount = 1, amount, billingDetails, onCreatePaymentIntent, paymentDisabled = false }: Readonly<StripePaymentFormProps>) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -60,7 +61,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, ite
       // GTM: add_payment_info
       trackAddPaymentInfo(
         {
-          item_id: creationResult.bookingRef ?? 'unknown',
+          item_id: courseEventId ?? 'unknown',
           item_name: 'Course Booking',
           item_category: 'Booking',
           item_variant: itemVariant,
@@ -99,13 +100,9 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, ite
           || 'pending-booking';
 
         const totalValue = amount / 100;
-        const primaryItemId = creationResult.bookingRef
-          || creationResult.bookingRefs?.find(Boolean)
-          || bookingRef
-          || 'unknown';
 
         const pendingItems = [{
-          item_id: primaryItemId,
+          item_id: courseEventId ?? 'unknown',
           item_name: 'Course Booking',
           item_category: 'Booking',
           item_variant: itemVariant,
@@ -115,6 +112,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, ite
 
         const pendingPurchasePayload = {
           transactionId: purchaseTransactionId,
+          courseEventId: courseEventId ?? null,
           items: pendingItems,
           value: Number(totalValue.toFixed(2)),
           createdAt: Date.now(),

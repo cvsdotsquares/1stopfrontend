@@ -92,8 +92,12 @@ function PaymentSuccessContent() {
     if (hasMatchingPending && Array.isArray(pendingPurchase?.items) && pendingPurchase.items.length > 0) {
       purchaseItems = [pendingPurchase.items[0]];
     } else {
+      const fallbackCourseEventId = bookingDetails?.course_event_id
+        || pendingPurchase?.courseEventId
+        || 'unknown';
+
       purchaseItems = [{
-        item_id: refs[0] || 'unknown',
+        item_id: fallbackCourseEventId,
         item_name: 'Course Booking',
         item_category: 'Booking',
         item_variant: variant,

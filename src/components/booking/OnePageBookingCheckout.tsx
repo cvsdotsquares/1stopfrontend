@@ -2637,6 +2637,7 @@ export default function OnePageBookingCheckout() {
                           }
                         }}
                         bookingRef={bookingRef}
+                        courseEventId={selectedCourseEventId ?? undefined}
                         itemVariant={selectedDate ? selectedDate.toLocaleDateString('en-GB') : undefined}
                         attendeeCount={attendees}
                         amount={Math.round(total * 100)}
