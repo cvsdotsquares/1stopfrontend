@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { trackPurchase } from '@/lib/gtm';
 import { useAuthStore } from '@/store/auth';
 
 function PaymentSuccessContent() {
@@ -40,6 +41,17 @@ function PaymentSuccessContent() {
           const data = await response.json();
           setBookingDetails({ ...data.data, booking_refs: bookingRefs });
           setVerificationStatus('success');
+          // GTM: purchase
+          trackPurchase(
+            sessionId,
+            {
+              item_id: primaryRef,
+              item_name: 'Course Booking',
+              item_category: 'Booking',
+              price: data.data?.amount_paid ?? 0,
+            },
+            data.data?.amount_paid ?? 0,
+          );
         } else {
           setVerificationStatus('error');
         }
