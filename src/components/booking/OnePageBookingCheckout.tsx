@@ -1806,6 +1806,7 @@ export default function OnePageBookingCheckout() {
         item_name: selectedCourse?.course_name ?? 'Course',
         item_category: 'Booking',
         item_variant: selectedDate ? selectedDate.toLocaleDateString('en-GB') : undefined,
+        quantity: attendees,
         price: trackingItemPrice,
       },
       trackingItemPrice,
@@ -2110,6 +2111,7 @@ export default function OnePageBookingCheckout() {
                                   item_name: selectedCourse?.course_name ?? 'Course',
                                   item_category: 'Booking',
                                   item_variant: cell.date.toLocaleDateString('en-GB'),
+                                  quantity: attendees,
                                   price: trackingItemPrice,
                                 },
                                 trackingItemPrice,
@@ -2636,7 +2638,7 @@ export default function OnePageBookingCheckout() {
                         }}
                         bookingRef={bookingRef}
                         itemVariant={selectedDate ? selectedDate.toLocaleDateString('en-GB') : undefined}
-                        attendeeNames={attendeeDetails.slice(0, attendees).map((attendee) => `${attendee.firstName || ''} ${attendee.lastName || ''}`.trim())}
+                        attendeeCount={attendees}
                         amount={Math.round(total * 100)}
                         billingDetails={{
                           name: `${attendeeDetails[0]?.firstName || ''} ${attendeeDetails[0]?.lastName || ''}`.trim() || undefined,

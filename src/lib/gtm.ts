@@ -31,13 +31,21 @@ export interface GTMItem {
   item_variant?: string;
 }
 
+function withAttendeeCount(item: GTMItem): Record<string, unknown> {
+  const { quantity, ...rest } = item;
+  return {
+    ...rest,
+    no_of_attendee: quantity ?? 1,
+  };
+}
+
 export function trackAddToCart(item: GTMItem, value?: number, currency = 'GBP'): void {
   pushEvent({
     event: 'add_to_cart',
     ecommerce: {
       currency,
       value: value ?? item.price ?? 0,
-      items: [{ quantity: 1, ...item }],
+      items: [withAttendeeCount(item)],
     },
   });
 }
@@ -48,7 +56,7 @@ export function trackBeginCheckout(item: GTMItem, value?: number, currency = 'GB
     ecommerce: {
       currency,
       value: value ?? item.price ?? 0,
-      items: [{ quantity: 1, ...item }],
+      items: [withAttendeeCount(item)],
     },
   });
 }
@@ -60,7 +68,7 @@ export function trackAddPaymentInfo(item: GTMItem, value?: number, currency = 'G
       currency,
       value: value ?? item.price ?? 0,
       payment_type: 'Credit Card',
-      items: [{ quantity: 1, ...item }],
+      items: [withAttendeeCount(item)],
     },
   });
 }
@@ -73,8 +81,8 @@ export function trackPurchase(
   paymentType = 'Credit Card',
 ): void {
   const normalizedItems = Array.isArray(itemOrItems)
-    ? itemOrItems.map((item) => ({ quantity: 1, ...item }))
-    : [{ quantity: 1, ...itemOrItems }];
+    ? itemOrItems.map((item) => withAttendeeCount(item))
+    : [withAttendeeCount(itemOrItems)];
 
   pushEvent({
     event: 'purchase',

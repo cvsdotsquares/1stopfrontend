@@ -90,41 +90,16 @@ function PaymentSuccessContent() {
     let purchaseItems: any[] = [];
 
     if (hasMatchingPending && Array.isArray(pendingPurchase?.items) && pendingPurchase.items.length > 0) {
-      purchaseItems = pendingPurchase.items;
-    } else if (Array.isArray(attendees) && attendees.length > 0) {
-      const fallbackCount = attendees.length;
-      const baseItemPrice = fallbackCount > 0
-        ? Math.floor((eventValue / fallbackCount) * 100) / 100
-        : 0;
-      const remainder = Number((eventValue - (baseItemPrice * fallbackCount)).toFixed(2));
-
-      purchaseItems = attendees.map((attendee: any, index: number) => {
-        const fullName = `${attendee?.name?.firstname || ''} ${attendee?.name?.surname || ''}`.trim();
-        return {
-          item_id: attendee?.booking_ref || refs[index] || refs[0],
-          item_name: fullName ? `Course Booking - ${fullName}` : 'Course Booking',
-          item_category: 'Booking',
-          item_variant: variant,
-          quantity: 1,
-          price: Number((baseItemPrice + (index === fallbackCount - 1 ? remainder : 0)).toFixed(2)),
-          attendee_name: fullName || undefined,
-        };
-      });
+      purchaseItems = [pendingPurchase.items[0]];
     } else {
-      const fallbackCount = refs.length;
-      const baseItemPrice = fallbackCount > 0
-        ? Math.floor((eventValue / fallbackCount) * 100) / 100
-        : 0;
-      const remainder = Number((eventValue - (baseItemPrice * fallbackCount)).toFixed(2));
-
-      purchaseItems = refs.map((ref, index) => ({
-        item_id: ref,
+      purchaseItems = [{
+        item_id: refs[0] || 'unknown',
         item_name: 'Course Booking',
         item_category: 'Booking',
         item_variant: variant,
-        quantity: 1,
-        price: Number((baseItemPrice + (index === fallbackCount - 1 ? remainder : 0)).toFixed(2)),
-      }));
+        quantity: Math.max(1, refs.length),
+        price: Number(eventValue.toFixed(2)),
+      }];
     }
 
     trackPurchase(transactionId, purchaseItems, eventValue);
