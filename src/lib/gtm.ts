@@ -70,13 +70,15 @@ export function trackPurchase(
   item: GTMItem,
   value: number,
   currency = 'GBP',
+  paymentType = 'Credit Card',
 ): void {
   pushEvent({
     event: 'purchase',
     ecommerce: {
-      transaction_id: transactionId,
+      booking_ref: transactionId,
       currency,
       value,
+      payment_type: paymentType,
       items: [{ quantity: 1, ...item }],
     },
   });

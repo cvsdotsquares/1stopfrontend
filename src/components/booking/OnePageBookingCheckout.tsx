@@ -487,6 +487,7 @@ export default function OnePageBookingCheckout() {
   // Refs used in reset helpers — declared early so they are in scope
   const step5FetchedRef = useRef<{ selectedCourseId?: number | null; locationId?: number | null; selectedCourseEventId?: number | null; selectedDateISO?: string | null; attendees?: number } | null>(null);
   const availabilityFetchedRef = useRef<{ courseId?: number | null; locationId?: number | null } | null>(null);
+  const addToCartVehicleTrackedKeyRef = useRef<string>('');
 
   // Track previous course for change detection
   const prevCourseIdRef = useRef<number | null>(null);
@@ -1502,6 +1503,58 @@ export default function OnePageBookingCheckout() {
 
   const trackingValue = total > 0 ? total : trackingFallbackValue;
   const trackingItemPrice = trackingValue > 0 ? Number(trackingValue.toFixed(2)) : 0;
+
+  const attendeeVehicleSelectionKey = useMemo(
+    () => attendeeDetails.slice(0, attendees).map((attendee, index) => `${index}:${attendee.vehicleType || ''}`).join('|'),
+    [attendeeDetails, attendees]
+  );
+
+  const areAllAttendeeVehiclesSelected = useMemo(
+    () => attendeeDetails.slice(0, attendees).length === attendees
+      && attendeeDetails.slice(0, attendees).every((attendee) => String(attendee.vehicleType || '').trim() !== ''),
+    [attendeeDetails, attendees]
+  );
+
+  useEffect(() => {
+    if (!selectedDate || !selectedCourse || !selectedCourseEventId) return;
+    if (!areAllAttendeeVehiclesSelected) return;
+    if (trackingItemPrice <= 0) return;
+
+    const variant = selectedDate.toLocaleDateString('en-GB');
+    const eventKey = [
+      selectedCourseEventId,
+      variant,
+      attendees,
+      attendeeVehicleSelectionKey,
+      trackingItemPrice.toFixed(2),
+    ].join('|');
+
+    if (addToCartVehicleTrackedKeyRef.current === eventKey) {
+      return;
+    }
+
+    addToCartVehicleTrackedKeyRef.current = eventKey;
+
+    trackAddToCart(
+      {
+        item_id: selectedCourseEventId,
+        item_name: selectedCourse.course_name ?? 'Course',
+        item_category: 'Booking',
+        item_variant: variant,
+        quantity: attendees,
+        price: trackingItemPrice,
+      },
+      trackingItemPrice,
+    );
+  }, [
+    selectedDate,
+    selectedCourse,
+    selectedCourseEventId,
+    attendees,
+    attendeeVehicleSelectionKey,
+    areAllAttendeeVehiclesSelected,
+    trackingItemPrice,
+  ]);
 
   const handleLogin = async () => {
     try {
@@ -2582,6 +2635,7 @@ export default function OnePageBookingCheckout() {
                           }
                         }}
                         bookingRef={bookingRef}
+                        itemVariant={selectedDate ? selectedDate.toLocaleDateString('en-GB') : undefined}
                         amount={Math.round(total * 100)}
                         billingDetails={{
                           name: `${attendeeDetails[0]?.firstName || ''} ${attendeeDetails[0]?.lastName || ''}`.trim() || undefined,

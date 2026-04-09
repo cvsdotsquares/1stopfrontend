@@ -42,12 +42,14 @@ function PaymentSuccessContent() {
           setBookingDetails({ ...data.data, booking_refs: bookingRefs });
           setVerificationStatus('success');
           // GTM: purchase
+          const purchaseTransactionId = bookingRefs.length > 0 ? bookingRefs.join(',') : primaryRef;
           trackPurchase(
-            sessionId,
+            purchaseTransactionId,
             {
               item_id: primaryRef,
               item_name: 'Course Booking',
               item_category: 'Booking',
+              item_variant: data?.data?.course_date || undefined,
               price: data.data?.amount_paid ?? 0,
             },
             data.data?.amount_paid ?? 0,

@@ -8,6 +8,7 @@ interface StripePaymentFormProps {
   onSuccess: (bookingRefs: string[]) => void;
   onCancel: (bookingRef?: string) => void;
   bookingRef?: string;
+  itemVariant?: string;
   amount: number;
   billingDetails?: {
     name?: string;
@@ -18,7 +19,7 @@ interface StripePaymentFormProps {
   paymentDisabled?: boolean;
 }
 
-export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amount, billingDetails, onCreatePaymentIntent, paymentDisabled = false }: Readonly<StripePaymentFormProps>) {
+export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, itemVariant, amount, billingDetails, onCreatePaymentIntent, paymentDisabled = false }: Readonly<StripePaymentFormProps>) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -61,6 +62,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amo
           item_id: creationResult.bookingRef ?? 'unknown',
           item_name: 'Course Booking',
           item_category: 'Booking',
+          item_variant: itemVariant,
           price: amount / 100,
         },
         amount / 100,
@@ -79,6 +81,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, amo
           item_id: creationResult.bookingRef ?? 'unknown',
           item_name: 'Course Booking',
           item_category: 'Booking',
+          item_variant: itemVariant,
           price: amount / 100,
           quantity: 1,
         },
