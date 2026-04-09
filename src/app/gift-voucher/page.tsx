@@ -187,6 +187,7 @@ export default function GiftVoucherPage() {
                     style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
                     className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 bg-white"
                   >
+                      <option value="">Select an option (optional)</option>
                     {templateData?.options?.map((option) => (
                       <option key={option} value={option}>
                         {'Gift Voucher For ' + option}
