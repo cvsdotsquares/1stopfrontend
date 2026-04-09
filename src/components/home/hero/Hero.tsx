@@ -11,6 +11,7 @@ interface HeroData {
   }[];
   nextCourse: {
     label: string;
+    date: string;
     dateText: string;
     ctaText: string;
     ctaLink: string;
@@ -64,6 +65,8 @@ export default function Hero({ data }: { data: HeroData }) {
 
   // Fetch next CBT availability
   useEffect(() => {
+    // if the page is homepage, fetch the next CBT availability and display it in the hero section
+    if (window.location.pathname !== '/') return;
     const fetchNextCBT = async () => {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/booking/next-availability-cbt`);
@@ -180,7 +183,7 @@ export default function Hero({ data }: { data: HeroData }) {
       <div className={`relative w-full lg:w-2/3 min-h-[300px] md:min-h-[400px] xl:min-h-[550px]`}>
         {hasMultipleImages ? (
           <>
-            
+
             {data.backgroundImages.map((image, index) => (
               <div
                 key={index}
@@ -213,8 +216,7 @@ export default function Hero({ data }: { data: HeroData }) {
             <div className="mb-2 bg-white/70 py-6 px-4  xl:px-10 xl:py-7 text-center rounded-lg">
               <div className="text26 xl:text-xl font-semibold text-red-600">
                 {data.nextCourse?.label || nextCBT.course_name || 'Next CBT Course'}
-
-                &nbsp; {getDateDisplay()}
+                {data.nextCourse?.date ? ` ${data.nextCourse.date}` : ` ${getDateDisplay()}`}
               </div>
               <a
                 href={getBookingURL()}
