@@ -34,6 +34,44 @@ interface CalendarCell {
   courseEventId?: number;
 }
 
+interface AttendeeDetails {
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  email: string;
+  confirmEmail: string;
+  phone: string;
+  alternativePhone: string;
+  vehicleType: string;
+  licenseType: string;
+  licenseNumber: string;
+  theoryNumber: string;
+  notes: string;
+  registerAsUser: boolean;
+  password: string;
+  confirmPassword: string;
+}
+
+function createAttendeeDetails(seed: Partial<AttendeeDetails> = {}): AttendeeDetails {
+  return {
+    firstName: String(seed.firstName ?? ""),
+    lastName: String(seed.lastName ?? ""),
+    dateOfBirth: String(seed.dateOfBirth ?? ""),
+    email: String(seed.email ?? ""),
+    confirmEmail: String(seed.confirmEmail ?? ""),
+    phone: String(seed.phone ?? ""),
+    alternativePhone: String(seed.alternativePhone ?? ""),
+    vehicleType: String(seed.vehicleType ?? ""),
+    licenseType: String(seed.licenseType ?? ""),
+    licenseNumber: String(seed.licenseNumber ?? ""),
+    theoryNumber: String(seed.theoryNumber ?? ""),
+    notes: String(seed.notes ?? ""),
+    registerAsUser: seed.registerAsUser === true,
+    password: String(seed.password ?? ""),
+    confirmPassword: String(seed.confirmPassword ?? ""),
+  };
+}
+
 // ---------- Small Pure Utilities (also used by tests) ----------
 // Helper function to format date as YYYY-MM-DD in local timezone
 function formatLocalDate(date: Date): string {
@@ -399,39 +437,14 @@ export default function OnePageBookingCheckout() {
   const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
 
   // Attendee details - array for multiple attendees
-  const [attendeeDetails, setAttendeeDetails] = useState<Array<{
-    firstName: string;
-    lastName: string;
-    dateOfBirth: string;
-    email: string;
-    confirmEmail: string;
-    phone: string;
-    alternativePhone: string;
-    vehicleType: string;
-    licenseType: string;
-    licenseNumber: string;
-    theoryNumber: string;
-    notes: string;
-    registerAsUser: boolean;
-    password: string;
-    confirmPassword: string;
-  }>>([{
-    firstName: user?.first_name || "",
-    lastName: user?.last_name || "",
-    dateOfBirth: "",
-    email: user?.email || "",
-    confirmEmail: "",
-    phone: user?.phone || "",
-    alternativePhone: "",
-    vehicleType: "",
-    licenseType: "",
-    licenseNumber: "",
-    theoryNumber: "",
-    notes: "",
-    registerAsUser: false,
-    password: "",
-    confirmPassword: "",
-  }]);
+  const [attendeeDetails, setAttendeeDetails] = useState<AttendeeDetails[]>([
+    createAttendeeDetails({
+      firstName: user?.first_name,
+      lastName: user?.last_name,
+      email: user?.email,
+      phone: user?.phone,
+    }),
+  ]);
   const [firstAttendeeUserLookup, setFirstAttendeeUserLookup] = useState<{
     email: string;
     status: ExistingUserLookupStatus;
@@ -515,13 +528,14 @@ export default function OnePageBookingCheckout() {
     setExpandedAttendeeIndex(0);
     // Reset date tracking ref so next date selection is treated as "first" (no auto-reset of attendees)
     prevDateStrRef.current = null;
-    setAttendeeDetails([{
-      firstName: user?.first_name || '', lastName: user?.last_name || '',
-      dateOfBirth: '', email: user?.email || '', confirmEmail: '',
-      phone: user?.phone || '', alternativePhone: '', vehicleType: '', licenseType: '',
-      licenseNumber: '', theoryNumber: '', notes: '',
-      registerAsUser: false, password: '', confirmPassword: '',
-    }]);
+    setAttendeeDetails([
+      createAttendeeDetails({
+        firstName: user?.first_name,
+        lastName: user?.last_name,
+        email: user?.email,
+        phone: user?.phone,
+      }),
+    ]);
     setFirstAttendeeUserLookup({ email: '', status: 'idle' });
     // Keep section 3 expanded so user can pick a new date
     setExpandedSections(prev => ({ ...prev, 3: true, 4: false, 5: false }));
@@ -559,16 +573,21 @@ export default function OnePageBookingCheckout() {
     const phoneRegex = /^\+?[0-9\s()-]+$/;
     const licenseRegex = /^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const isOtherLicense = attendee.licenseType === '4';
+    const firstName = String(attendee.firstName ?? '').trim();
+    const lastName = String(attendee.lastName ?? '').trim();
+    const email = String(attendee.email ?? '').trim();
+    const confirmEmail = String(attendee.confirmEmail ?? '').trim();
+    const phone = String(attendee.phone ?? '').trim();
+    const dob = String(attendee.dateOfBirth ?? '').trim();
+    const vehicleType = String(attendee.vehicleType ?? '').trim();
+    const licenseType = String(attendee.licenseType ?? '').trim();
+    const licenseNumber = String(attendee.licenseNumber ?? '').trim();
+    const isOtherLicense = licenseType === '4';
     const dobRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 
-    const email = attendee.email.trim();
-    const confirmEmail = attendee.confirmEmail.trim();
     const isEmailValid = emailRegex.test(email);
     const isConfirmEmailValid = emailRegex.test(confirmEmail);
-    const phone = attendee.phone.trim();
     const normalizedPhone = phone.replace(/[\s()-]/g, '');
-    const dob = attendee.dateOfBirth.trim();
     const dobMatch = dob.match(dobRegex);
     const isDobValid = (() => {
       if (!dobMatch) return false;
@@ -585,8 +604,8 @@ export default function OnePageBookingCheckout() {
     })();
 
     const basicFieldsComplete =
-      attendee.firstName.trim() !== '' &&
-      attendee.lastName.trim() !== '' &&
+      firstName !== '' &&
+      lastName !== '' &&
       dob !== '' &&
       isDobValid &&
       email !== '' &&
@@ -597,13 +616,13 @@ export default function OnePageBookingCheckout() {
       phone !== '' &&
       phoneRegex.test(phone) &&
       /^\+?[0-9]+$/.test(normalizedPhone) &&
-      attendee.vehicleType.trim() !== '' &&
-      attendee.licenseType.trim() !== '';
+      vehicleType !== '' &&
+      licenseType !== '';
 
     // License number validation - skip if license type is 4
     const licenseComplete = isOtherLicense || (
-      attendee.licenseNumber.trim().length === 16 &&
-      licenseRegex.test(attendee.licenseNumber)
+      licenseNumber.length === 16 &&
+      licenseRegex.test(licenseNumber)
     );
 
     if (!basicFieldsComplete || !licenseComplete) return false;
@@ -927,23 +946,7 @@ export default function OnePageBookingCheckout() {
       if (attendees > prev.length) {
         // Add new attendees
         for (let i = prev.length; i < attendees; i++) {
-          newDetails.push({
-            firstName: "",
-            lastName: "",
-            dateOfBirth: "",
-            email: "",
-            confirmEmail: "",
-            phone: "",
-            alternativePhone: "",
-            vehicleType: "",
-            licenseType: "",
-            licenseNumber: "",
-            theoryNumber: "",
-            notes: "",
-            registerAsUser: false,
-            password: "",
-            confirmPassword: "",
-          });
+          newDetails.push(createAttendeeDetails());
         }
       } else if (attendees < prev.length) {
         // Remove excess attendees
@@ -996,8 +999,11 @@ export default function OnePageBookingCheckout() {
         attendeeDetails: attendeeDetails.map(a => ({
           firstName: a.firstName,
           lastName: a.lastName,
+          dateOfBirth: a.dateOfBirth,
           email: a.email,
+          confirmEmail: a.confirmEmail,
           phone: a.phone,
+          alternativePhone: a.alternativePhone,
           vehicleType: a.vehicleType,
           licenseType: a.licenseType,
           licenseNumber: a.licenseNumber,
@@ -1194,12 +1200,13 @@ export default function OnePageBookingCheckout() {
           setAttendees(formData.attendees ?? 1);
 
           if (formData.attendeeDetails) {
-            setAttendeeDetails(formData.attendeeDetails.map((a: any) => ({
-              ...a,
-              confirmEmail: "",
-              password: "",
-              confirmPassword: "",
-            })));
+            setAttendeeDetails(formData.attendeeDetails.map((a: any) =>
+              createAttendeeDetails({
+                ...a,
+                password: "",
+                confirmPassword: "",
+              })
+            ));
           }
           setConfirmPhotocard(!!formData.confirmPhotocard);
           setAcceptTerms(!!formData.acceptTerms);
@@ -1750,7 +1757,7 @@ export default function OnePageBookingCheckout() {
       const canRegisterAttendee = idx === 0 && canOfferFastCheckoutRegistration && attendee.registerAsUser;
 
       if (canRegisterAttendee) {
-        if (!attendee.password.trim()) {
+        if (!String(attendee.password ?? '').trim()) {
           toast.error(`Attendee ${idx + 1}: Password cannot be empty or contain only spaces`);
           return;
         }
@@ -2438,9 +2445,10 @@ export default function OnePageBookingCheckout() {
               <div className="space-y-4">
                 {attendeeDetails.slice(0, attendees).map((attendee, index) => {
                   // Check if this attendee's license number is used by another attendee
-                  const duplicateLicenseIndex = attendee.licenseNumber.trim()
+                  const currentLicense = String(attendee.licenseNumber ?? '').trim().toUpperCase();
+                  const duplicateLicenseIndex = currentLicense
                     ? attendeeDetails.slice(0, attendees).findIndex((a, i) =>
-                        i !== index && a.licenseNumber.trim().toUpperCase() === attendee.licenseNumber.trim().toUpperCase()
+                        i !== index && String(a.licenseNumber ?? '').trim().toUpperCase() === currentLicense
                       )
                     : -1;
 
