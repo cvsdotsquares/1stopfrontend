@@ -179,7 +179,13 @@ export default function ContactUsClient({
     });
 
     if (!bounds.isEmpty()) {
-      mapInstance.current.fitBounds(bounds, 100);
+      mapInstance.current.fitBounds(bounds, 80);
+      // Prevent over-zooming on single markers
+      google.maps.event.addListenerOnce(mapInstance.current, 'bounds_changed', () => {
+        if (mapInstance.current.getZoom() > 14) {
+          mapInstance.current.setZoom(14);
+        }
+      });
     }
   }
 
@@ -245,33 +251,37 @@ export default function ContactUsClient({
       <div className="prose max-w-none [&_a]:underline [&_a:hover]:text-red-500 mb-8" dangerouslySetInnerHTML={{ __html: page_content }} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-6 rounded">
-          <div>
-            <label className="block text-sm font-bold mb-1">Your name</label>
-            <input required value={name} onChange={(e) => setName(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
-          </div>
-          <div>
-            <label className="block text-sm font-bold mb-1">Your email</label>
-            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
-          </div>
-          <div>
-            <label className="block text-sm font-bold mb-1">Subject</label>
-            <input required value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
-          </div>
-          <div>
-            <label className="block text-sm font-bold mb-1">Message</label>
-            <textarea required value={message} onChange={(e) => setMessage(e.target.value)} className="w-full border rounded px-3 py-2 h-32  bg-white" />
-          </div>
+        <div className="flex flex-col gap-4 bg-gray-50 p-6 rounded">
+          <form onSubmit={handleSubmit}>
+            <div>
+              <label className="block text-sm font-bold mb-1">Your name</label>
+              <input required value={name} onChange={(e) => setName(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold mb-1">Your email</label>
+              <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold mb-1">Subject</label>
+              <input required value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold mb-1">Message</label>
+              <textarea required value={message} onChange={(e) => setMessage(e.target.value)} className="w-full border rounded px-3 py-2 h-32  bg-white" />
+            </div>
 
-          <div>
-            <button disabled={submitting} type="submit" className="min-w-[210px] mt-6 inline-block radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-center text-lg text-white hover:bg-red-500 cursor-pointer">
-              {submitting ? "Sending..." : "Submit"}
-            </button>
+            <div>
+              <button disabled={submitting} type="submit" className="min-w-[210px] mt-6 inline-block radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-center text-lg text-white hover:bg-red-500 cursor-pointer">
+                {submitting ? "Sending..." : "Submit"}
+              </button>
+            </div>
+
+            {statusMsg ? <p className="mt-2 text-sm">{statusMsg}</p> : null}
+          </form>
+          <div className="flex-1 min-h-[300px]">
+            <div ref={mapRef} style={{ width: "100%", height: "100%" }} className="rounded overflow-hidden" />
           </div>
-
-          {statusMsg ? <p className="mt-2 text-sm">{statusMsg}</p> : null}
-        </form>
-
+        </div>
         <div>
           <div className="bg-gray-50 p-6 rounded  mb-4">
             <label className="block text-sm font-bold mb-2">Select office</label>
@@ -283,10 +293,6 @@ export default function ContactUsClient({
                 </option>
               ))}
             </select>
-
-            <div className="mt-4">
-              <div ref={mapRef} style={{ width: "100%", }} className="rounded overflow-hidden" />
-            </div>
           </div>
 
           {selectedOffice ? (
@@ -306,7 +312,7 @@ export default function ContactUsClient({
         </div>
       </div>
 
-      <div className="pt-8 pb-3 [&_h3]:font-bold [&_h3]:text-2xl [&_h3]:mb-4">
+      {/* <div className="pt-8 pb-3 [&_h3]:font-bold [&_h3]:text-2xl [&_h3]:mb-4">
           <h3><span className="mr-1 md:mr-3 text-red-500 text-large"><i className="fa-solid fa-location-dot"></i></span>
             1 stop Instruction - East London - Beckton{" "}
             <span style={{ color: "#383092" }}>
@@ -314,7 +320,7 @@ export default function ContactUsClient({
             </span>
           </h3>
           <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d158717.4599157036!2d0.0130463!3d51.5689611!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47d8a71ae5bb6831%3A0x884a8c0191b39955!2s1%20Stop%20Instruction%20-%20Newham%20CBT%20Test%20Centre!5e0!3m2!1sen!2sin!4v1768303487197!5m2!1sen!2sin" width="100%" height="450" loading="lazy"></iframe>
-      </div>
+      </div> */}
 
 
     </div>
