@@ -215,7 +215,7 @@ export default function Hero({ data }: { data: HeroData }) {
           { nextCBT || getDateDisplay() ? (
             <div className="mb-2 bg-white/70 py-6 px-4  xl:px-10 xl:py-7 text-center rounded-lg">
               <div className="text26 xl:text-xl font-semibold text-red-600">
-                {data.nextCourse?.label || nextCBT.course_name || 'Next CBT Course'}
+                {data.nextCourse?.label || nextCBT.course_name || 'Next CBT Course'}<br/>
                 {data.nextCourse?.date ? ` ${data.nextCourse.date}` : ` ${getDateDisplay()}`}
               </div>
               <a
