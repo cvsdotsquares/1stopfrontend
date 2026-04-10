@@ -83,7 +83,10 @@ export default async function Home() {
     pageContent?.featured_display === 1;
 
   const cbtAcrossLondonData =
-    homepage.cbtAcrossLondon;
+    homepage.cbtAcrossLondon[0];
+
+  const cbtAcrossLondon2Data =
+    homepage.cbtAcrossLondon[1];
 
   const cbtTestLondonData =
     homepage.cbtTestLondon;
@@ -132,6 +135,10 @@ export default async function Home() {
 
       {cbtTestLondonData && (
         <FeatureImageRight data={cbtTestLondonData} />
+      )}
+
+      {cbtAcrossLondon2Data && (
+        <FeatureImageLeft data={cbtAcrossLondon2Data} />
       )}
 
       {trainingSliderData && (
