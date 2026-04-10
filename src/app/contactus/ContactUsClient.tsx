@@ -167,7 +167,7 @@ export default function ContactUsClient({
         title: o.lname,
         icon: {
           url: '/logo.png',
-          scaledSize: new google.maps.Size(32, 32),
+          scaledSize: new google.maps.Size(50, 50),
         },
       });
 
