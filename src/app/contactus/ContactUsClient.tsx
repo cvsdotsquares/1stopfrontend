@@ -284,9 +284,9 @@ export default function ContactUsClient({
         </div>
         <div>
           <div className="bg-gray-50 p-6 rounded  mb-4">
-            <label className="block text-sm font-bold mb-2">Select office</label>
+            <label className="block text-sm font-bold mb-2">Select Site</label>
             <select value={selectedOfficeId} onChange={(e) => setSelectedOfficeId(e.target.value === "all" ? "all" : Number(e.target.value))} className="w-full border bg-white rounded px-3 py-2">
-              <option value="all">All offices</option>
+              <option value="all">All Sites</option>
               {offices.map((o) => (
                 <option value={o.id} key={o.id}>
                   {o.lname}

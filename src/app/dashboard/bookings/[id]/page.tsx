@@ -26,6 +26,8 @@ interface BookingDetail {
   location_name: string;
   address1: string;
   address2: string;
+  address3: string;
+  address4: string;
   postcode: string;
   location_phone: string;
   location_email: string;
@@ -299,7 +301,6 @@ export default function BookingDetailPage() {
           </CardHeader>
           <CardContent>
             <InfoRow label="Course" value={booking.course_name} />
-            {booking.course_abb && <InfoRow label="Abbreviation" value={booking.course_abb} />}
             <InfoRow
               label="Course Date"
               value={courseDate}
@@ -322,7 +323,7 @@ export default function BookingDetailPage() {
                     <span className='text-sm text-gray-500 shrink-0 mr-4'>Address</span>
                     <span className='text-sm font-medium text-right'>{booking.address1}</span>
                 </div>
-                <p className='text-sm font-medium text-right'>{booking.address2}</p>
+                <p className='text-sm font-medium text-right'>{booking.address2}<br/>{booking.address3}<br/>{booking.address4}</p>
             </div>
             <InfoRow label="Postcode" value={booking.postcode} />
             {booking.location_phone && <InfoRow label="Phone" value={booking.location_phone} />}
@@ -339,7 +340,6 @@ export default function BookingDetailPage() {
             <InfoRow label="Total Price" value={`£${Number(booking.total_amount).toFixed(2)}`} />
             <InfoRow label="Amount Paid" value={`£${Number(booking.admin_payment_received ?? 0).toFixed(2)}`} />
             <InfoRow label="Balance Due" value={`£${Number(booking.payment_due ?? 0).toFixed(2)}`} />
-            {booking.transaction_id && (<InfoRow label="Transaction Id" value={booking.transaction_id} />)}
 
           </CardContent>
         </Card>

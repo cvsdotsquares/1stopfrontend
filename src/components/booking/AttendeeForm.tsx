@@ -647,7 +647,7 @@ export default function AttendeeForm({
                 onChange={(e) => onChange('registerAsUser', e.target.checked)}
               />
               <label htmlFor={`registerAsUser-${index}`} className="text-sm text-slate-700">
-                Register as a user for faster checkout next time
+                { `Create an account (or leave unticked to checkout as Guest)`}
               </label>
             </div>
           )}

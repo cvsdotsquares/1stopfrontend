@@ -2335,7 +2335,8 @@ export default function OnePageBookingCheckout() {
                         document.getElementById('section-4')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                       }, 150);
                     }}
-                    className="w-full cursor-pointer px-6 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-blue-600 transition"
+                    className="w-full cursor-pointer px-6 py-3 text-white rounded-xl font-medium shadow-md transition-all duration-300 ease-out hover:-translate-y-0.5 hover:brightness-110 hover:shadow-xl active:translate-y-0 active:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[lab(66.9756%_-58.27_19.5419)]"
+                    style={{ backgroundColor: 'lab(66.9756% -58.27 19.5419)' }}
                   >
                     Confirm Date & Time
                   </button>
@@ -2428,7 +2429,7 @@ export default function OnePageBookingCheckout() {
                 </div>
               )}
 
-              {!isAuthenticated && firstAttendeeUserLookup.status === 'exists' && firstAttendeeUserLookup.email && (
+              {/* {!isAuthenticated && firstAttendeeUserLookup.status === 'exists' && firstAttendeeUserLookup.email && (
                 <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
                   <p className="text-sm text-amber-900">
                     An account already exists for <span className="font-medium">{firstAttendeeUserLookup.email}</span>.{' '}
@@ -2440,7 +2441,7 @@ export default function OnePageBookingCheckout() {
                     </a>
                   </p>
                 </div>
-              )}
+              )} */}
 
               <div className="space-y-4">
                 {attendeeDetails.slice(0, attendees).map((attendee, index) => {
@@ -2823,7 +2824,14 @@ export default function OnePageBookingCheckout() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 border-t border-slate-200">
+            <div className="p-6 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCourseInfo(false)}
+                className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

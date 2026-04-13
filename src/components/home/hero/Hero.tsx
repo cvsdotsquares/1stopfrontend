@@ -15,6 +15,10 @@ interface HeroData {
     dateText: string;
     ctaText: string;
     ctaLink: string;
+    course_id: number;
+    location_id: number;
+    course_event_id: number;
+    url: string;
   };
   search: {
     title: string;
@@ -219,7 +223,7 @@ export default function Hero({ data }: { data: HeroData }) {
                 {data.nextCourse?.date ? ` ${data.nextCourse.date}` : ` ${getDateDisplay()}`}
               </div>
               <a
-                href={getBookingURL()}
+                href={nextCBT ? getBookingURL() : data.nextCourse?.url || '/bookings'} //date in 2026-04-20 format
                 className="mt-3 radius20-left radius20-right-bottom inline-block bg-red-600 px-10 py-3 text-base md:text-2xl text-white hover:bg-red-700"
               >
                 {data.nextCourse?.ctaText || 'Book Now'}

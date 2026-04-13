@@ -13,6 +13,14 @@ import FeatureImageRight from "@/components/home/generic-feature/FeatureImageRig
 import TrainingSlider from "@/components/home/training-slider/TrainingSlider";
 import WhyUsSection from "@/components/home/why-us/WhyUsSection";
 import GenericCta from "@/components/home/generic-cta/GenericCta";
+import Hero from "@/components/home/hero/Hero";
+import TabSection from '@/components/cms/TabSection';
+import InfoCardsSection from '@/components/home/info-cards/InfoCardsSection';
+import PriceCardSection from '@/components/home/price-cards/PriceCardSection';
+import ServiceAreasSection from '@/components/home/service-areas/ServiceAreasSection';
+import AccordionSection from '@/components/home/accordion/AccordionSection';
+import ContentCardsSection from '@/components/home/content-cards/ContentCardsSection';
+import ProcessStepsSection from '@/components/home/process-steps/ProcessStepsSection';
 
 export const revalidate = 60; // revalidate data periodically
 
@@ -56,6 +64,48 @@ export default async function Page() {
     const json = await res.json();
     const data = json?.data ?? {};
 
+    // Sort sections by order if available
+    const sortedSections = data.sections ? [...data.sections].sort((a: any, b: any) => a.order - b.order) : [];
+
+    // Render component based on section type
+    const renderSection = (section: { type: string; order: number; data: any }, index: number) => {
+      switch (section.type) {
+        case 'hero':
+          return <Hero key={`section-${index}`} data={section.data} />;
+        case 'about':
+          return <AboutSection key={`section-${index}`} data={section.data} />;
+        case 'services':
+          return <ServicesSection key={`section-${index}`} data={section.data} />;
+        case 'cbt_london':
+          return <FeatureImageLeft key={`section-${index}`} data={section.data} />;
+        case 'cbt_test_london':
+          return <FeatureImageRight key={`section-${index}`} data={section.data} />;
+        case 'training_slider':
+          return <TrainingSlider key={`section-${index}`} data={section.data} />;
+        case 'why_us':
+          return <WhyUsSection key={`section-${index}`} data={section.data} />;
+        case 'banner':
+        case 'banners':
+          return <GenericCta key={`section-${index}`} {...section.data} />;
+        case 'tab_section':
+          return <TabSection key={`section-${index}`} data={section.data} />;
+        case 'info_card_section':
+          return <InfoCardsSection key={`section-${index}`} data={section.data} />;
+        case 'price_card_section':
+          return <PriceCardSection key={`section-${index}`} data={section.data} />;
+        case 'service_areas_section':
+          return <ServiceAreasSection key={`section-${index}`} data={section.data} />;
+        case 'accordion_section':
+          return <AccordionSection key={`section-${index}`} data={section.data} order={section.order} />;
+        case 'content_cards_section':
+          return <ContentCardsSection key={`section-${index}`} data={section.data} />;
+        case 'process_steps':
+          return <ProcessStepsSection key={`section-${index}`} data={section.data} sidebar={{ hasSidebar: false }} />;
+        default:
+          return null;
+      }
+    };
+
     return (
       <>
         {RECAPTCHA_SITE_KEY && (
@@ -64,10 +114,9 @@ export default async function Page() {
             strategy="lazyOnload"
           />
         )}
-        {/* Carousel Banner when banner_type is 2 */}
+        {/* Carousel Banner when banner_type is 2
         {data.banner_type == 2 && <CarouselBanner />}
 
-        {/* Page Static Banner when banner_type is 1 */}
         {data.banner_type == 1 && data.carousel_static_image && (
           <div className="flex items-center relative bg-gradient-to-r from-blue-600 to-blue-800 text-white min-h-[300px] md:min-h-[400px] xl:min-h-[550px]">
             {data.carousel_static_image && (
@@ -86,21 +135,19 @@ export default async function Page() {
               {data.carousel_static_caption && <p className="text-lg text-white mt-4 [&_span]:p-2 [&_span]:text-black" dangerouslySetInnerHTML={{ __html: data.carousel_static_caption }} />}
             </div>
           </div>
-        )}
+        )} */}
+
+        {/* Render all sections above the form and locations */}
+        <div>
+          {sortedSections.map((section: any, index: number) => renderSection(section, index))}
+        </div>
+
+        {/* Contact Form and Location Offices below sections */}
         <ContactUsClient
           page_title={data.banner_type == 1 ? "" : data.page_title || "Contact Us"}
           page_content={data.page_content || ""}
           contact_offices={data.contact_offices || []}
         />
-
-        {/* Homepage Components */}
-        {data.about && <AboutSection data={data.about} />}
-        {data.services && <ServicesSection data={data.services} />}
-        {data.cbt_london && <FeatureImageLeft data={data.cbt_london} />}
-        {data.cbt_test_london && <FeatureImageRight data={data.cbt_test_london} />}
-        {data.training_slider && <TrainingSlider data={data.training_slider} />}
-        {data.why_us && <WhyUsSection data={data.why_us} />}
-        {data.banners && <GenericCta {...data.banners} />}
 
         {/* Conditional components based on page settings */}
         {data.featured_service == 1 && <FeaturedServices />}
