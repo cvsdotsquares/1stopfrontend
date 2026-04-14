@@ -389,7 +389,7 @@ export default function AttendeeForm({
 
       <div
         className="p-6 pt-3 transition-all duration-500 ease-in-out overflow-hidden"
-        style={{ maxHeight: isExpanded ? '1200px' : '0px', padding: isExpanded ? undefined : '0px' }}
+        style={{ maxHeight: isExpanded ? 'auto' : '0px', padding: isExpanded ? undefined : '0px' }}
         aria-hidden={!isExpanded}
       >
 
