@@ -78,6 +78,19 @@ function formatLocalDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+function getMonthOffsetFromToday(targetDateInput: Date | string | null | undefined): number {
+  if (!targetDateInput) return 0;
+
+  const targetDate = new Date(targetDateInput);
+  if (Number.isNaN(targetDate.getTime())) return 0;
+
+  const today = new Date();
+  const currentMonthIndex = (today.getFullYear() * 12) + today.getMonth();
+  const targetMonthIndex = (targetDate.getFullYear() * 12) + targetDate.getMonth();
+
+  return Math.max(0, Math.min(2, targetMonthIndex - currentMonthIndex));
+}
+
 function generateCalendarWeeksFrom(startRefDate = new Date(), courseEvents: CourseEvent[] = [], monthOffset = 0) {
   const today = new Date(startRefDate);
   today.setHours(0, 0, 0, 0);
@@ -1357,7 +1370,6 @@ export default function OnePageBookingCheckout() {
       try {
         const response = await bookingApi.getCourseAvailability(selectedCourse.id, locationId);
         const availability = response.data.availability;
-        console.log(availability);
         setCourseEvents(availability);
         availabilityFetchedRef.current = { courseId: selectedCourse.id, locationId };
 
@@ -1365,14 +1377,24 @@ export default function OnePageBookingCheckout() {
         const urlParams = new URLSearchParams(window.location.search);
         const dateParam = urlParams.get('date');
 
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const nextAvailable = availability.find(event => {
+          const eventDate = new Date(event.date);
+          eventDate.setHours(0, 0, 0, 0);
+          return event.available && event.available_spaces > 0 && eventDate >= today;
+        });
+
+        if (selectedDate) {
+          setCalendarMonthOffset(getMonthOffsetFromToday(selectedDate));
+        } else if (nextAvailable?.date) {
+          setCalendarMonthOffset(getMonthOffsetFromToday(nextAvailable.date));
+        } else {
+          setCalendarMonthOffset(0);
+        }
+
         if (availability.length > 0 && !selectedDate && dateParam) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const nextAvailable = availability.find(event => {
-            const eventDate = new Date(event.date);
-            eventDate.setHours(0, 0, 0, 0);
-            return event.available && event.available_spaces > 0 && eventDate >= today;
-          });
           if (nextAvailable) {
             setSelectedDate(new Date(nextAvailable.date));
             setSelectedCourseEventId(nextAvailable.course_event_id);
@@ -1386,6 +1408,11 @@ export default function OnePageBookingCheckout() {
 
     loadAvailability();
   }, [selectedCourse, locationId]);
+
+  useEffect(() => {
+    if (!selectedDate) return;
+    setCalendarMonthOffset(getMonthOffsetFromToday(selectedDate));
+  }, [selectedDate]);
 
   const weeks = useCalendarWeeks(courseEvents, calendarMonthOffset);
 
