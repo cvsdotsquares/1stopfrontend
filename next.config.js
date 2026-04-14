@@ -36,13 +36,18 @@ const nextConfig = {
         hostname: '1stoplive.24livehost.com',
         pathname: '/**',
       },
+       {
+        protocol: 'https',
+        hostname: '1stopinstruction-statging.24livehost.com',
+        pathname: '/**',
+      },
     ],
   },
   // Turbopack configuration for Next.js 16
   turbopack: {
     // Empty config to silence the warning and use default Turbopack settings
   },
-  
+
   // Webpack configuration for better performance (fallback when not using Turbopack)
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
     // Optimize memory usage
