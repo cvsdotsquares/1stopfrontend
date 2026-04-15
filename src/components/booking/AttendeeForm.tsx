@@ -388,7 +388,7 @@ export default function AttendeeForm({
       </button>
 
       <div
-        className="p-6 pt-3 transition-all duration-500 ease-in-out overflow-hidden"
+        className="p-6 pt-3 transition-all duration-500 ease-in-out overflow-hidden bg-gray-50"
         style={{ maxHeight: isExpanded ? 'auto' : '0px', padding: isExpanded ? undefined : '0px' }}
         aria-hidden={!isExpanded}
       >
@@ -401,7 +401,7 @@ export default function AttendeeForm({
           </label>
           <input
             type="text"
-            className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+            className="w-full rounded-sm border bg-white px-3 py-3 text-sm  "
             value={attendee.firstName || ''}
             onChange={(e) => onChange('firstName', e.target.value)}
           />
@@ -413,7 +413,7 @@ export default function AttendeeForm({
           </label>
           <input
             type="text"
-            className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+            className="w-full rounded-sm border  px-3 py-3 text-sm bg-white"
             value={attendee.lastName || ''}
             onChange={(e) => onChange('lastName', e.target.value)}
           />
@@ -429,7 +429,7 @@ export default function AttendeeForm({
           ref={dobInputRef}
           type="text"
           placeholder="dd/mm/yyyy"
-          className={`w-full rounded-sm border px-3 py-3 text-sm font-mono tracking-wider focus:outline-none focus:ring-2 ${
+          className={`w-full rounded-sm border px-3 py-3 text-sm font-mono tracking-wider bg-white ${
             ageWarning && ageWarning.includes('must be at least 16')
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
               : ageWarning && ageWarning.includes('valid date')
@@ -463,7 +463,7 @@ export default function AttendeeForm({
           </label>
           <input
             type="email"
-            className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
+            className={`w-full rounded-sm border px-3 py-3 text-sm bg-white ${
               emailValue && confirmEmailValue && isEmailValid && isConfirmEmailValid
                 ? areEmailsMatching
                   ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
@@ -487,7 +487,7 @@ export default function AttendeeForm({
           </label>
           <input
             type="email"
-            className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
+            className={`w-full rounded-sm border px-3 py-3 text-sm bg-white ${
               emailValue && confirmEmailValue && isEmailValid && isConfirmEmailValid
                 ? areEmailsMatching
                   ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
@@ -517,7 +517,7 @@ export default function AttendeeForm({
           </label>
           <input
             type="tel"
-            className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
+            className={`w-full rounded-sm border px-3 py-3 text-sm bg-white ${
               phoneValue
                 ? isPhoneValid
                   ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
@@ -540,7 +540,7 @@ export default function AttendeeForm({
           </label>
           <input
             type="tel"
-            className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+            className="w-full rounded-sm border px-3 py-3 text-sm bg-white"
             value={attendee.alternativePhone || ''}
             onChange={(e) => onChange('alternativePhone', e.target.value)}
             placeholder="Optional"
@@ -555,7 +555,7 @@ export default function AttendeeForm({
         </label>
         <select
           style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
-          className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 bg-white"
+          className="w-full rounded-sm border px-3 py-3 text-sm bg-white"
           value={attendee.vehicleType || ''}
           onChange={(e) => onChange('vehicleType', e.target.value)}
         >
@@ -578,7 +578,7 @@ export default function AttendeeForm({
         </label>
         <select
           style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
-          className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 bg-white"
+          className="w-full rounded-sm border px-3 py-3 text-sm  bg-white"
           value={attendee.licenseType || ''}
           onChange={(e) => onChange('licenseType', e.target.value)}
         >
@@ -596,7 +596,7 @@ export default function AttendeeForm({
         </label>
         <input
           type="text"
-          className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
+          className={`w-full rounded-sm border bg-white px-3 py-3 text-sm ${
             duplicateLicenseIndex !== null
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
               : attendee.licenseNumber.length === 16
@@ -627,7 +627,7 @@ export default function AttendeeForm({
         </label>
         <input
           type="text"
-          className="w-full rounded-sm border border-slate-300 px-3 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+          className="w-full rounded-sm border px-3 py-3 text-sm bg-white "
           value={attendee.theoryNumber || ''}
           onChange={(e) => onChange('theoryNumber', e.target.value)}
           placeholder="Optional"
@@ -642,7 +642,7 @@ export default function AttendeeForm({
               <input
                 id={`registerAsUser-${index}`}
                 type="checkbox"
-                className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                className="mt-1 h-4 w-4 rounded border text-teal-600 focus:ring-teal-500"
                 checked={attendee.registerAsUser}
                 onChange={(e) => onChange('registerAsUser', e.target.checked)}
               />
@@ -673,7 +673,7 @@ export default function AttendeeForm({
                 </label>
                 <input
                   type="password"
-                  className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
+                  className={`w-full rounded-sm border bg-white px-3 py-3 text-sm ${
                     attendee.password && attendee.confirmPassword && attendee.password.length >= 8
                       ? attendee.password === attendee.confirmPassword
                         ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
@@ -692,7 +692,7 @@ export default function AttendeeForm({
                 </label>
                 <input
                   type="password"
-                  className={`w-full rounded-sm border px-3 py-3 text-sm focus:outline-none focus:ring-2 ${
+                  className={`w-full rounded-sm border bg-white px-3 py-3 text-sm ${
                     attendee.password && attendee.confirmPassword && attendee.password.length >= 8
                       ? attendee.password === attendee.confirmPassword
                         ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
@@ -721,7 +721,7 @@ export default function AttendeeForm({
           <input
             id={`confirmPhotocard-${index}`}
             type="checkbox"
-            className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 disabled:cursor-not-allowed"
+            className="mt-1 h-4 w-4 rounded border text-teal-600 focus:ring-teal-500 disabled:cursor-not-allowed"
             checked={photocardConfirmed}
             onChange={(e) => {
               const checked = e.target.checked;

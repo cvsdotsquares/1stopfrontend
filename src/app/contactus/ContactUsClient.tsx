@@ -253,15 +253,15 @@ export default function ContactUsClient({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="flex flex-col gap-4 bg-gray-50 p-6 rounded">
           <form onSubmit={handleSubmit}>
-            <div>
+            <div className="mb-2">
               <label className="block text-sm font-bold mb-1">Your name</label>
               <input required value={name} onChange={(e) => setName(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
             </div>
-            <div>
+            <div className="mb-2">
               <label className="block text-sm font-bold mb-1">Your email</label>
               <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
             </div>
-            <div>
+            <div className="mb-2">
               <label className="block text-sm font-bold mb-1">Subject</label>
               <input required value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
             </div>
