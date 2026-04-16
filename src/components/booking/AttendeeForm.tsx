@@ -81,6 +81,7 @@ export default function AttendeeForm({
   emailCheckState = 'idle',
 }: AttendeeFormProps) {
   const [ageWarning, setAgeWarning] = React.useState<string | null>(null);
+  const [expandedMaxHeight, setExpandedMaxHeight] = React.useState('0px');
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const phoneRegex = /^\+?[0-9\s()-]+$/;
 
@@ -176,6 +177,7 @@ export default function AttendeeForm({
 
   // --- Masked DOB input ---
   const dobInputRef = React.useRef<HTMLInputElement>(null);
+  const formBodyRef = React.useRef<HTMLDivElement>(null);
   const pendingDobCursorPosRef = React.useRef<number | null>(null);
   // Raw digits extracted from the stored dateOfBirth value (max 8 digits)
   const dobDigits = (attendee.dateOfBirth || '').replace(/[^0-9]/g, '').slice(0, 8);
@@ -188,6 +190,31 @@ export default function AttendeeForm({
     dobInputRef.current.setSelectionRange(pos, pos);
     pendingDobCursorPosRef.current = null;
   }, [dobDisplay]);
+
+  React.useLayoutEffect(() => {
+    const body = formBodyRef.current;
+    if (!body) return;
+
+    if (!isExpanded) {
+      setExpandedMaxHeight('0px');
+      return;
+    }
+
+    const updateMaxHeight = () => {
+      setExpandedMaxHeight(`${body.scrollHeight}px`);
+    };
+
+    updateMaxHeight();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(updateMaxHeight);
+      observer.observe(body);
+      return () => observer.disconnect();
+    }
+
+    window.addEventListener('resize', updateMaxHeight);
+    return () => window.removeEventListener('resize', updateMaxHeight);
+  }, [isExpanded]);
 
   /** Snap cursor to the correct pixel position after a state update */
   const snapDobCursor = (input: HTMLInputElement, afterDigitIdx: number, immediate = false) => {
@@ -388,8 +415,9 @@ export default function AttendeeForm({
       </button>
 
       <div
+        ref={formBodyRef}
         className="p-6 pt-3 transition-all duration-500 ease-in-out overflow-hidden bg-gray-50"
-        style={{ maxHeight: isExpanded ? 'auto' : '0px', padding: isExpanded ? undefined : '0px' }}
+        style={{ maxHeight: isExpanded ? expandedMaxHeight : '0px', padding: isExpanded ? undefined : '0px' }}
         aria-hidden={!isExpanded}
       >
 
