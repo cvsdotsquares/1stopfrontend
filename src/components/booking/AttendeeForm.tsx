@@ -178,6 +178,7 @@ export default function AttendeeForm({
   // --- Masked DOB input ---
   const dobInputRef = React.useRef<HTMLInputElement>(null);
   const formBodyRef = React.useRef<HTMLDivElement>(null);
+  const formContentRef = React.useRef<HTMLDivElement>(null);
   const pendingDobCursorPosRef = React.useRef<number | null>(null);
   // Raw digits extracted from the stored dateOfBirth value (max 8 digits)
   const dobDigits = (attendee.dateOfBirth || '').replace(/[^0-9]/g, '').slice(0, 8);
@@ -193,7 +194,8 @@ export default function AttendeeForm({
 
   React.useLayoutEffect(() => {
     const body = formBodyRef.current;
-    if (!body) return;
+    const content = formContentRef.current;
+    if (!body || !content) return;
 
     if (!isExpanded) {
       setExpandedMaxHeight('0px');
@@ -201,14 +203,14 @@ export default function AttendeeForm({
     }
 
     const updateMaxHeight = () => {
-      setExpandedMaxHeight(`${body.scrollHeight}px`);
+      setExpandedMaxHeight(`${content.scrollHeight}px`);
     };
 
     updateMaxHeight();
 
     if (typeof ResizeObserver !== 'undefined') {
       const observer = new ResizeObserver(updateMaxHeight);
-      observer.observe(body);
+      observer.observe(content);
       return () => observer.disconnect();
     }
 
@@ -416,10 +418,11 @@ export default function AttendeeForm({
 
       <div
         ref={formBodyRef}
-        className="p-6 pt-3 transition-all duration-500 ease-in-out overflow-hidden bg-gray-50"
-        style={{ maxHeight: isExpanded ? expandedMaxHeight : '0px', padding: isExpanded ? undefined : '0px' }}
+        className="transition-all duration-500 ease-in-out overflow-hidden bg-gray-50"
+        style={{ maxHeight: isExpanded ? expandedMaxHeight : '0px' }}
         aria-hidden={!isExpanded}
       >
+      <div ref={formContentRef} className="p-6 pt-3">
 
       {/* First name and Last name - 2 columns */}
       <div className="grid gap-4 sm:grid-cols-2 mb-4">
@@ -775,6 +778,7 @@ export default function AttendeeForm({
             </ul>
           </div>
         )}
+      </div>
       </div>
       </div>
     </div>
