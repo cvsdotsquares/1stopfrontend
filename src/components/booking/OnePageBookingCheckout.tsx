@@ -663,7 +663,7 @@ export default function OnePageBookingCheckout() {
   if (!selectedDate) {
     paymentBlockingMessages.push('Please select a course date.');
   } else if (!dateTimeConfirmed) {
-    paymentBlockingMessages.push('You changed the course date. Please click "Confirm Date & Time" in Step 3 to continue.');
+    paymentBlockingMessages.push('You changed the course date or spaces. Please click "Confirm Date & Time" in Step 3 to continue.');
   }
   if (!sectionComplete[4]) {
     paymentBlockingMessages.push('Please complete all attendee details and photocard confirmations in Step 4.');
@@ -1490,10 +1490,9 @@ export default function OnePageBookingCheckout() {
 
   const subtotal = pricing?.final_totals?.subtotal || 0;
   const vat = pricing?.final_totals?.vat || 0;
-  const totalBeforeDiscount = pricing?.final_totals?.final_amount || 0;
   // Use backend-calculated discount instead of local math
   const discount = pricing?.final_totals?.discount || 0;
-  const total = Math.max(0, totalBeforeDiscount - discount);
+  const total = Math.max(0, pricing?.final_totals?.amount_to_charge || pricing?.final_totals?.final_amount || 0);
 
   const resolveEventDateKey = (value: Date | string | null | undefined): string | null => {
     if (!value) return null;
@@ -1536,9 +1535,16 @@ export default function OnePageBookingCheckout() {
     }
 
     const promoAmount = Number(promoData.discount_amount) || 0;
+    const eligibleAttendeeCount = Math.max(
+      0,
+      Math.min(
+        attendeeSlice.length,
+        Number(promoData.eligible_attendees ?? attendeeSlice.length) || 0
+      )
+    );
     const promoDiscount = promoData.discount_type === 'percent_off'
-      ? (baseAmount * promoAmount) / 100
-      : (promoAmount * attendeeSlice.length);
+      ? ((baseAmount * (eligibleAttendeeCount / Math.max(attendeeSlice.length, 1))) * promoAmount) / 100
+      : (promoAmount * eligibleAttendeeCount);
 
     return Math.max(0, baseAmount - promoDiscount);
   }, [selectedEventForTracking, attendeeDetails, attendees, promoData]);

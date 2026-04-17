@@ -28,8 +28,33 @@ interface DashboardData {
     postcode: string;
     transactionId: string | null;
     created: string;
+    secondary_attendees?: Array<{
+      booking_id: number;
+      booking_ref: string;
+      first_name: string;
+      sur_name: string;
+      email: string;
+      payment_due: number;
+      admin_payment_received: number;
+      total_fees: number;
+    }>;
   }>;
-  upcomingCourses: Array<{ id: string; title: string; date: string; location: string }>;
+  upcomingCourses: Array<{
+    id: string;
+    title: string;
+    date: string;
+    location: string;
+    secondary_attendees?: Array<{
+      booking_id: number;
+      booking_ref: string;
+      first_name: string;
+      sur_name: string;
+      email: string;
+      payment_due: number;
+      admin_payment_received: number;
+      total_fees: number;
+    }>;
+  }>;
   giftVouchers: Array<{ id: number; voucherRef: string; value: number; courseName: string; recipientName: string; validTill: string; status: string; redeemed: string }>;
 }
 
@@ -132,13 +157,15 @@ export default function Dashboard() {
                 address2: b.address2,
                 postcode: b.postcode,
                 transactionId: b.transaction_id,
-                created: b.created
+                created: b.created,
+                secondary_attendees: b.secondary_attendees || []
               })),
               upcomingCourses: (apiData.upcoming_courses || []).map((c: any) => ({
                 id: c.booking_id,
                 title: c.course_name,
                 date: c.event_date,
-                location: `${c.location_name || ''}, ${c.postcode || ''}`.trim().replaceAll(/^,\s*|,\s*$/g, '')
+                location: `${c.location_name || ''}, ${c.postcode || ''}`.trim().replaceAll(/^,\s*|,\s*$/g, ''),
+                secondary_attendees: c.secondary_attendees || []
               })),
               giftVouchers: (apiData.gift_vouchers || []).map((v: any) => ({
                 id: v.id,
@@ -237,6 +264,18 @@ export default function Dashboard() {
                     <div>
                       <p className="text-sm font-medium">{booking.courseTitle}</p>
                       <p className="text-xs text-gray-500">{new Date(booking.date).toLocaleDateString('en-GB')}</p>
+                      {booking.secondary_attendees && booking.secondary_attendees.length > 0 && (
+                        <div className="mt-1 space-y-1">
+                          {booking.secondary_attendees.map((secondary) => (
+                            <div key={`${booking.id}-${secondary.booking_id}`} className="text-xs text-gray-600 flex flex-wrap items-center gap-1">
+                              <span className="inline-flex items-center rounded-full bg-purple-100 text-purple-700 px-2 py-0.5 text-[10px] font-medium">Secondary</span>
+                              <span>{secondary.first_name} {secondary.sur_name}</span>
+                              <span className="text-gray-400">•</span>
+                              <span>{secondary.booking_ref || `1SRC${secondary.booking_id}`}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
@@ -267,6 +306,18 @@ export default function Dashboard() {
                     <div>
                       <p className="text-sm font-medium">{course.title}</p>
                       <p className="text-xs text-gray-500">{new Date(course.date).toLocaleDateString('en-GB')} - {course.location}</p>
+                      {course.secondary_attendees && course.secondary_attendees.length > 0 && (
+                        <div className="mt-1 space-y-1">
+                          {course.secondary_attendees.map((secondary) => (
+                            <div key={`${course.id}-${secondary.booking_id}`} className="text-xs text-gray-600 flex flex-wrap items-center gap-1">
+                              <span className="inline-flex items-center rounded-full bg-purple-100 text-purple-700 px-2 py-0.5 text-[10px] font-medium">Secondary</span>
+                              <span>{secondary.first_name} {secondary.sur_name}</span>
+                              <span className="text-gray-400">•</span>
+                              <span>{secondary.booking_ref || `1SRC${secondary.booking_id}`}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

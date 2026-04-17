@@ -50,6 +50,16 @@ interface BookingDetail {
   email: string;
   mobile: string;
   attendees: Attendee[];
+  secondary_attendees?: Array<{
+    booking_id: number;
+    booking_ref: string;
+    first_name: string;
+    sur_name: string;
+    email: string;
+    payment_due: number;
+    admin_payment_received: number;
+    total_fees: number;
+  }>;
 }
 
 const statusConfig: Record<number, { label: string; className: string }> = {
@@ -343,6 +353,37 @@ export default function BookingDetailPage() {
 
           </CardContent>
         </Card>
+
+        {booking.secondary_attendees && booking.secondary_attendees.length > 0 && (
+          <Card className="md:col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold text-gray-700">Secondary Attendees</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {booking.secondary_attendees.map((secondary) => (
+                  <div key={secondary.booking_id} className="rounded-lg border border-purple-100 bg-purple-50/40 p-3">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <span className="inline-flex items-center rounded-full bg-purple-100 text-purple-700 px-2 py-0.5 text-xs font-medium">
+                        Secondary attendee
+                      </span>
+                      <span className="text-sm font-medium text-gray-800">
+                        {secondary.first_name} {secondary.sur_name}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                      <div><span className="text-gray-500">Booking Ref:</span> <span className="font-medium">{secondary.booking_ref || `1SRC${secondary.booking_id}`}</span></div>
+                      <div><span className="text-gray-500">Email:</span> <span className="font-medium">{secondary.email || '—'}</span></div>
+                      <div><span className="text-gray-500">Total Fees:</span> <span className="font-medium">£{Number(secondary.total_fees ?? 0).toFixed(2)}</span></div>
+                      <div><span className="text-gray-500">Amount Paid:</span> <span className="font-medium">£{Number(secondary.admin_payment_received ?? 0).toFixed(2)}</span></div>
+                      <div><span className="text-gray-500">Balance Due:</span> <span className="font-medium">£{Number(secondary.payment_due ?? 0).toFixed(2)}</span></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="md:col-span-2">
           <CardHeader className="pb-2">
