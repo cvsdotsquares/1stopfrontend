@@ -172,11 +172,12 @@ export default function GiftVoucherPage() {
 
               {/* Subject */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Please tell us what the gift voucher is for</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Please tell us what the gift voucher is for <span className="text-red-500">*</span></label>
                 {isLoadingTemplate ? (
                   <input
                     type="text"
                     disabled
+                    required
                     placeholder="Loading options..."
                     className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 bg-gray-50"
                   />

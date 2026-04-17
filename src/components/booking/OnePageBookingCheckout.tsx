@@ -1467,7 +1467,18 @@ export default function OnePageBookingCheckout() {
             license_type: a.licenseType
           }));
 
-        const pricingResult = await bookingApi.calculatePrice(selectedCourseEventId, attendeesArray);
+        // Extract promo details for pricing calculation
+        const promoCodeId = promoData?.valid ? Number(promoData.promo_code_id) : undefined;
+        const promoEligibleCount = promoData?.valid
+          ? Number(promoData.eligible_attendees ?? attendees)
+          : undefined;
+
+        const pricingResult = await bookingApi.calculatePrice(
+          selectedCourseEventId,
+          attendeesArray,
+          promoCodeId,
+          promoEligibleCount
+        );
         setPricing(pricingResult.pricing_breakdown);
       } catch (error) {
         setPricing(null);
@@ -1475,16 +1486,13 @@ export default function OnePageBookingCheckout() {
     };
 
     calculatePricing();
-  }, [selectedCourseEventId, attendees, pricingDeps]);
+  }, [selectedCourseEventId, attendees, pricingDeps, promoData]);
 
   const subtotal = pricing?.final_totals?.subtotal || 0;
   const vat = pricing?.final_totals?.vat || 0;
   const totalBeforeDiscount = pricing?.final_totals?.final_amount || 0;
-  const discount = promoData?.valid
-    ? (promoData.discount_type === 'percent_off'
-        ? (totalBeforeDiscount * (Number(promoData.discount_amount) || 0)) / 100
-        : Number(promoData.discount_amount) || 0)
-    : 0;
+  // Use backend-calculated discount instead of local math
+  const discount = pricing?.final_totals?.discount || 0;
   const total = Math.max(0, totalBeforeDiscount - discount);
 
   const resolveEventDateKey = (value: Date | string | null | undefined): string | null => {
@@ -2060,10 +2068,13 @@ export default function OnePageBookingCheckout() {
             <Section
               index={3}
               title="Select date & time"
-              subtitle=""
+              subtitle="Select your preferred date and time for the course. Availability is shown for the next 3 months."
               complete={sectionComplete[3]}
-              open={expandedSections[3]}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 3: !prev[3] }))}
+              open={sectionComplete[2] ? expandedSections[3] : false}
+              onToggle={() => {
+                if (!sectionComplete[2]) return;
+                setExpandedSections(prev => ({ ...prev, 3: !prev[3] }));
+              }}
               expandDisabled={!sectionComplete[2]}
             >
               {/* Calendar */}
@@ -2579,6 +2590,9 @@ export default function OnePageBookingCheckout() {
                           Discount {promoData.discount_type === 'percent_off'
                             ? `(${promoData.discount_amount}% off)`
                             : '(amount off)'}
+                          {promoData.ineligible_attendees > 0 && (
+                            <span className="ml-2 text-xs">• {promoData.eligible_attendees}/{attendees} eligible</span>
+                          )}
                         </span>
                         <span className="font-medium">-<Money value={discount} /></span>
                       </div>
