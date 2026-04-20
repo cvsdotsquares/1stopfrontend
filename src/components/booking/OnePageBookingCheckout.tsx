@@ -406,7 +406,6 @@ export default function OnePageBookingCheckout() {
 
   // Auth state
   const { isAuthenticated, user, login } = useAuthStore();
-
   // API Data State
   const [courses, setCourses] = useState<Course[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -456,6 +455,21 @@ export default function OnePageBookingCheckout() {
       lastName: user?.last_name,
       email: user?.email,
       phone: user?.phone,
+      dateOfBirth: user?.date_of_birth
+        ? (() => {
+            const d = new Date(user.date_of_birth);
+            if (!isNaN(d.getTime())) {
+              const day = String(d.getDate()).padStart(2, '0');
+              const month = String(d.getMonth() + 1).padStart(2, '0');
+              const year = d.getFullYear();
+              return `${day}/${month}/${year}`;
+            }
+            return '';
+          })()
+        : '',
+      licenseNumber: user?.license_number,
+      licenseType: user?.license_type,
+      theoryNumber: user?.theory_number,
     }),
   ]);
   const [firstAttendeeUserLookup, setFirstAttendeeUserLookup] = useState<{
@@ -547,6 +561,19 @@ export default function OnePageBookingCheckout() {
         lastName: user?.last_name,
         email: user?.email,
         phone: user?.phone,
+        dateOfBirth: user?.date_of_birth
+          ? (() => {
+              const d = new Date(user.date_of_birth);
+              if (!isNaN(d.getTime())) {
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = d.getFullYear();
+                return `${day}/${month}/${year}`;
+              }
+              return '';
+            })()
+          : '',
+        // licenseNumber, licenseType, theoryNumber can be added here if needed
       }),
     ]);
     setFirstAttendeeUserLookup({ email: '', status: 'idle' });
@@ -787,37 +814,6 @@ export default function OnePageBookingCheckout() {
 
   // Track whether the user manually toggled an attendee (to avoid auto-expand overriding it)
   const manualToggleRef = useRef(false);
-
-  // Auto-expand next attendee only when current attendee is complete AND photocard is confirmed
-  // BUT skip if the user just manually toggled to go back and edit a previous attendee
-  useEffect(() => {
-    if (attendees <= 1) return;
-
-    // If the user manually clicked a toggle, don't auto-advance — just reset the flag
-    if (manualToggleRef.current) {
-      manualToggleRef.current = false;
-      return;
-    }
-
-    const currentIndex = expandedAttendeeIndex;
-    // Only proceed if we have a valid current index
-    if (currentIndex >= 0 && currentIndex < attendees) {
-      const currentAttendee = attendeeDetails[currentIndex];
-      const isCurrentComplete = isAttendeeComplete(currentAttendee, currentIndex);
-      const isPhotocardConfirmed = photocardConfirmed[currentIndex];
-
-      // Only auto-expand next attendee if BOTH conditions are met:
-      // 1. All required fields are filled for current attendee
-      // 2. Photocard is confirmed for current attendee
-      if (isCurrentComplete && isPhotocardConfirmed) {
-        if (currentIndex < attendees - 1) {
-          // Ensure attendees section is expanded then move to next attendee
-          setExpandedSections(prev => ({ ...prev, 4: true }));
-          setExpandedAttendeeIndex(currentIndex + 1);
-        }
-      }
-    }
-  }, [attendeeDetails, photocardConfirmed, expandedAttendeeIndex, attendees]);
 
   useEffect(() => {
     const matchedEmail = getMatchedEmailForLookup(attendeeDetails[0]);
@@ -1790,7 +1786,7 @@ export default function OnePageBookingCheckout() {
       if (attendee.dateOfBirth && selectedDate) {
         const age = calculateAge(attendee.dateOfBirth, selectedDate);
         if (age < 16) {
-          alert(`Attendee ${idx + 1}: You must be at least 16 years of age on the day of your course in order to proceed with your booking.`);
+          alert(`Attendee ${idx + 1}: As you will only be 16 years of age on the day of your course, only Automatic or Own Vehicle can be be selected`);
           return;
         }
       }
@@ -2539,6 +2535,11 @@ export default function OnePageBookingCheckout() {
                       isComplete={isAttendeeComplete(attendee, index)}
                       photocardConfirmed={photocardConfirmed[index] || false}
                       onPhotocardChange={(confirmed) => handlePhotocardChange(index, confirmed)}
+                      onExpandNext={() => {
+                        if (index >= attendees - 1) return;
+                        setExpandedSections(prev => ({ ...prev, 4: true }));
+                        setExpandedAttendeeIndex(index + 1);
+                      }}
                       licenseValidated={licenseValidated[index] || false}
                       duplicateLicenseIndex={duplicateLicenseIndex >= 0 ? duplicateLicenseIndex : null}
                       selectedDate={selectedDate}

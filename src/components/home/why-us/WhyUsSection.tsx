@@ -1,5 +1,6 @@
 interface WhyUsData {
   title: string;
+  subtitle: string;
   description: string;
   courses: Array<{
     id: number;
@@ -24,7 +25,7 @@ export default function WhyUsSection({ data }: { data: WhyUsData }) {
           dangerouslySetInnerHTML={{ __html: data.title }}
         />
 
-
+        { data.subtitle && <div className="subtitle text-red-600 text-center" dangerouslySetInnerHTML={{ __html: data.subtitle }} /> }
         {/* Description */}
         <div
           className="mx-auto mb-6 md:mb-6 max-w-6xl text-center text-gray-500 leading-relaxed prose prose-lg [&_a]:text-blue-600 [&_a]:hover:text-red-500 [&_p:last-child]:text-xl"
@@ -51,16 +52,15 @@ export default function WhyUsSection({ data }: { data: WhyUsData }) {
               <h3 className="mb-3 text-lg font-bold text-black">
                 {course.title}
               </h3>
-
               {/* Description */}
               <p className="text-sm text-gray-500 leading-relaxed">
                 {course.description}
               </p>
 
               {/* Link */}
-              { course.linkUrl && course.linkTitle != ''&& (
+              { course.linkUrl && (
                 <a className="px-6 py-3 text-lg text-red-600 min-w-[180px] text-center" href={course.linkUrl}>
-                  { `${course.linkTitle}` } <i className="fa-solid fa-chevron-right"></i>
+                  {course.linkTitle ? course.linkTitle : 'Learn More'} <i className="fa-solid fa-chevron-right"></i>
                 </a>
               )}
             </div>

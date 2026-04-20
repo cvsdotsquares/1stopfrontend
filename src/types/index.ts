@@ -7,6 +7,9 @@ export interface User {
   email: string;
   phone: string;
   date_of_birth?: string;
+  license_number?: string;
+  license_type?: string;
+  theory_number?: string;
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
   address_line1?: string;

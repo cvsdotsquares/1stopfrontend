@@ -161,7 +161,7 @@ export default function AttendeeForm({
     if (value.length === 10 && selectedDate) {
       const age = calculateAge(value, selectedDate);
       if (age < 16) {
-        setAgeWarning('You must be at least 16 years of age on the day of your course in order to proceed with your booking.');
+        setAgeWarning('As you will only be 16 years of age on the day of your course, only Automatic or Own Vehicle can be be selected');
       } else if (age === 16) {
         setAgeWarning('As you are 16, only Automatic or Own Vehicle can be selected.');
         // Clear vehicle type if it's not allowed for 16-year-olds
@@ -559,7 +559,6 @@ export default function AttendeeForm({
             onChange={(e) => onChange('phone', e.target.value)}
             placeholder="07123456789"
           />
-          <p className="mt-1 text-xs text-slate-500">Numbers, spaces, brackets, hyphens, and &quot;+&quot; are allowed</p>
           {phoneValue && (!phoneRegex.test(phoneValue) || !isPhoneValid) && (
             <p className="mt-1 text-xs text-red-500">Please enter a valid phone number</p>
           )}

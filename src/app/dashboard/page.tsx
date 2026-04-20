@@ -28,6 +28,7 @@ interface DashboardData {
     postcode: string;
     transactionId: string | null;
     created: string;
+    booking_id: number;
     secondary_attendees?: Array<{
       booking_id: number;
       booking_ref: string;
@@ -42,6 +43,9 @@ interface DashboardData {
   upcomingCourses: Array<{
     id: string;
     title: string;
+    booking_id: number;
+    first_name: string;
+    sur_name: string;
     date: string;
     location: string;
     secondary_attendees?: Array<{
@@ -98,8 +102,9 @@ export default function Dashboard() {
                 email: profileData.email,
                 phone: profileData.phone || '',
                 date_of_birth: profileData.date_of_birth,
-                emergency_contact_name: profileData.emergency_contact_name,
-                emergency_contact_phone: profileData.emergency_contact_phone,
+                licence_number: profileData.license_number,
+                licence_type: profileData.license_type,
+                theory_number: profileData.theory_number,
                 address_line1: profileData.address_line1,
                 address_line2: profileData.address_line2,
                 city: profileData.city,
@@ -117,8 +122,9 @@ export default function Dashboard() {
                 email: apiData.user.email,
                 phone: apiData.user.phone || '',
                 date_of_birth: apiData.user.date_of_birth,
-                emergency_contact_name: apiData.user.emergency_contact_name,
-                emergency_contact_phone: apiData.user.emergency_contact_phone,
+                licence_number: apiData.user.license_number,
+                licence_type: apiData.user.license_type,
+                theory_number: apiData.user.theory_number,
                 address_line1: apiData.user.address_line1,
                 address_line2: apiData.user.address_line2,
                 city: apiData.user.city,
@@ -143,7 +149,9 @@ export default function Dashboard() {
               },
               recentBookings: (apiData.recent_bookings || []).map((b: any) => ({
                 id: b.id,
-                Name: b.first_name + ' ' + b.sur_name,
+                first_name: b.first_name || '',
+                last_name: b.last_name || b.sur_name || '',
+                booking_ref: b.booking_ref || '',
                 courseTitle: b.course_name,
                 type_of_book: b.type_of_book,
                 date: b.event_date,
@@ -158,11 +166,16 @@ export default function Dashboard() {
                 postcode: b.postcode,
                 transactionId: b.transaction_id,
                 created: b.created,
+                booking_id: b.booking_id,
                 secondary_attendees: b.secondary_attendees || []
               })),
               upcomingCourses: (apiData.upcoming_courses || []).map((c: any) => ({
                 id: c.booking_id,
                 title: c.course_name,
+                first_name: c.first_name || '',
+                last_name: c.last_name || c.sur_name || '',
+                booking_ref: c.booking_ref || '',
+                booking_id: c.booking_id,
                 date: c.event_date,
                 location: `${c.location_name || ''}, ${c.postcode || ''}`.trim().replaceAll(/^,\s*|,\s*$/g, ''),
                 secondary_attendees: c.secondary_attendees || []
@@ -263,6 +276,7 @@ export default function Dashboard() {
                   <div className="flex justify-between items-center border-b pb-2 hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
                     <div>
                       <p className="text-sm font-medium">{booking.courseTitle}</p>
+                      <p className="text-xs text-gray-500">{`1SRC${booking.booking_id}`}</p>
                       <p className="text-xs text-gray-500">{new Date(booking.date).toLocaleDateString('en-GB')}</p>
                       {booking.secondary_attendees && booking.secondary_attendees.length > 0 && (
                         <div className="mt-1 space-y-1">
@@ -305,6 +319,7 @@ export default function Dashboard() {
                   <div className="flex justify-between items-center border-b pb-2 hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
                     <div>
                       <p className="text-sm font-medium">{course.title}</p>
+                      <p className="text-xs text-gray-500">{`1SRC${course.booking_id}`}</p>
                       <p className="text-xs text-gray-500">{new Date(course.date).toLocaleDateString('en-GB')} - {course.location}</p>
                       {course.secondary_attendees && course.secondary_attendees.length > 0 && (
                         <div className="mt-1 space-y-1">

@@ -48,6 +48,16 @@ export const authApi = {
     return response.data;
   },
 
+  verifyRegistrationOtp: async (email: string, otp: string) => {
+    const response = await api.post<ApiResponse<{ user: User; token: string; refreshToken: string }>>('/auth/verify-registration-otp', { email, otp });
+    return response.data;
+  },
+
+  resendRegistrationOtp: async (email: string) => {
+    const response = await api.post<ApiResponse<any>>('/auth/resend-registration-otp', { email, purpose: 'email_verification' });
+    return response.data;
+  },
+
   setPassword: async (email: string, password: string) => {
     const response = await api.post<ApiResponse<any>>('/auth/set-password', {
       email,
@@ -64,13 +74,12 @@ export const authApi = {
     return response.data.data;
   },
 
-  register: async (userData: any) => {
-    const response = await api.post<ApiResponse<{ token: string; user: User }>>('/auth/register', {
-      ...userData,
-      password: encryptPassword(userData.password),
-      verifyPassword: encryptPassword(userData.verifyPassword)
-    });
-    return response.data.data;
+  register: async (payload: any) => {
+    const toSend = { ...payload };
+    if (toSend.password) toSend.password = encryptPassword(toSend.password);
+    if (toSend.verifyPassword) toSend.verifyPassword = encryptPassword(toSend.verifyPassword);
+    const response = await api.post<ApiResponse<any>>('/auth/register', toSend);
+    return response.data;
   },
 
   getProfile: async () => {
