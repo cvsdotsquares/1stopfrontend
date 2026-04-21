@@ -263,20 +263,23 @@ export default function Dashboard() {
 
       {/* Recent Bookings & Upcoming Courses */}
       <h2 className="text-2xl font-semibold mb-4">Courses</h2>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 relative">
-        <div className="overflow-visible">
-        <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 relative items-stretch">
+        <div className="overflow-visible h-full">
+        <Card className="h-full flex flex-col">
           <CardHeader>
             <CardTitle>Previous Bookings</CardTitle>
           </CardHeader>
           <CardContent>
+            {!data.recentBookings || data.recentBookings.length === 0 ? (
+              <p className="text-sm text-gray-500">No previous bookings found.</p>
+            ) : (
             <div className="space-y-4 max-h-80 overflow-y-auto">
               {data.recentBookings.map(booking => (
                 <Link key={booking.id} href={`/dashboard/bookings/${booking.id}`} className="block">
                   <div className="flex justify-between items-center border-b pb-2 hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
                     <div>
                       <p className="text-sm font-medium">{booking.courseTitle}</p>
-                      <p className="text-xs text-gray-500">{`1SRC${booking.booking_id}`}</p>
+                      <p className="text-xs text-gray-500">{`1SRC${booking.id}`}</p>
                       <p className="text-xs text-gray-500">{new Date(booking.date).toLocaleDateString('en-GB')}</p>
                       {booking.secondary_attendees && booking.secondary_attendees.length > 0 && (
                         <div className="mt-1 space-y-1">
@@ -304,15 +307,19 @@ export default function Dashboard() {
                 </Link>
               ))}
             </div>
+            )}
           </CardContent>
         </Card>
         </div>
 
-        <Card>
+        <Card className="h-full flex flex-col">
           <CardHeader>
             <CardTitle>Upcoming Bookings</CardTitle>
           </CardHeader>
           <CardContent>
+            {!data.upcomingCourses || data.upcomingCourses.length === 0 ? (
+              <p className="text-sm text-gray-500">No upcoming bookings found.</p>
+            ) : (
             <div className="space-y-4 max-h-80 overflow-y-auto">
               {data.upcomingCourses.map(course => (
                 <Link key={course.id} href={`/dashboard/bookings/${course.id}`} className="block">
@@ -341,13 +348,14 @@ export default function Dashboard() {
                 </Link>
               ))}
             </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
       {/* Gift Vouchers */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        <Card className="h-full flex flex-col">
           <CardHeader>
             <CardTitle>Current Gift Vouchers</CardTitle>
           </CardHeader>
@@ -379,7 +387,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-full flex flex-col">
           <CardHeader>
             <CardTitle>Expired Gift Vouchers</CardTitle>
           </CardHeader>
