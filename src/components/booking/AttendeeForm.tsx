@@ -368,7 +368,11 @@ export default function AttendeeForm({
     }
   }
   if (requiresRegistrationPassword) {
-    if (attendee.password.length < 8) incompleteReasons.push('Use a password with at least 8 characters');
+    if (attendee.password.length < 8) {
+      incompleteReasons.push('Use a password with at least 8 characters');
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(attendee.password)) {
+      incompleteReasons.push('Password must contain at least one lowercase letter, one uppercase letter, and one number');
+    }
     if (attendee.password !== attendee.confirmPassword) incompleteReasons.push('Password and confirm password must match');
   }
   return (

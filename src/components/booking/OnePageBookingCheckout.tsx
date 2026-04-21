@@ -455,10 +455,13 @@ export default function OnePageBookingCheckout() {
       lastName: user?.last_name,
       email: user?.email,
       phone: user?.phone,
-      dateOfBirth: user?.date_of_birth
+      dateOfBirth: user?.date_of_birth &&
+        user.date_of_birth !== '0000-00-00' &&
+        !user.date_of_birth.startsWith('0000') &&
+        user.date_of_birth !== '1899-11-30'
         ? (() => {
             const d = new Date(user.date_of_birth);
-            if (!isNaN(d.getTime())) {
+            if (!isNaN(d.getTime()) && d.getFullYear() >= 1900) {
               const day = String(d.getDate()).padStart(2, '0');
               const month = String(d.getMonth() + 1).padStart(2, '0');
               const year = d.getFullYear();
@@ -561,10 +564,13 @@ export default function OnePageBookingCheckout() {
         lastName: user?.last_name,
         email: user?.email,
         phone: user?.phone,
-        dateOfBirth: user?.date_of_birth
+        dateOfBirth: user?.date_of_birth &&
+          user.date_of_birth !== '0000-00-00' &&
+          !user.date_of_birth.startsWith('0000') &&
+          user.date_of_birth !== '1899-11-30'
           ? (() => {
               const d = new Date(user.date_of_birth);
-              if (!isNaN(d.getTime())) {
+              if (!isNaN(d.getTime()) && d.getFullYear() >= 1900) {
                 const day = String(d.getDate()).padStart(2, '0');
                 const month = String(d.getMonth() + 1).padStart(2, '0');
                 const year = d.getFullYear();
