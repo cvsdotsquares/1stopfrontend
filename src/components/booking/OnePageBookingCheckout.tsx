@@ -1792,7 +1792,7 @@ export default function OnePageBookingCheckout() {
       if (attendee.dateOfBirth && selectedDate) {
         const age = calculateAge(attendee.dateOfBirth, selectedDate);
         if (age < 16) {
-          alert(`Attendee ${idx + 1}: As you will only be 16 years of age on the day of your course, only Automatic or Own Vehicle can be be selected`);
+          alert(`Attendee ${idx + 1}: As you are 16, only Automatic or Own Vehicle can be selected.`);
           return;
         }
       }

@@ -161,7 +161,7 @@ export default function AttendeeForm({
     if (value.length === 10 && selectedDate) {
       const age = calculateAge(value, selectedDate);
       if (age < 16) {
-        setAgeWarning('As you will only be 16 years of age on the day of your course, only Automatic or Own Vehicle can be be selected');
+        setAgeWarning('As you are 16, only Automatic or Own Vehicle can be selected.');
       } else if (age === 16) {
         setAgeWarning('As you are 16, only Automatic or Own Vehicle can be selected.');
         // Clear vehicle type if it's not allowed for 16-year-olds
@@ -700,52 +700,63 @@ export default function AttendeeForm({
           )}
 
           {requiresRegistrationPassword && (
-            <div className="grid gap-4 sm:grid-cols-2 mt-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Password <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  className={`w-full rounded-sm border bg-white px-3 py-3 text-sm ${
-                    attendee.password && attendee.confirmPassword && attendee.password.length >= 8
-                      ? attendee.password === attendee.confirmPassword
-                        ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
-                        : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                      : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
-                  }`}
-                  value={attendee.password || ''}
-                  onChange={(e) => onChange('password', e.target.value)}
-                  placeholder="Min 8 chars"
-                />
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Password <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    className={`w-full rounded-sm border bg-white px-3 py-3 text-sm ${
+                      attendee.password
+                        ? attendee.password.length >= 8 && /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(attendee.password)
+                          ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
+                          : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+                        : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
+                    }`}
+                    value={attendee.password || ''}
+                    onChange={(e) => onChange('password', e.target.value)}
+                    placeholder="Min 8 chars"
+                  />
+                  {attendee.password && (
+                    attendee.password.length < 8 ? (
+                      <p className="mt-1 text-xs text-red-500">Password must be at least 8 characters long</p>
+                    ) : !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(attendee.password) ? (
+                      <p className="mt-1 text-xs text-red-500">Password must contain at least one lowercase letter, one uppercase letter, and one number</p>
+                    ) : (
+                      <p className="mt-1 text-xs text-green-500">Password looks good</p>
+                    )
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Confirm Password <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    className={`w-full rounded-sm border bg-white px-3 py-3 text-sm ${
+                      attendee.password && attendee.confirmPassword && attendee.password.length >= 8
+                        ? attendee.password === attendee.confirmPassword
+                          ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
+                          : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+                        : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
+                    }`}
+                    value={attendee.confirmPassword || ''}
+                    onChange={(e) => onChange('confirmPassword', e.target.value)}
+                    placeholder="Confirm password"
+                  />
+                  {attendee.password && attendee.confirmPassword && attendee.password.length >= 8 && (
+                    <p className={`mt-1 text-xs ${
+                      attendee.password === attendee.confirmPassword ? 'text-green-500' : 'text-red-500'
+                    }`}>
+                      {attendee.password === attendee.confirmPassword ? 'Passwords match' : 'Passwords do not match'}
+                    </p>
+                  )}
+                </div>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Confirm Password <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  className={`w-full rounded-sm border bg-white px-3 py-3 text-sm ${
-                    attendee.password && attendee.confirmPassword && attendee.password.length >= 8
-                      ? attendee.password === attendee.confirmPassword
-                        ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
-                        : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                      : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
-                  }`}
-                  value={attendee.confirmPassword || ''}
-                  onChange={(e) => onChange('confirmPassword', e.target.value)}
-                  placeholder="Confirm password"
-                />
-                {attendee.password && attendee.confirmPassword && attendee.password.length >= 8 && (
-                  <p className={`mt-1 text-xs ${
-                    attendee.password === attendee.confirmPassword ? 'text-green-500' : 'text-red-500'
-                  }`}>
-                    {attendee.password === attendee.confirmPassword ? 'Passwords match' : 'Passwords do not match'}
-                  </p>
-                )}
-              </div>
-            </div>
+              <p className='text-sm text-slate-700 opacity-60'>Password must contain at least one lowercase letter, one uppercase letter, and one number and be at least 8 characters long</p>
+            </>
           )}
         </div>
       )}

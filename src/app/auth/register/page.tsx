@@ -679,6 +679,7 @@ export default function RegisterPage() {
                     {errors.verifyPassword && <p className="text-red-500 text-sm mt-1">{errors.verifyPassword}</p>}
                   </div>
                 </div>
+                <p className='text-sm text-slate-700 opacity-60'>Password must contain at least one lowercase letter, one uppercase letter, and one number and be at least 8 characters long</p>
               </div>
             </div>
 
