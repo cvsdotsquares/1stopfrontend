@@ -613,14 +613,14 @@ export default function RegisterPage() {
                     </div>
                     {errors.license_type && <p className="text-red-500 text-sm mt-1">{errors.license_type}</p>}
                   </div>
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label htmlFor="theory_number">Theory Number (If Applicable)</Label>
                     <Input
                       id="theory_number"
                       value={formData.theory_number}
                       onChange={(e) => handleChange('theory_number', e.target.value)}
                     />
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </div>

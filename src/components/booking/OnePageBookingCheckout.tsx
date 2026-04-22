@@ -470,8 +470,8 @@ export default function OnePageBookingCheckout() {
             return '';
           })()
         : '',
-      licenseNumber: user?.license_number,
-      licenseType: user?.license_type,
+      licenseNumber: user?.license_number ?? (user as any)?.licence_number,
+      licenseType: user?.license_type ?? (user as any)?.licence_type,
       theoryNumber: user?.theory_number,
     }),
   ]);
@@ -579,7 +579,9 @@ export default function OnePageBookingCheckout() {
               return '';
             })()
           : '',
-        // licenseNumber, licenseType, theoryNumber can be added here if needed
+        licenseNumber: user?.license_number ?? (user as any)?.licence_number,
+        licenseType: user?.license_type ?? (user as any)?.licence_type,
+        theoryNumber: user?.theory_number,
       }),
     ]);
     setFirstAttendeeUserLookup({ email: '', status: 'idle' });
@@ -886,6 +888,71 @@ export default function OnePageBookingCheckout() {
       return hasChanges ? next : prev;
     });
   }, [canOfferFastCheckoutRegistration]);
+
+  // Re-seed the first attendee's identity fields from the logged-in user whenever the
+  // auth-store user object becomes available/changes (covers late Zustand persist hydration
+  // and post-login updates). Only fills fields that are currently empty so user edits are
+  // never clobbered. Reads both American ("license_*") and British ("licence_*") spellings
+  // so previously-persisted user objects still work without a fresh login.
+  useEffect(() => {
+    if (!user) return;
+
+    const u = user as any;
+
+    setAttendeeDetails(prev => {
+      if (!prev.length) return prev;
+      const first = prev[0];
+
+      const formattedDob = user.date_of_birth &&
+        user.date_of_birth !== '0000-00-00' &&
+        !user.date_of_birth.startsWith('0000') &&
+        user.date_of_birth !== '1899-11-30'
+          ? (() => {
+              const d = new Date(user.date_of_birth);
+              if (!isNaN(d.getTime()) && d.getFullYear() >= 1900) {
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = d.getFullYear();
+                return `${day}/${month}/${year}`;
+              }
+              return '';
+            })()
+          : '';
+
+      const fillIfEmpty = (current: string, incoming: unknown): string => {
+        if (current && current.trim() !== '') return current;
+        return String(incoming ?? '').trim();
+      };
+
+      const next: AttendeeDetails = {
+        ...first,
+        firstName: fillIfEmpty(first.firstName, user.first_name),
+        lastName: fillIfEmpty(first.lastName, user.last_name),
+        email: fillIfEmpty(first.email, user.email),
+        phone: fillIfEmpty(first.phone, user.phone),
+        dateOfBirth: fillIfEmpty(first.dateOfBirth, formattedDob),
+        licenseNumber: fillIfEmpty(first.licenseNumber, u.license_number ?? u.licence_number),
+        licenseType: fillIfEmpty(first.licenseType, u.license_type ?? u.licence_type),
+        theoryNumber: fillIfEmpty(first.theoryNumber, user.theory_number),
+      };
+
+      const unchanged =
+        next.firstName === first.firstName &&
+        next.lastName === first.lastName &&
+        next.email === first.email &&
+        next.phone === first.phone &&
+        next.dateOfBirth === first.dateOfBirth &&
+        next.licenseNumber === first.licenseNumber &&
+        next.licenseType === first.licenseType &&
+        next.theoryNumber === first.theoryNumber;
+
+      if (unchanged) return prev;
+
+      const copy = [...prev];
+      copy[0] = next;
+      return copy;
+    });
+  }, [user]);
 
   // Scroll newly-expanded attendee cards into view after confirming the previous attendee.
   useEffect(() => {
@@ -1382,24 +1449,41 @@ export default function OnePageBookingCheckout() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const nextAvailable = availability.find(event => {
+        // Earliest bookable by calendar date (not first array item — API order is by course_event_id)
+        let earliestAvailable: (typeof availability)[number] | null = null;
+        for (const event of availability) {
+          if (!event.available || event.available_spaces <= 0) continue;
           const eventDate = new Date(event.date);
+          if (Number.isNaN(eventDate.getTime())) continue;
           eventDate.setHours(0, 0, 0, 0);
-          return event.available && event.available_spaces > 0 && eventDate >= today;
-        });
+          if (eventDate < today) continue;
+          if (!earliestAvailable) {
+            earliestAvailable = event;
+            continue;
+          }
+          const best = new Date(earliestAvailable.date);
+          if (Number.isNaN(best.getTime())) {
+            earliestAvailable = event;
+            continue;
+          }
+          best.setHours(0, 0, 0, 0);
+          if (eventDate < best) {
+            earliestAvailable = event;
+          }
+        }
 
         if (selectedDate) {
           setCalendarMonthOffset(getMonthOffsetFromToday(selectedDate));
-        } else if (nextAvailable?.date) {
-          setCalendarMonthOffset(getMonthOffsetFromToday(nextAvailable.date));
+        } else if (earliestAvailable?.date) {
+          setCalendarMonthOffset(getMonthOffsetFromToday(earliestAvailable.date));
         } else {
           setCalendarMonthOffset(0);
         }
 
         if (availability.length > 0 && !selectedDate && dateParam) {
-          if (nextAvailable) {
-            setSelectedDate(new Date(nextAvailable.date));
-            setSelectedCourseEventId(nextAvailable.course_event_id);
+          if (earliestAvailable) {
+            setSelectedDate(new Date(earliestAvailable.date));
+            setSelectedCourseEventId(earliestAvailable.course_event_id);
           }
         }
       } catch (err) {
