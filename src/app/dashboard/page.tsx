@@ -279,7 +279,7 @@ export default function Dashboard() {
                   <div className="flex justify-between items-center border-b pb-2 hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
                     <div>
                       <p className="text-sm font-medium">{booking.courseTitle}</p>
-                      <p className="text-xs text-gray-500">{`1SRC${booking.id}`}</p>
+                      <p className="text-xs text-gray-500">{`${data.user.name}`} <span className="text-gray-400">•</span> {` 1SRC${booking.id}`}</p>
                       <p className="text-xs text-gray-500">{new Date(booking.date).toLocaleDateString('en-GB')}</p>
                       {booking.secondary_attendees && booking.secondary_attendees.length > 0 && (
                         <div className="mt-1 space-y-1">
@@ -326,7 +326,7 @@ export default function Dashboard() {
                   <div className="flex justify-between items-center border-b pb-2 hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
                     <div>
                       <p className="text-sm font-medium">{course.title}</p>
-                      <p className="text-xs text-gray-500">{`1SRC${course.booking_id}`}</p>
+                      <p className="text-xs text-gray-500">{`${data.user.name}`} <span className="text-gray-400">•</span> {` 1SRC${course.booking_id}`}</p>
                       <p className="text-xs text-gray-500">{new Date(course.date).toLocaleDateString('en-GB')} - {course.location}</p>
                       {course.secondary_attendees && course.secondary_attendees.length > 0 && (
                         <div className="mt-1 space-y-1">
