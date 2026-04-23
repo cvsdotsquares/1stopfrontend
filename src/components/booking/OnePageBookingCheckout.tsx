@@ -675,6 +675,16 @@ export default function OnePageBookingCheckout() {
 
     if (!basicFieldsComplete || !licenseComplete) return false;
 
+    // Attendee must be at least 16 years old on the course date
+    if (selectedDate && isDobValid) {
+      const [day, month, year] = dob.split('/').map(Number);
+      const birthDate = new Date(year, month - 1, day);
+      let age = selectedDate.getFullYear() - birthDate.getFullYear();
+      const m = selectedDate.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && selectedDate.getDate() < birthDate.getDate())) age--;
+      if (age < 16) return false;
+    }
+
     // If registering as user, check password fields
     if (index === 0 && canOfferFastCheckoutRegistration && attendee.registerAsUser) {
       return attendee.password.length >= 8 && attendee.password === attendee.confirmPassword;
@@ -1876,7 +1886,7 @@ export default function OnePageBookingCheckout() {
       if (attendee.dateOfBirth && selectedDate) {
         const age = calculateAge(attendee.dateOfBirth, selectedDate);
         if (age < 16) {
-          alert(`Attendee ${idx + 1}: As you are 16, only Automatic or Own Vehicle can be selected.`);
+          toast.error(`Attendee ${idx + 1}: You must be at least 16 years of age on the date of your course`);
           return;
         }
       }

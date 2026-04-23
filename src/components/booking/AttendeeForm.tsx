@@ -161,8 +161,10 @@ export default function AttendeeForm({
     if (value.length === 10 && selectedDate) {
       const age = calculateAge(value, selectedDate);
       if (age < 16) {
-        setAgeWarning('As you are 16, only Automatic or Own Vehicle can be selected.');
-      } else if (age === 16) {
+        setAgeWarning('You must be at least 16 years of age on the date of your course');
+        return;
+      }
+      if (age === 16) {
         setAgeWarning('As you are 16, only Automatic or Own Vehicle can be selected.');
         // Clear vehicle type if it's not allowed for 16-year-olds
         if (attendee.vehicleType) {
@@ -337,6 +339,11 @@ export default function AttendeeForm({
     incompleteReasons.push('Enter date of birth');
   } else if (!isValidDob(attendee.dateOfBirth.trim())) {
     incompleteReasons.push('Use a valid date of birth in dd/mm/yyyy');
+  } else if (selectedDate) {
+    const age = calculateAge(attendee.dateOfBirth.trim(), selectedDate);
+    if (age >= 0 && age < 16) {
+      incompleteReasons.push('Attendee must be at least 16 on the course date');
+    }
   }
   if (!emailValue) {
     incompleteReasons.push('Enter email');

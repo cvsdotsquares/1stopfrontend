@@ -151,6 +151,7 @@ export default function Dashboard() {
                 id: b.id,
                 first_name: b.first_name || '',
                 last_name: b.last_name || b.sur_name || '',
+                sur_name: b.last_name || b.sur_name || '',
                 booking_ref: b.booking_ref || '',
                 courseTitle: b.course_name,
                 type_of_book: b.type_of_book,
@@ -174,6 +175,7 @@ export default function Dashboard() {
                 title: c.course_name,
                 first_name: c.first_name || '',
                 last_name: c.last_name || c.sur_name || '',
+                sur_name: c.last_name || c.sur_name || '',
                 booking_ref: c.booking_ref || '',
                 booking_id: c.booking_id,
                 date: c.event_date,
@@ -279,7 +281,7 @@ export default function Dashboard() {
                   <div className="flex justify-between items-center border-b pb-2 hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
                     <div>
                       <p className="text-sm font-medium">{booking.courseTitle}</p>
-                      <p className="text-xs text-gray-500">{`${data.user.name}`} <span className="text-gray-400">•</span> {` 1SRC${booking.id}`}</p>
+                      <p className="text-xs text-gray-500">{`${booking.first_name} ${booking.sur_name}`} <span className="text-gray-400">•</span> {` 1SRC${booking.id}`}</p>
                       <p className="text-xs text-gray-500">{new Date(booking.date).toLocaleDateString('en-GB')}</p>
                       {booking.secondary_attendees && booking.secondary_attendees.length > 0 && (
                         <div className="mt-1 space-y-1">
@@ -326,7 +328,7 @@ export default function Dashboard() {
                   <div className="flex justify-between items-center border-b pb-2 hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
                     <div>
                       <p className="text-sm font-medium">{course.title}</p>
-                      <p className="text-xs text-gray-500">{`${data.user.name}`} <span className="text-gray-400">•</span> {` 1SRC${course.booking_id}`}</p>
+                      <p className="text-xs text-gray-500">{`${course.first_name} ${course.sur_name}`} <span className="text-gray-400">•</span> {` 1SRC${course.booking_id}`}</p>
                       <p className="text-xs text-gray-500">{new Date(course.date).toLocaleDateString('en-GB')} - {course.location}</p>
                       {course.secondary_attendees && course.secondary_attendees.length > 0 && (
                         <div className="mt-1 space-y-1">

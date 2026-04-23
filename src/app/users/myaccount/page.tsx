@@ -141,6 +141,10 @@ export default function MyAccount() {
       toast.error('Password must be at least 8 characters');
       return;
     }
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+      toast.error('Password must contain at least one lowercase letter, one uppercase letter, and one number');
+      return;
+    }
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/change-password`, {
         method: 'POST',
@@ -387,8 +391,9 @@ export default function MyAccount() {
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password (min 8 characters)"
+                    placeholder="Enter new password"
                   />
+                  <p className="mt-1 text-xs text-gray-500">Minimum 8 characters, with at least one lowercase letter, one uppercase letter, and one number</p>
                 </div>
                 <div>
                   <Label className='mb-1'>Confirm New Password</Label>
