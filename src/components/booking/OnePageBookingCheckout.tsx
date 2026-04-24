@@ -72,6 +72,99 @@ function createAttendeeDetails(seed: Partial<AttendeeDetails> = {}): AttendeeDet
   };
 }
 
+/** Server response from GET /auth/booking-prefill (has_fallback + prefill). */
+interface BookingPrefillPayload {
+  first_name: string;
+  sur_name: string;
+  email: string;
+  date_of_birth: string | null;
+  license_type: number | null;
+  license_number: string | null;
+}
+
+function formatUserDobToUk(dateOfBirth: string | undefined): string {
+  if (!dateOfBirth || dateOfBirth === "0000-00-00" || dateOfBirth.startsWith("0000") || dateOfBirth === "1899-11-30")
+    return "";
+  const d = new Date(dateOfBirth);
+  if (isNaN(d.getTime()) || d.getFullYear() < 1900) return "";
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function formatPrefillDobToUk(dateOfBirth: string | null | undefined): string {
+  if (dateOfBirth == null) return "";
+  const s = String(dateOfBirth).trim();
+  if (s === "0000-00-00" || s.startsWith("0000") || s === "1899-11-30") return "";
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  const d = new Date(s);
+  if (isNaN(d.getTime()) || d.getFullYear() < 1900) return "";
+  return formatUserDobToUk(s);
+}
+
+type PrefillSourceFields = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  dateOfBirth: string;
+  licenseNumber: string;
+  licenseType: string;
+};
+
+/**
+ * For attendee[0] only: when `bookingPrefill` is set (user has no license_number on `users` row),
+ * all six fields come from the most recent booking's dropdown row; otherwise from `user`.
+ */
+function getFirstAttendeePrefillSource(
+  user: {
+    first_name?: string;
+    last_name?: string;
+    sur_name?: string;
+    email?: string;
+    phone?: string;
+    date_of_birth?: string;
+    license_number?: string;
+    licence_number?: string;
+    license_type?: string | number;
+    licence_type?: string | number;
+    theory_number?: string;
+  } | null | undefined,
+  bookingPrefill: BookingPrefillPayload | null
+): PrefillSourceFields {
+  if (bookingPrefill) {
+    return {
+      firstName: String(bookingPrefill.first_name ?? "").trim(),
+      lastName: String(bookingPrefill.sur_name ?? "").trim(),
+      email: String(bookingPrefill.email ?? "").trim(),
+      dateOfBirth: formatPrefillDobToUk(bookingPrefill.date_of_birth),
+      licenseNumber: String(bookingPrefill.license_number ?? "").trim(),
+      licenseType:
+        bookingPrefill.license_type != null && bookingPrefill.license_type !== ("" as unknown)
+          ? String(bookingPrefill.license_type)
+          : "",
+    };
+  }
+  if (!user) {
+    return { firstName: "", lastName: "", email: "", dateOfBirth: "", licenseNumber: "", licenseType: "" };
+  }
+  return {
+    firstName: String(user.first_name ?? "").trim(),
+    lastName: String(user.last_name ?? user.sur_name ?? "").trim(),
+    email: String(user.email ?? "").trim(),
+    dateOfBirth: formatUserDobToUk(user.date_of_birth),
+    licenseNumber: String(user.license_number ?? user.licence_number ?? "").trim(),
+    licenseType:
+      user.license_type != null && user.license_type !== ""
+        ? String(user.license_type)
+        : user.licence_type != null && user.licence_type !== ""
+          ? String(user.licence_type)
+          : "",
+  };
+}
+
 // ---------- Small Pure Utilities (also used by tests) ----------
 // Helper function to format date as YYYY-MM-DD in local timezone
 function formatLocalDate(date: Date): string {
@@ -406,6 +499,9 @@ export default function OnePageBookingCheckout() {
 
   // Auth state
   const { isAuthenticated, user, login } = useAuthStore();
+  // Server-only booking prefill (legacy users with no users.license_number) — not merged into /profile
+  const [bookingPrefill, setBookingPrefill] = useState<BookingPrefillPayload | null>(null);
+  const serverPrefillApplyRef = useRef<{ userId: number | null; applied: boolean }>({ userId: null, applied: false });
   // API Data State
   const [courses, setCourses] = useState<Course[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -449,32 +545,22 @@ export default function OnePageBookingCheckout() {
   const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
 
   // Attendee details - array for multiple attendees
-  const [attendeeDetails, setAttendeeDetails] = useState<AttendeeDetails[]>([
-    createAttendeeDetails({
-      firstName: user?.first_name,
-      lastName: user?.last_name,
-      email: user?.email,
-      phone: user?.phone,
-      dateOfBirth: user?.date_of_birth &&
-        user.date_of_birth !== '0000-00-00' &&
-        !user.date_of_birth.startsWith('0000') &&
-        user.date_of_birth !== '1899-11-30'
-        ? (() => {
-            const d = new Date(user.date_of_birth);
-            if (!isNaN(d.getTime()) && d.getFullYear() >= 1900) {
-              const day = String(d.getDate()).padStart(2, '0');
-              const month = String(d.getMonth() + 1).padStart(2, '0');
-              const year = d.getFullYear();
-              return `${day}/${month}/${year}`;
-            }
-            return '';
-          })()
-        : '',
-      licenseNumber: user?.license_number ?? (user as any)?.licence_number,
-      licenseType: user?.license_type ?? (user as any)?.licence_type,
-      theoryNumber: user?.theory_number,
-    }),
-  ]);
+  const [attendeeDetails, setAttendeeDetails] = useState<AttendeeDetails[]>(() => {
+    const s = getFirstAttendeePrefillSource(user, null);
+    return [
+      createAttendeeDetails({
+        firstName: s.firstName,
+        lastName: s.lastName,
+        email: s.email,
+        confirmEmail: s.email,
+        phone: user?.phone,
+        dateOfBirth: s.dateOfBirth,
+        licenseNumber: s.licenseNumber,
+        licenseType: s.licenseType,
+        theoryNumber: user?.theory_number,
+      }),
+    ];
+  });
   const [firstAttendeeUserLookup, setFirstAttendeeUserLookup] = useState<{
     email: string;
     status: ExistingUserLookupStatus;
@@ -558,32 +644,22 @@ export default function OnePageBookingCheckout() {
     setExpandedAttendeeIndex(0);
     // Reset date tracking ref so next date selection is treated as "first" (no auto-reset of attendees)
     prevDateStrRef.current = null;
-    setAttendeeDetails([
-      createAttendeeDetails({
-        firstName: user?.first_name,
-        lastName: user?.last_name,
-        email: user?.email,
-        phone: user?.phone,
-        dateOfBirth: user?.date_of_birth &&
-          user.date_of_birth !== '0000-00-00' &&
-          !user.date_of_birth.startsWith('0000') &&
-          user.date_of_birth !== '1899-11-30'
-          ? (() => {
-              const d = new Date(user.date_of_birth);
-              if (!isNaN(d.getTime()) && d.getFullYear() >= 1900) {
-                const day = String(d.getDate()).padStart(2, '0');
-                const month = String(d.getMonth() + 1).padStart(2, '0');
-                const year = d.getFullYear();
-                return `${day}/${month}/${year}`;
-              }
-              return '';
-            })()
-          : '',
-        licenseNumber: user?.license_number ?? (user as any)?.licence_number,
-        licenseType: user?.license_type ?? (user as any)?.licence_type,
-        theoryNumber: user?.theory_number,
-      }),
-    ]);
+    setAttendeeDetails(() => {
+      const s = getFirstAttendeePrefillSource(user, bookingPrefill);
+      return [
+        createAttendeeDetails({
+          firstName: s.firstName,
+          lastName: s.lastName,
+          email: s.email,
+          confirmEmail: s.email,
+          phone: user?.phone,
+          dateOfBirth: s.dateOfBirth,
+          licenseNumber: s.licenseNumber,
+          licenseType: s.licenseType,
+          theoryNumber: user?.theory_number,
+        }),
+      ];
+    });
     setFirstAttendeeUserLookup({ email: '', status: 'idle' });
     // Keep section 3 expanded so user can pick a new date
     setExpandedSections(prev => ({ ...prev, 3: true, 4: false, 5: false }));
@@ -899,36 +975,88 @@ export default function OnePageBookingCheckout() {
     });
   }, [canOfferFastCheckoutRegistration]);
 
-  // Re-seed the first attendee's identity fields from the logged-in user whenever the
-  // auth-store user object becomes available/changes (covers late Zustand persist hydration
-  // and post-login updates). Only fills fields that are currently empty so user edits are
-  // never clobbered. Reads both American ("license_*") and British ("licence_*") spellings
-  // so previously-persisted user objects still work without a fresh login.
+  // Load booking prefill (legacy users: users.license_number empty → last booking's dropdown row)
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) {
+      setBookingPrefill(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await authApi.getBookingPrefill();
+        if (cancelled) return;
+        if (data?.has_fallback && data.prefill) {
+          setBookingPrefill(data.prefill as BookingPrefillPayload);
+        } else {
+          setBookingPrefill(null);
+        }
+      } catch {
+        if (!cancelled) setBookingPrefill(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, user?.id]);
+
+  // Re-seed the first attendee: if GET /auth/booking-prefill returned a row, apply its six
+  // fields once; otherwise (normal users) only fill empty fields from useAuthStore user.
   useEffect(() => {
     if (!user) return;
 
     const u = user as any;
 
-    setAttendeeDetails(prev => {
+    setAttendeeDetails((prev) => {
       if (!prev.length) return prev;
       const first = prev[0];
 
-      const formattedDob = user.date_of_birth &&
-        user.date_of_birth !== '0000-00-00' &&
-        !user.date_of_birth.startsWith('0000') &&
-        user.date_of_birth !== '1899-11-30'
-          ? (() => {
-              const d = new Date(user.date_of_birth);
-              if (!isNaN(d.getTime()) && d.getFullYear() >= 1900) {
-                const day = String(d.getDate()).padStart(2, '0');
-                const month = String(d.getMonth() + 1).padStart(2, '0');
-                const year = d.getFullYear();
-                return `${day}/${month}/${year}`;
-              }
-              return '';
-            })()
-          : '';
+      if (serverPrefillApplyRef.current.userId !== user.id) {
+        serverPrefillApplyRef.current = { userId: user.id, applied: false };
+      }
 
+      if (bookingPrefill) {
+        if (serverPrefillApplyRef.current.applied) {
+          return prev;
+        }
+        const source = getFirstAttendeePrefillSource(user, bookingPrefill);
+        const next: AttendeeDetails = {
+          ...first,
+          firstName: source.firstName,
+          lastName: source.lastName,
+          email: source.email,
+          confirmEmail: source.email,
+          phone: first.phone && first.phone.trim() !== '' ? first.phone : String(u.phone ?? ''),
+          dateOfBirth: source.dateOfBirth,
+          licenseNumber: source.licenseNumber,
+          licenseType: source.licenseType,
+          theoryNumber:
+            first.theoryNumber && first.theoryNumber.trim() !== ''
+              ? first.theoryNumber
+              : String(u.theory_number ?? ''),
+        };
+        const unchanged =
+          next.firstName === first.firstName &&
+          next.lastName === first.lastName &&
+          next.email === first.email &&
+          next.confirmEmail === first.confirmEmail &&
+          next.phone === first.phone &&
+          next.dateOfBirth === first.dateOfBirth &&
+          next.licenseNumber === first.licenseNumber &&
+          next.licenseType === first.licenseType &&
+          next.theoryNumber === first.theoryNumber;
+        if (unchanged) {
+          serverPrefillApplyRef.current.applied = true;
+          return prev;
+        }
+        serverPrefillApplyRef.current.applied = true;
+        const copy = [...prev];
+        copy[0] = next;
+        return copy;
+      }
+
+      serverPrefillApplyRef.current.applied = false;
+      const userSource = getFirstAttendeePrefillSource(user, null);
       const fillIfEmpty = (current: string, incoming: unknown): string => {
         if (current && current.trim() !== '') return current;
         return String(incoming ?? '').trim();
@@ -936,14 +1064,14 @@ export default function OnePageBookingCheckout() {
 
       const next: AttendeeDetails = {
         ...first,
-        firstName: fillIfEmpty(first.firstName, user.first_name),
-        lastName: fillIfEmpty(first.lastName, user.last_name),
-        email: fillIfEmpty(first.email, user.email),
-        phone: fillIfEmpty(first.phone, user.phone),
-        dateOfBirth: fillIfEmpty(first.dateOfBirth, formattedDob),
-        licenseNumber: fillIfEmpty(first.licenseNumber, u.license_number ?? u.licence_number),
-        licenseType: fillIfEmpty(first.licenseType, u.license_type ?? u.licence_type),
-        theoryNumber: fillIfEmpty(first.theoryNumber, user.theory_number),
+        firstName: fillIfEmpty(first.firstName, userSource.firstName),
+        lastName: fillIfEmpty(first.lastName, userSource.lastName),
+        email: fillIfEmpty(first.email, userSource.email),
+        phone: fillIfEmpty(first.phone, u.phone),
+        dateOfBirth: fillIfEmpty(first.dateOfBirth, userSource.dateOfBirth),
+        licenseNumber: fillIfEmpty(first.licenseNumber, userSource.licenseNumber),
+        licenseType: fillIfEmpty(first.licenseType, userSource.licenseType),
+        theoryNumber: fillIfEmpty(first.theoryNumber, u.theory_number),
       };
 
       const unchanged =
@@ -962,7 +1090,7 @@ export default function OnePageBookingCheckout() {
       copy[0] = next;
       return copy;
     });
-  }, [user]);
+  }, [user, bookingPrefill]);
 
   // Scroll newly-expanded attendee cards into view after confirming the previous attendee.
   useEffect(() => {

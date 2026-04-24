@@ -87,6 +87,23 @@ export const authApi = {
     return response.data.data;
   },
 
+  getBookingPrefill: async () => {
+    const response = await api.get<
+      ApiResponse<{
+        has_fallback: boolean;
+        prefill?: {
+          first_name: string;
+          sur_name: string;
+          email: string;
+          date_of_birth: string | null;
+          license_type: number | null;
+          license_number: string | null;
+        };
+      }>
+    >('/auth/booking-prefill');
+    return response.data.data;
+  },
+
   updateProfile: async (userData: Partial<User>) => {
     const response = await api.put<ApiResponse<User>>('/auth/profile', userData);
     return response.data.data;
