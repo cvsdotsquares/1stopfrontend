@@ -2303,7 +2303,8 @@ export default function OnePageBookingCheckout() {
                   >
                     {(() => {
                       const nextMonth = new Date();
-                      nextMonth.setMonth(nextMonth.getMonth() + calendarMonthOffset);
+                      // add 1 month to the current month
+                      nextMonth.setMonth(nextMonth.getMonth() + calendarMonthOffset + 1);
                       return nextMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
                     })()} →
                   </button>

@@ -265,17 +265,6 @@ class BookingApiService {
     return data;
   }
 
-  async createBookingLock(courseEventId: number, spacesRequired: number, userSession: string): Promise<BookingLock> {
-    return this.fetchApi<BookingLock>('/lock', {
-      method: 'POST',
-      body: JSON.stringify({
-        course_event_id: courseEventId,
-        spaces_required: spacesRequired,
-        user_session: userSession,
-      }),
-    });
-  }
-
   async getSettings(): Promise<Settings> {
     return this.fetchApi<Settings>('/booking/settings');
   }
@@ -369,13 +358,13 @@ class BookingApiService {
     });
   }
 
-  async cleanupPrebookings(userId?: number, ipAddress?: string): Promise<any> {
-    return this.fetchApi<any>('/booking/cleanup-prebookings', {
-      method: 'POST',
-      // send 0 for anonymous users so backend can match prebookings locked by guests
-      body: JSON.stringify({ user_id: userId ?? 0, ip_address: ipAddress ?? '' }),
-    });
-  }
+  // async cleanupPrebookings(userId?: number, ipAddress?: string): Promise<any> {
+  //   return this.fetchApi<any>('/booking/cleanup-prebookings', {
+  //     method: 'POST',
+  //     // send 0 for anonymous users so backend can match prebookings locked by guests
+  //     body: JSON.stringify({ user_id: userId ?? 0, ip_address: ipAddress ?? '' }),
+  //   });
+  // }
 }
 
 export const bookingApi = new BookingApiService();
