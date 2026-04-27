@@ -95,9 +95,12 @@ export const authApi = {
           first_name: string;
           sur_name: string;
           email: string;
+          contact1: string | null;
+          contact2: string | null;
           date_of_birth: string | null;
           license_type: number | null;
           license_number: string | null;
+          theory_number: string | null;
         };
       }>
     >('/auth/booking-prefill');

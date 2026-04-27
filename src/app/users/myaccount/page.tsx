@@ -229,14 +229,14 @@ export default function MyAccount() {
 
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Profile Information</CardTitle>
-                  {editing ? (
+                  {/* {editing ? (
                     <div className="space-x-2">
                       <Button onClick={handleSave}>Save</Button>
                       <Button onClick={() => { setEditing(false); setFormData(profile || {}); }} variant="outline">Cancel</Button>
                     </div>
                   ) : (
                     <Button onClick={() => setEditing(true)} variant="outline">Edit Profile</Button>
-                  )}
+                  )} */}
                 </CardHeader>
                 <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

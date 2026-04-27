@@ -101,6 +101,7 @@ export default function Dashboard() {
                 last_name: profileData.last_name || '',
                 email: profileData.email,
                 phone: profileData.phone || '',
+                contact2: profileData.phone2 ?? profileData.contact2 ?? '',
                 date_of_birth: profileData.date_of_birth,
                 license_number: profileData.license_number,
                 license_type: profileData.license_type,

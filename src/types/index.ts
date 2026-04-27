@@ -6,6 +6,8 @@ export interface User {
   last_name: string;
   email: string;
   phone: string;
+  /** Alternative phone (DB: users.contact2) */
+  contact2?: string;
   date_of_birth?: string;
   license_number?: string;
   license_type?: string;
