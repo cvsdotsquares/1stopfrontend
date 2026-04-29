@@ -176,7 +176,7 @@ const renderMenuItem = (item: any, level: number = 0): React.ReactNode => {
           </div>
           {hasChildren && (
             <span className="menu-toggle-nested-icon">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </span>
