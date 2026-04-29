@@ -215,7 +215,7 @@ export function HtmlNavigationTrigger({ className, children }: { className?: str
       {children}
       <span className="menu-toggle-icon">
         <ChevronDownIcon
-          className="relative top-[1px] ml-1 size-3 transition-transform duration-300 group-hover/item:rotate-180"
+          className="relative top-[1px] ml-1 size-4 transition-transform duration-300 group-hover/item:rotate-180"
           aria-hidden="true"
         />
       </span>
@@ -253,7 +253,7 @@ export function HtmlNavigationLinkWithDropdown({ href, className, children, acti
       {children}
       <span className="menu-toggle-icon">
         <ChevronDownIcon
-          className="relative top-[1px] ml-1 size-3 transition-transform duration-300 group-hover/item:rotate-180"
+          className="relative top-[1px] ml-1 size-4 transition-transform duration-300 group-hover/item:rotate-180"
           aria-hidden="true"
         />
       </span>
@@ -270,7 +270,7 @@ export function HtmlNavigationLinkWithDropdown({ href, className, children, acti
       {children}
       <span className="menu-toggle-icon">
         <ChevronDownIcon
-          className="relative top-[1px] ml-1 size-3 transition-transform duration-300 group-hover/item:rotate-180"
+          className="relative top-[1px] ml-1 size-4 transition-transform duration-300 group-hover/item:rotate-180"
           aria-hidden="true"
         />
       </span>
@@ -410,7 +410,7 @@ export function HtmlMobileNavigationItem({
         {hasChildren && (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-2 text-gray-400 hover:text-gray-600"
+            className="p-2 text-black hover:text-red-600"
             aria-label={isExpanded ? 'Collapse menu' : 'Expand menu'}
           >
             <svg

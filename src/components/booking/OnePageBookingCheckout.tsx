@@ -2373,7 +2373,7 @@ export default function OnePageBookingCheckout() {
 
               {/* Attendees Selector - moved from sidebar */}
               {selectedDate && (
-                <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+                <div className="mt-4 rounded-xl border border-slate-200 bg-gray-50 p-4">
                   <h4 className="mb-3 text-sm font-semibold text-slate-900">Select Number of Spaces</h4>
                   <div className="flex items-center justify-center gap-3">
                     <button type="button" disabled={attendees <= 1} className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => setAttendees((n) => Math.max(1, n - 1))}>−</button>
@@ -2422,7 +2422,7 @@ export default function OnePageBookingCheckout() {
                 };
 
                 return (
-                  <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 space-y-3 text-sm">
+                  <div className="mt-4 rounded-xl border border-slate-200 bg-gray-50 p-4 space-y-3 text-sm">
                     {selectedEvent.course_name && (
                       <div>
                         <strong className="text-slate-700">Course:</strong>
@@ -3062,7 +3062,7 @@ export default function OnePageBookingCheckout() {
               <button
                 type="button"
                 onClick={() => setShowCourseInfo(false)}
-                className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors cursor-pointer"
               >
                 Close
               </button>
@@ -3128,7 +3128,7 @@ export default function OnePageBookingCheckout() {
               <button
                 type="button"
                 onClick={() => setShowTermsModal(false)}
-                className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors cursor-pointer"
               >
                 Close
               </button>
