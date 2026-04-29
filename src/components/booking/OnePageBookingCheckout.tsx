@@ -211,7 +211,6 @@ function generateCalendarWeeksFrom(startRefDate = new Date(), courseEvents: Cour
       const eventDate = new Date(event.date);
       return formatLocalDate(eventDate) === dateStr;
     });
-
     const available = !inPast && inCurrentMonth && courseEvent ? courseEvent.available && courseEvent.available_spaces > 0 : false;
     const spots = courseEvent?.available_spaces || 0;
 
@@ -2329,6 +2328,7 @@ export default function OnePageBookingCheckout() {
                         const currentMonth = new Date();
                         currentMonth.setMonth(currentMonth.getMonth() + calendarMonthOffset);
                         const inCurrentMonth = cell.date.getMonth() === currentMonth.getMonth() && cell.date.getFullYear() === currentMonth.getFullYear();
+                        console.log(cell);
                         return (
                           <button
                             key={idx}
@@ -2352,9 +2352,9 @@ export default function OnePageBookingCheckout() {
                             }}
                             title={cell.available && inCurrentMonth ? `${cell.spots} spots left` : "Not available"}
                             className={`aspect-square rounded-lg border text-sm tabular-nums transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
-                              !inCurrentMonth
+                              !inCurrentMonth || cell.courseEventId === undefined
                                 ? "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed"
-                                : cell.available
+                                : cell.available 
                                 ? isSelected
                                   ? "border-emerald-600 bg-emerald-600 text-white font-semibold"
                                   : "border-emerald-500 bg-white text-slate-900 hover:border-emerald-600"
@@ -2362,7 +2362,7 @@ export default function OnePageBookingCheckout() {
                               }`}
                           >
                             <div>{cell.date.getDate()}</div>
-                            <div className="text-[10px]">{inCurrentMonth && cell.available ? `x${cell.spots}` : inCurrentMonth ? "—" : ""}</div>
+                            <div className="text-[10px]">{inCurrentMonth && cell.available ? `x${cell.spots}` : inCurrentMonth && cell.courseEventId !== undefined ? "FULL" : ""}</div>
                           </button>
                         );
                       })}
