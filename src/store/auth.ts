@@ -21,22 +21,30 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isAuthenticated: false,
       isLoading: false,
-      login: (token: string, user: User) => {
-        localStorage.setItem('auth_token', token);
-        set({ 
-          token, 
-          user, 
-          isAuthenticated: true,
-          isLoading: false 
-        });
-      },
+        login: (token: string, user: User) => {
+          localStorage.setItem('auth_token', token);
+          set({
+            token,
+            user: {
+              ...user,
+
+              // keep consistent spelling with backend response
+              date_of_birth: user.date_of_birth,
+              license_number: user.license_number,
+              license_type: user.license_type,
+              theory_number: user.theory_number
+            },
+            isAuthenticated: true,
+            isLoading: false
+          });
+        },
       logout: () => {
         localStorage.removeItem('auth_token');
-        set({ 
-          token: null, 
-          user: null, 
+        set({
+          token: null,
+          user: null,
           isAuthenticated: false,
-          isLoading: false 
+          isLoading: false
         });
       },
       setUser: (user: User) => set({ user }),
@@ -44,10 +52,10 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ 
-        token: state.token, 
+      partialize: (state) => ({
+        token: state.token,
         user: state.user,
-        isAuthenticated: state.isAuthenticated 
+        isAuthenticated: state.isAuthenticated
       }),
     }
   )

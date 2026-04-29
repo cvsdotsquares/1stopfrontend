@@ -50,7 +50,7 @@ export default function PriceCardSection({ data }: { data: PriceCardSectionData 
               {/* Price */}
               {card.price && (
                 <div className="text-center mb-8">
-                  <span className="text-5xl font-extrabold">£{card.price}</span>
+                  <span className="text-5xl font-extrabold">{card.price}</span>
                 </div>
               )}
 

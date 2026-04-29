@@ -1,5 +1,18 @@
 'use client';
 
+// Helper to format date as dd/mm/yyyy, treating '0000-00-00' and similar as empty
+function formatDateOfBirth(dateString?: string) {
+  if (!dateString || dateString === '0000-00-00' || dateString.startsWith('0000')) return '';
+  // Also treat 1899-11-30 and similar as empty (Excel/JS epoch bug)
+  if (dateString === '1899-11-30' || dateString === '30/11/1899') return '';
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime()) || d.getFullYear() < 1900) return '';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -19,6 +32,10 @@ interface UserProfile {
   phone: string;
   phone2?: string;
   phone3?: string;
+  date_of_birth?: string;
+  license_number?: string;
+  license_type?: string | number;
+  theory_number?: string;
   address?: {
     street?: string;
     city?: string;
@@ -27,14 +44,26 @@ interface UserProfile {
   };
   created_at: string;
 }
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const LICENSE_TYPE_API = `${BASE_URL}/booking/license-types`;
 
 export default function MyAccount() {
+
   const { isAuthenticated, isLoading, token, logout, setUser } = useAuthStore();
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<UserProfile>>({});
+  const [licenseTypes, setLicenseTypes] = useState<Record<string, string>>({});
+    // Fetch license types for mapping
+    useEffect(() => {
+      fetch(LICENSE_TYPE_API)
+        .then(res => res.json())
+        .then(data => {
+          if (data.licenseTypes) setLicenseTypes(data.licenseTypes);
+        });
+    }, []);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -110,6 +139,10 @@ export default function MyAccount() {
     }
     if (newPassword.length < 8) {
       toast.error('Password must be at least 8 characters');
+      return;
+    }
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+      toast.error('Password must contain at least one lowercase letter, one uppercase letter, and one number');
       return;
     }
     try {
@@ -193,18 +226,19 @@ export default function MyAccount() {
           <div className="lg:col-span-2 space-y-6">
             {/* Profile Details */}
             <Card>
-              {/* <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Profile Information</CardTitle>
-                {!editing ? (
-                  <Button onClick={() => setEditing(true)} variant="outline">Edit Profile</Button>
-                ) : (
-                  <div className="space-x-2">
-                    <Button onClick={handleSave}>Save</Button>
-                    <Button onClick={() => { setEditing(false); setFormData(profile); }} variant="outline">Cancel</Button>
-                  </div>
-                )}
-              </CardHeader> */}
-              <CardContent className="space-y-4">
+
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Profile Information</CardTitle>
+                  {/* {editing ? (
+                    <div className="space-x-2">
+                      <Button onClick={handleSave}>Save</Button>
+                      <Button onClick={() => { setEditing(false); setFormData(profile || {}); }} variant="outline">Cancel</Button>
+                    </div>
+                  ) : (
+                    <Button onClick={() => setEditing(true)} variant="outline">Edit Profile</Button>
+                  )} */}
+                </CardHeader>
+                <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label className='mb-1'>First Name</Label>
@@ -243,6 +277,56 @@ export default function MyAccount() {
                       onChange={(e) => setFormData({...formData, phone2: e.target.value})}
                       disabled={!editing}
                     />
+                  </div>
+                  {/* Date of Birth */}
+                  <div>
+                    <Label className='mb-1'>Date of Birth</Label>
+                    {(() => {
+                      let dobValue = '';
+                      if (editing) {
+                        dobValue = formData.date_of_birth ? formData.date_of_birth.slice(0, 10) : '';
+                      } else {
+                        dobValue = formatDateOfBirth(profile.date_of_birth);
+                      }
+                      return (
+                        <Input
+                          type={editing ? 'date' : 'text'}
+                          value={dobValue}
+                          onChange={editing ? (e) => setFormData({ ...formData, date_of_birth: e.target.value }) : undefined}
+                          disabled={!editing}
+                        />
+                      );
+                    })()}
+                  </div>
+                  {/* Driving Licence Number */}
+                  <div>
+                    <Label className='mb-1'>Driving Licence Number</Label>
+                    <Input
+                      value={editing ? (formData.license_number || '') : (profile.license_number || '')}
+                      onChange={(e) => setFormData({ ...formData, license_number: e.target.value })}
+                      disabled={!editing}
+                    />
+                  </div>
+                  {/* Driving Licence Type */}
+                  <div>
+                    <Label className='mb-1'>Driving Licence Type</Label>
+                    {editing ? (
+                      <select
+                        className="block w-full border rounded px-3 py-2"
+                        value={formData.license_type ? String(formData.license_type) : ''}
+                        onChange={e => setFormData({ ...formData, license_type: e.target.value })}
+                      >
+                        <option value="">Select Licence Type</option>
+                        {Object.entries(licenseTypes).map(([key, label]) => (
+                          <option key={key} value={key}>{label}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        value={licenseTypes[String(profile.license_type ?? '')] || profile.license_type || ''}
+                        disabled
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -307,8 +391,9 @@ export default function MyAccount() {
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password (min 8 characters)"
+                    placeholder="Enter new password"
                   />
+                  <p className="mt-1 text-xs text-gray-500">Minimum 8 characters, with at least one lowercase letter, one uppercase letter, and one number</p>
                 </div>
                 <div>
                   <Label className='mb-1'>Confirm New Password</Label>

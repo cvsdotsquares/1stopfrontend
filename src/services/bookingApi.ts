@@ -110,6 +110,10 @@ export interface PromoValidation {
   discount_amount: number;
   discount_type: string;
   description: string;
+  promo_code_id?: number;
+  eligible_attendees?: number;
+  ineligible_attendees?: number;
+  apply_mode?: string;
 }
 
 export interface BookingLock {
@@ -261,17 +265,6 @@ class BookingApiService {
     return data;
   }
 
-  async createBookingLock(courseEventId: number, spacesRequired: number, userSession: string): Promise<BookingLock> {
-    return this.fetchApi<BookingLock>('/lock', {
-      method: 'POST',
-      body: JSON.stringify({
-        course_event_id: courseEventId,
-        spaces_required: spacesRequired,
-        user_session: userSession,
-      }),
-    });
-  }
-
   async getSettings(): Promise<Settings> {
     return this.fetchApi<Settings>('/booking/settings');
   }
@@ -352,25 +345,26 @@ class BookingApiService {
     });
   }
 
-  async calculatePrice(courseEventId: number, attendees: any[], promoCodeId?: number): Promise<any> {
+  async calculatePrice(courseEventId: number, attendees: any[], promoCodeId?: number, promoEligibleCount?: number): Promise<any> {
     return this.fetchApi<any>('/booking/pricing/calculate', {
       method: 'POST',
       body: JSON.stringify({
         course_event_id: courseEventId,
         attendees: attendees,
         promo_code_id: promoCodeId,
+        promo_eligible_count: promoEligibleCount,
         apply_deposit_logic: true
       }),
     });
   }
 
-  async cleanupPrebookings(userId?: number, ipAddress?: string): Promise<any> {
-    return this.fetchApi<any>('/booking/cleanup-prebookings', {
-      method: 'POST',
-      // send 0 for anonymous users so backend can match prebookings locked by guests
-      body: JSON.stringify({ user_id: userId ?? 0, ip_address: ipAddress ?? '' }),
-    });
-  }
+  // async cleanupPrebookings(userId?: number, ipAddress?: string): Promise<any> {
+  //   return this.fetchApi<any>('/booking/cleanup-prebookings', {
+  //     method: 'POST',
+  //     // send 0 for anonymous users so backend can match prebookings locked by guests
+  //     body: JSON.stringify({ user_id: userId ?? 0, ip_address: ipAddress ?? '' }),
+  //   });
+  // }
 }
 
 export const bookingApi = new BookingApiService();

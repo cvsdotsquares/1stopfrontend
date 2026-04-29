@@ -126,6 +126,10 @@ export default function LoginPage() {
       toast.error('Password must be at least 8 characters');
       return;
     }
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+      toast.error('Password must contain at least one lowercase letter, one uppercase letter, and one number');
+      return;
+    }
     setPasswordMutation.mutate();
   };
 
@@ -256,7 +260,7 @@ export default function LoginPage() {
                   placeholder="Enter new password"
                   minLength={8}
                 />
-                <p className="text-sm text-gray-500">Minimum 8 characters</p>
+                <p className="text-sm text-gray-500">Minimum 8 characters, with at least one lowercase letter, one uppercase letter, and one number</p>
               </div>
               <div className='space-y-2'>
                 <Label htmlFor="confirm-password">Confirm Password</Label>

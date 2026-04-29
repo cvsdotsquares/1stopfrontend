@@ -28,8 +28,37 @@ interface DashboardData {
     postcode: string;
     transactionId: string | null;
     created: string;
+    booking_id: number;
+    secondary_attendees?: Array<{
+      booking_id: number;
+      booking_ref: string;
+      first_name: string;
+      sur_name: string;
+      email: string;
+      payment_due: number;
+      admin_payment_received: number;
+      total_fees: number;
+    }>;
   }>;
-  upcomingCourses: Array<{ id: string; title: string; date: string; location: string }>;
+  upcomingCourses: Array<{
+    id: string;
+    title: string;
+    booking_id: number;
+    first_name: string;
+    sur_name: string;
+    date: string;
+    location: string;
+    secondary_attendees?: Array<{
+      booking_id: number;
+      booking_ref: string;
+      first_name: string;
+      sur_name: string;
+      email: string;
+      payment_due: number;
+      admin_payment_received: number;
+      total_fees: number;
+    }>;
+  }>;
   giftVouchers: Array<{ id: number; voucherRef: string; value: number; courseName: string; recipientName: string; validTill: string; status: string; redeemed: string }>;
 }
 
@@ -72,9 +101,11 @@ export default function Dashboard() {
                 last_name: profileData.last_name || '',
                 email: profileData.email,
                 phone: profileData.phone || '',
+                contact2: profileData.phone2 ?? profileData.contact2 ?? '',
                 date_of_birth: profileData.date_of_birth,
-                emergency_contact_name: profileData.emergency_contact_name,
-                emergency_contact_phone: profileData.emergency_contact_phone,
+                license_number: profileData.license_number,
+                license_type: profileData.license_type,
+                theory_number: profileData.theory_number,
                 address_line1: profileData.address_line1,
                 address_line2: profileData.address_line2,
                 city: profileData.city,
@@ -92,8 +123,9 @@ export default function Dashboard() {
                 email: apiData.user.email,
                 phone: apiData.user.phone || '',
                 date_of_birth: apiData.user.date_of_birth,
-                emergency_contact_name: apiData.user.emergency_contact_name,
-                emergency_contact_phone: apiData.user.emergency_contact_phone,
+                license_number: apiData.user.license_number,
+                license_type: apiData.user.license_type,
+                theory_number: apiData.user.theory_number,
                 address_line1: apiData.user.address_line1,
                 address_line2: apiData.user.address_line2,
                 city: apiData.user.city,
@@ -118,7 +150,10 @@ export default function Dashboard() {
               },
               recentBookings: (apiData.recent_bookings || []).map((b: any) => ({
                 id: b.id,
-                Name: b.first_name + ' ' + b.sur_name,
+                first_name: b.first_name || '',
+                last_name: b.last_name || b.sur_name || '',
+                sur_name: b.last_name || b.sur_name || '',
+                booking_ref: b.booking_ref || '',
                 courseTitle: b.course_name,
                 type_of_book: b.type_of_book,
                 date: b.event_date,
@@ -132,13 +167,21 @@ export default function Dashboard() {
                 address2: b.address2,
                 postcode: b.postcode,
                 transactionId: b.transaction_id,
-                created: b.created
+                created: b.created,
+                booking_id: b.booking_id,
+                secondary_attendees: b.secondary_attendees || []
               })),
               upcomingCourses: (apiData.upcoming_courses || []).map((c: any) => ({
                 id: c.booking_id,
                 title: c.course_name,
+                first_name: c.first_name || '',
+                last_name: c.last_name || c.sur_name || '',
+                sur_name: c.last_name || c.sur_name || '',
+                booking_ref: c.booking_ref || '',
+                booking_id: c.booking_id,
                 date: c.event_date,
-                location: `${c.location_name || ''}, ${c.postcode || ''}`.trim().replaceAll(/^,\s*|,\s*$/g, '')
+                location: `${c.location_name || ''}, ${c.postcode || ''}`.trim().replaceAll(/^,\s*|,\s*$/g, ''),
+                secondary_attendees: c.secondary_attendees || []
               })),
               giftVouchers: (apiData.gift_vouchers || []).map((v: any) => ({
                 id: v.id,
@@ -223,20 +266,36 @@ export default function Dashboard() {
 
       {/* Recent Bookings & Upcoming Courses */}
       <h2 className="text-2xl font-semibold mb-4">Courses</h2>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 relative">
-        <div className="overflow-visible">
-        <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 relative items-stretch">
+        <div className="overflow-visible h-full">
+        <Card className="h-full flex flex-col">
           <CardHeader>
             <CardTitle>Previous Bookings</CardTitle>
           </CardHeader>
           <CardContent>
+            {!data.recentBookings || data.recentBookings.length === 0 ? (
+              <p className="text-sm text-gray-500">No previous bookings found.</p>
+            ) : (
             <div className="space-y-4 max-h-80 overflow-y-auto">
               {data.recentBookings.map(booking => (
                 <Link key={booking.id} href={`/dashboard/bookings/${booking.id}`} className="block">
                   <div className="flex justify-between items-center border-b pb-2 hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
                     <div>
                       <p className="text-sm font-medium">{booking.courseTitle}</p>
+                      <p className="text-xs text-gray-500">{`${booking.first_name} ${booking.sur_name}`} <span className="text-gray-400">•</span> {` 1SRC${booking.id}`}</p>
                       <p className="text-xs text-gray-500">{new Date(booking.date).toLocaleDateString('en-GB')}</p>
+                      {booking.secondary_attendees && booking.secondary_attendees.length > 0 && (
+                        <div className="mt-1 space-y-1">
+                          {booking.secondary_attendees.map((secondary) => (
+                            <div key={`${booking.id}-${secondary.booking_id}`} className="text-xs text-gray-600 flex flex-wrap items-center gap-1">
+                              <span className="inline-flex items-center rounded-full bg-purple-100 text-purple-700 px-2 py-0.5 text-[10px] font-medium">Secondary</span>
+                              <span>{secondary.first_name} {secondary.sur_name}</span>
+                              <span className="text-gray-400">•</span>
+                              <span>{secondary.booking_ref || `1SRC${secondary.booking_id}`}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
@@ -251,22 +310,39 @@ export default function Dashboard() {
                 </Link>
               ))}
             </div>
+            )}
           </CardContent>
         </Card>
         </div>
 
-        <Card>
+        <Card className="h-full flex flex-col">
           <CardHeader>
             <CardTitle>Upcoming Bookings</CardTitle>
           </CardHeader>
           <CardContent>
+            {!data.upcomingCourses || data.upcomingCourses.length === 0 ? (
+              <p className="text-sm text-gray-500">No upcoming bookings found.</p>
+            ) : (
             <div className="space-y-4 max-h-80 overflow-y-auto">
               {data.upcomingCourses.map(course => (
                 <Link key={course.id} href={`/dashboard/bookings/${course.id}`} className="block">
                   <div className="flex justify-between items-center border-b pb-2 hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
                     <div>
                       <p className="text-sm font-medium">{course.title}</p>
+                      <p className="text-xs text-gray-500">{`${course.first_name} ${course.sur_name}`} <span className="text-gray-400">•</span> {` 1SRC${course.booking_id}`}</p>
                       <p className="text-xs text-gray-500">{new Date(course.date).toLocaleDateString('en-GB')} - {course.location}</p>
+                      {course.secondary_attendees && course.secondary_attendees.length > 0 && (
+                        <div className="mt-1 space-y-1">
+                          {course.secondary_attendees.map((secondary) => (
+                            <div key={`${course.id}-${secondary.booking_id}`} className="text-xs text-gray-600 flex flex-wrap items-center gap-1">
+                              <span className="inline-flex items-center rounded-full bg-purple-100 text-purple-700 px-2 py-0.5 text-[10px] font-medium">Secondary</span>
+                              <span>{secondary.first_name} {secondary.sur_name}</span>
+                              <span className="text-gray-400">•</span>
+                              <span>{secondary.booking_ref || `1SRC${secondary.booking_id}`}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <svg className="w-4 h-4 text-black shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -275,13 +351,14 @@ export default function Dashboard() {
                 </Link>
               ))}
             </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
       {/* Gift Vouchers */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        <Card className="h-full flex flex-col">
           <CardHeader>
             <CardTitle>Current Gift Vouchers</CardTitle>
           </CardHeader>
@@ -313,7 +390,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-full flex flex-col">
           <CardHeader>
             <CardTitle>Expired Gift Vouchers</CardTitle>
           </CardHeader>

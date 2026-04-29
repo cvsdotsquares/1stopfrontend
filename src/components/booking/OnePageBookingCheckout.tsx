@@ -72,6 +72,90 @@ function createAttendeeDetails(seed: Partial<AttendeeDetails> = {}): AttendeeDet
   };
 }
 
+/** Server response from GET /auth/booking-prefill (has_fallback + prefill). */
+interface BookingPrefillPayload {
+  first_name: string;
+  sur_name: string;
+  email: string;
+  /** Primary phone (booking_attendees_dropdown.contact1) */
+  contact1: string | null;
+  /** Alternative phone (booking_attendees_dropdown.contact2) */
+  contact2: string | null;
+  date_of_birth: string | null;
+  license_type: number | null;
+  license_number: string | null;
+  theory_number: string | null;
+}
+
+function formatUserDobToUk(dateOfBirth: string | undefined): string {
+  if (!dateOfBirth || dateOfBirth === "0000-00-00" || dateOfBirth.startsWith("0000") || dateOfBirth === "1899-11-30")
+    return "";
+  const d = new Date(dateOfBirth);
+  if (isNaN(d.getTime()) || d.getFullYear() < 1900) return "";
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function formatPrefillDobToUk(dateOfBirth: string | null | undefined): string {
+  if (dateOfBirth == null) return "";
+  const s = String(dateOfBirth).trim();
+  if (s === "0000-00-00" || s.startsWith("0000") || s === "1899-11-30") return "";
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  const d = new Date(s);
+  if (isNaN(d.getTime()) || d.getFullYear() < 1900) return "";
+  return formatUserDobToUk(s);
+}
+
+type PrefillSourceFields = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  dateOfBirth: string;
+  licenseNumber: string;
+  licenseType: string;
+  alternativePhone: string;
+  theoryNumber: string;
+};
+
+/**
+ * Attendee[0] prefill for logged-in users: only from booking_attendees_dropdown (via /auth/booking-prefill).
+ * When there is no row, all strings are empty — never read from the users table.
+ */
+function getAttendeePrefillFromDropdown(bookingPrefill: BookingPrefillPayload | null): PrefillSourceFields {
+  if (!bookingPrefill) {
+    return {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      dateOfBirth: "",
+      licenseNumber: "",
+      licenseType: "",
+      alternativePhone: "",
+      theoryNumber: "",
+    };
+  }
+  return {
+    firstName: String(bookingPrefill.first_name ?? "").trim(),
+    lastName: String(bookingPrefill.sur_name ?? "").trim(),
+    email: String(bookingPrefill.email ?? "").trim(),
+    phone: String(bookingPrefill.contact1 ?? "").trim(),
+    dateOfBirth: formatPrefillDobToUk(bookingPrefill.date_of_birth),
+    licenseNumber: String(bookingPrefill.license_number ?? "").trim(),
+    licenseType:
+      bookingPrefill.license_type != null && bookingPrefill.license_type !== ("" as unknown)
+        ? String(bookingPrefill.license_type)
+        : "",
+    alternativePhone: String(bookingPrefill.contact2 ?? "").trim(),
+    theoryNumber: String(bookingPrefill.theory_number ?? "").trim(),
+  };
+}
+
 // ---------- Small Pure Utilities (also used by tests) ----------
 // Helper function to format date as YYYY-MM-DD in local timezone
 function formatLocalDate(date: Date): string {
@@ -406,7 +490,9 @@ export default function OnePageBookingCheckout() {
 
   // Auth state
   const { isAuthenticated, user, login } = useAuthStore();
-
+  // Server-only booking prefill (legacy users with no users.license_number) — not merged into /profile
+  const [bookingPrefill, setBookingPrefill] = useState<BookingPrefillPayload | null>(null);
+  const serverPrefillApplyRef = useRef<{ userId: number | null; applied: boolean }>({ userId: null, applied: false });
   // API Data State
   const [courses, setCourses] = useState<Course[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -450,14 +536,23 @@ export default function OnePageBookingCheckout() {
   const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
 
   // Attendee details - array for multiple attendees
-  const [attendeeDetails, setAttendeeDetails] = useState<AttendeeDetails[]>([
-    createAttendeeDetails({
-      firstName: user?.first_name,
-      lastName: user?.last_name,
-      email: user?.email,
-      phone: user?.phone,
-    }),
-  ]);
+  const [attendeeDetails, setAttendeeDetails] = useState<AttendeeDetails[]>(() => {
+    const s = getAttendeePrefillFromDropdown(null);
+    return [
+      createAttendeeDetails({
+        firstName: s.firstName,
+        lastName: s.lastName,
+        email: s.email,
+        confirmEmail: s.email,
+        phone: s.phone,
+        alternativePhone: s.alternativePhone,
+        dateOfBirth: s.dateOfBirth,
+        licenseNumber: s.licenseNumber,
+        licenseType: s.licenseType,
+        theoryNumber: s.theoryNumber,
+      }),
+    ];
+  });
   const [firstAttendeeUserLookup, setFirstAttendeeUserLookup] = useState<{
     email: string;
     status: ExistingUserLookupStatus;
@@ -541,14 +636,23 @@ export default function OnePageBookingCheckout() {
     setExpandedAttendeeIndex(0);
     // Reset date tracking ref so next date selection is treated as "first" (no auto-reset of attendees)
     prevDateStrRef.current = null;
-    setAttendeeDetails([
-      createAttendeeDetails({
-        firstName: user?.first_name,
-        lastName: user?.last_name,
-        email: user?.email,
-        phone: user?.phone,
-      }),
-    ]);
+    setAttendeeDetails(() => {
+      const s = getAttendeePrefillFromDropdown(bookingPrefill);
+      return [
+        createAttendeeDetails({
+          firstName: s.firstName,
+          lastName: s.lastName,
+          email: s.email,
+          confirmEmail: s.email,
+          phone: s.phone,
+          alternativePhone: s.alternativePhone,
+          dateOfBirth: s.dateOfBirth,
+          licenseNumber: s.licenseNumber,
+          licenseType: s.licenseType,
+          theoryNumber: s.theoryNumber,
+        }),
+      ];
+    });
     setFirstAttendeeUserLookup({ email: '', status: 'idle' });
     // Keep section 3 expanded so user can pick a new date
     setExpandedSections(prev => ({ ...prev, 3: true, 4: false, 5: false }));
@@ -640,6 +744,16 @@ export default function OnePageBookingCheckout() {
 
     if (!basicFieldsComplete || !licenseComplete) return false;
 
+    // Attendee must be at least 16 years old on the course date
+    if (selectedDate && isDobValid) {
+      const [day, month, year] = dob.split('/').map(Number);
+      const birthDate = new Date(year, month - 1, day);
+      let age = selectedDate.getFullYear() - birthDate.getFullYear();
+      const m = selectedDate.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && selectedDate.getDate() < birthDate.getDate())) age--;
+      if (age < 16) return false;
+    }
+
     // If registering as user, check password fields
     if (index === 0 && canOfferFastCheckoutRegistration && attendee.registerAsUser) {
       return attendee.password.length >= 8 && attendee.password === attendee.confirmPassword;
@@ -663,7 +777,7 @@ export default function OnePageBookingCheckout() {
   if (!selectedDate) {
     paymentBlockingMessages.push('Please select a course date.');
   } else if (!dateTimeConfirmed) {
-    paymentBlockingMessages.push('You changed the course date. Please click "Confirm Date & Time" in Step 3 to continue.');
+    paymentBlockingMessages.push('You changed the course date or spaces. Please click "Confirm Date & Time" in Step 3 to continue.');
   }
   if (!sectionComplete[4]) {
     paymentBlockingMessages.push('Please complete all attendee details and photocard confirmations in Step 4.');
@@ -788,37 +902,6 @@ export default function OnePageBookingCheckout() {
   // Track whether the user manually toggled an attendee (to avoid auto-expand overriding it)
   const manualToggleRef = useRef(false);
 
-  // Auto-expand next attendee only when current attendee is complete AND photocard is confirmed
-  // BUT skip if the user just manually toggled to go back and edit a previous attendee
-  useEffect(() => {
-    if (attendees <= 1) return;
-
-    // If the user manually clicked a toggle, don't auto-advance — just reset the flag
-    if (manualToggleRef.current) {
-      manualToggleRef.current = false;
-      return;
-    }
-
-    const currentIndex = expandedAttendeeIndex;
-    // Only proceed if we have a valid current index
-    if (currentIndex >= 0 && currentIndex < attendees) {
-      const currentAttendee = attendeeDetails[currentIndex];
-      const isCurrentComplete = isAttendeeComplete(currentAttendee, currentIndex);
-      const isPhotocardConfirmed = photocardConfirmed[currentIndex];
-
-      // Only auto-expand next attendee if BOTH conditions are met:
-      // 1. All required fields are filled for current attendee
-      // 2. Photocard is confirmed for current attendee
-      if (isCurrentComplete && isPhotocardConfirmed) {
-        if (currentIndex < attendees - 1) {
-          // Ensure attendees section is expanded then move to next attendee
-          setExpandedSections(prev => ({ ...prev, 4: true }));
-          setExpandedAttendeeIndex(currentIndex + 1);
-        }
-      }
-    }
-  }, [attendeeDetails, photocardConfirmed, expandedAttendeeIndex, attendees]);
-
   useEffect(() => {
     const matchedEmail = getMatchedEmailForLookup(attendeeDetails[0]);
 
@@ -884,6 +967,87 @@ export default function OnePageBookingCheckout() {
       return hasChanges ? next : prev;
     });
   }, [canOfferFastCheckoutRegistration]);
+
+  // Load first-attendee prefill: only from booking_attendees_dropdown (last booking, first card)
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) {
+      setBookingPrefill(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await authApi.getBookingPrefill();
+        if (cancelled) return;
+        if (data?.has_fallback && data.prefill) {
+          setBookingPrefill(data.prefill as BookingPrefillPayload);
+        } else {
+          setBookingPrefill(null);
+        }
+      } catch {
+        if (!cancelled) setBookingPrefill(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, user?.id]);
+
+  // Re-seed first attendee when /auth/booking-prefill returns; never merge from the users table.
+  useEffect(() => {
+    if (!user) return;
+
+    setAttendeeDetails((prev) => {
+      if (!prev.length) return prev;
+      const first = prev[0];
+
+      if (serverPrefillApplyRef.current.userId !== user.id) {
+        serverPrefillApplyRef.current = { userId: user.id, applied: false };
+      }
+
+      if (bookingPrefill) {
+        if (serverPrefillApplyRef.current.applied) {
+          return prev;
+        }
+        const source = getAttendeePrefillFromDropdown(bookingPrefill);
+        const next: AttendeeDetails = {
+          ...first,
+          firstName: source.firstName,
+          lastName: source.lastName,
+          email: source.email,
+          confirmEmail: source.email,
+          phone: source.phone,
+          alternativePhone: source.alternativePhone,
+          dateOfBirth: source.dateOfBirth,
+          licenseNumber: source.licenseNumber,
+          licenseType: source.licenseType,
+          theoryNumber: source.theoryNumber,
+        };
+        const unchanged =
+          next.firstName === first.firstName &&
+          next.lastName === first.lastName &&
+          next.email === first.email &&
+          next.confirmEmail === first.confirmEmail &&
+          next.phone === first.phone &&
+          next.alternativePhone === first.alternativePhone &&
+          next.dateOfBirth === first.dateOfBirth &&
+          next.licenseNumber === first.licenseNumber &&
+          next.licenseType === first.licenseType &&
+          next.theoryNumber === first.theoryNumber;
+        if (unchanged) {
+          serverPrefillApplyRef.current.applied = true;
+          return prev;
+        }
+        serverPrefillApplyRef.current.applied = true;
+        const copy = [...prev];
+        copy[0] = next;
+        return copy;
+      }
+
+      serverPrefillApplyRef.current.applied = false;
+      return prev;
+    });
+  }, [user, bookingPrefill]);
 
   // Scroll newly-expanded attendee cards into view after confirming the previous attendee.
   useEffect(() => {
@@ -1380,24 +1544,41 @@ export default function OnePageBookingCheckout() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const nextAvailable = availability.find(event => {
+        // Earliest bookable by calendar date (not first array item — API order is by course_event_id)
+        let earliestAvailable: (typeof availability)[number] | null = null;
+        for (const event of availability) {
+          if (!event.available || event.available_spaces <= 0) continue;
           const eventDate = new Date(event.date);
+          if (Number.isNaN(eventDate.getTime())) continue;
           eventDate.setHours(0, 0, 0, 0);
-          return event.available && event.available_spaces > 0 && eventDate >= today;
-        });
+          if (eventDate < today) continue;
+          if (!earliestAvailable) {
+            earliestAvailable = event;
+            continue;
+          }
+          const best = new Date(earliestAvailable.date);
+          if (Number.isNaN(best.getTime())) {
+            earliestAvailable = event;
+            continue;
+          }
+          best.setHours(0, 0, 0, 0);
+          if (eventDate < best) {
+            earliestAvailable = event;
+          }
+        }
 
         if (selectedDate) {
           setCalendarMonthOffset(getMonthOffsetFromToday(selectedDate));
-        } else if (nextAvailable?.date) {
-          setCalendarMonthOffset(getMonthOffsetFromToday(nextAvailable.date));
+        } else if (earliestAvailable?.date) {
+          setCalendarMonthOffset(getMonthOffsetFromToday(earliestAvailable.date));
         } else {
           setCalendarMonthOffset(0);
         }
 
         if (availability.length > 0 && !selectedDate && dateParam) {
-          if (nextAvailable) {
-            setSelectedDate(new Date(nextAvailable.date));
-            setSelectedCourseEventId(nextAvailable.course_event_id);
+          if (earliestAvailable) {
+            setSelectedDate(new Date(earliestAvailable.date));
+            setSelectedCourseEventId(earliestAvailable.course_event_id);
           }
         }
       } catch (err) {
@@ -1467,7 +1648,18 @@ export default function OnePageBookingCheckout() {
             license_type: a.licenseType
           }));
 
-        const pricingResult = await bookingApi.calculatePrice(selectedCourseEventId, attendeesArray);
+        // Extract promo details for pricing calculation
+        const promoCodeId = promoData?.valid ? Number(promoData.promo_code_id) : undefined;
+        const promoEligibleCount = promoData?.valid
+          ? Number(promoData.eligible_attendees ?? attendees)
+          : undefined;
+
+        const pricingResult = await bookingApi.calculatePrice(
+          selectedCourseEventId,
+          attendeesArray,
+          promoCodeId,
+          promoEligibleCount
+        );
         setPricing(pricingResult.pricing_breakdown);
       } catch (error) {
         setPricing(null);
@@ -1475,17 +1667,13 @@ export default function OnePageBookingCheckout() {
     };
 
     calculatePricing();
-  }, [selectedCourseEventId, attendees, pricingDeps]);
+  }, [selectedCourseEventId, attendees, pricingDeps, promoData]);
 
   const subtotal = pricing?.final_totals?.subtotal || 0;
   const vat = pricing?.final_totals?.vat || 0;
-  const totalBeforeDiscount = pricing?.final_totals?.final_amount || 0;
-  const discount = promoData?.valid
-    ? (promoData.discount_type === 'percent_off'
-        ? (totalBeforeDiscount * (Number(promoData.discount_amount) || 0)) / 100
-        : Number(promoData.discount_amount) || 0)
-    : 0;
-  const total = Math.max(0, totalBeforeDiscount - discount);
+  // Use backend-calculated discount instead of local math
+  const discount = pricing?.final_totals?.discount || 0;
+  const total = Math.max(0, pricing?.final_totals?.amount_to_charge || pricing?.final_totals?.final_amount || 0);
 
   const resolveEventDateKey = (value: Date | string | null | undefined): string | null => {
     if (!value) return null;
@@ -1528,9 +1716,16 @@ export default function OnePageBookingCheckout() {
     }
 
     const promoAmount = Number(promoData.discount_amount) || 0;
+    const eligibleAttendeeCount = Math.max(
+      0,
+      Math.min(
+        attendeeSlice.length,
+        Number(promoData.eligible_attendees ?? attendeeSlice.length) || 0
+      )
+    );
     const promoDiscount = promoData.discount_type === 'percent_off'
-      ? (baseAmount * promoAmount) / 100
-      : (promoAmount * attendeeSlice.length);
+      ? ((baseAmount * (eligibleAttendeeCount / Math.max(attendeeSlice.length, 1))) * promoAmount) / 100
+      : (promoAmount * eligibleAttendeeCount);
 
     return Math.max(0, baseAmount - promoDiscount);
   }, [selectedEventForTracking, attendeeDetails, attendees, promoData]);
@@ -1776,7 +1971,7 @@ export default function OnePageBookingCheckout() {
       if (attendee.dateOfBirth && selectedDate) {
         const age = calculateAge(attendee.dateOfBirth, selectedDate);
         if (age < 16) {
-          alert(`Attendee ${idx + 1}: You must be at least 16 years of age on the day of your course in order to proceed with your booking.`);
+          toast.error(`Attendee ${idx + 1}: You must be at least 16 years of age on the date of your course`);
           return;
         }
       }
@@ -2060,10 +2255,13 @@ export default function OnePageBookingCheckout() {
             <Section
               index={3}
               title="Select date & time"
-              subtitle=""
+              subtitle="Select your preferred date and time for the course. Availability is shown for the next 3 months."
               complete={sectionComplete[3]}
-              open={expandedSections[3]}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 3: !prev[3] }))}
+              open={sectionComplete[2] ? expandedSections[3] : false}
+              onToggle={() => {
+                if (!sectionComplete[2]) return;
+                setExpandedSections(prev => ({ ...prev, 3: !prev[3] }));
+              }}
               expandDisabled={!sectionComplete[2]}
             >
               {/* Calendar */}
@@ -2105,7 +2303,8 @@ export default function OnePageBookingCheckout() {
                   >
                     {(() => {
                       const nextMonth = new Date();
-                      nextMonth.setMonth(nextMonth.getMonth() + calendarMonthOffset);
+                      // add 1 month to the current month
+                      nextMonth.setMonth(nextMonth.getMonth() + calendarMonthOffset + 1);
                       return nextMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
                     })()} →
                   </button>
@@ -2522,6 +2721,11 @@ export default function OnePageBookingCheckout() {
                       isComplete={isAttendeeComplete(attendee, index)}
                       photocardConfirmed={photocardConfirmed[index] || false}
                       onPhotocardChange={(confirmed) => handlePhotocardChange(index, confirmed)}
+                      onExpandNext={() => {
+                        if (index >= attendees - 1) return;
+                        setExpandedSections(prev => ({ ...prev, 4: true }));
+                        setExpandedAttendeeIndex(index + 1);
+                      }}
                       licenseValidated={licenseValidated[index] || false}
                       duplicateLicenseIndex={duplicateLicenseIndex >= 0 ? duplicateLicenseIndex : null}
                       selectedDate={selectedDate}
@@ -2579,6 +2783,9 @@ export default function OnePageBookingCheckout() {
                           Discount {promoData.discount_type === 'percent_off'
                             ? `(${promoData.discount_amount}% off)`
                             : '(amount off)'}
+                          {promoData.ineligible_attendees > 0 && (
+                            <span className="ml-2 text-xs">• {promoData.eligible_attendees}/{attendees} eligible</span>
+                          )}
                         </span>
                         <span className="font-medium">-<Money value={discount} /></span>
                       </div>

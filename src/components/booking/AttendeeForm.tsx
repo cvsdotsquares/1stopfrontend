@@ -81,6 +81,7 @@ export default function AttendeeForm({
   emailCheckState = 'idle',
 }: AttendeeFormProps) {
   const [ageWarning, setAgeWarning] = React.useState<string | null>(null);
+  const [expandedMaxHeight, setExpandedMaxHeight] = React.useState('0px');
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const phoneRegex = /^\+?[0-9\s()-]+$/;
 
@@ -160,8 +161,10 @@ export default function AttendeeForm({
     if (value.length === 10 && selectedDate) {
       const age = calculateAge(value, selectedDate);
       if (age < 16) {
-        setAgeWarning('You must be at least 16 years of age on the day of your course in order to proceed with your booking.');
-      } else if (age === 16) {
+        setAgeWarning('You must be at least 16 years of age on the date of your course');
+        return;
+      }
+      if (age === 16) {
         setAgeWarning('As you are 16, only Automatic or Own Vehicle can be selected.');
         // Clear vehicle type if it's not allowed for 16-year-olds
         if (attendee.vehicleType) {
@@ -176,6 +179,8 @@ export default function AttendeeForm({
 
   // --- Masked DOB input ---
   const dobInputRef = React.useRef<HTMLInputElement>(null);
+  const formBodyRef = React.useRef<HTMLDivElement>(null);
+  const formContentRef = React.useRef<HTMLDivElement>(null);
   const pendingDobCursorPosRef = React.useRef<number | null>(null);
   // Raw digits extracted from the stored dateOfBirth value (max 8 digits)
   const dobDigits = (attendee.dateOfBirth || '').replace(/[^0-9]/g, '').slice(0, 8);
@@ -188,6 +193,32 @@ export default function AttendeeForm({
     dobInputRef.current.setSelectionRange(pos, pos);
     pendingDobCursorPosRef.current = null;
   }, [dobDisplay]);
+
+  React.useLayoutEffect(() => {
+    const body = formBodyRef.current;
+    const content = formContentRef.current;
+    if (!body || !content) return;
+
+    if (!isExpanded) {
+      setExpandedMaxHeight('0px');
+      return;
+    }
+
+    const updateMaxHeight = () => {
+      setExpandedMaxHeight(`${content.scrollHeight}px`);
+    };
+
+    updateMaxHeight();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(updateMaxHeight);
+      observer.observe(content);
+      return () => observer.disconnect();
+    }
+
+    window.addEventListener('resize', updateMaxHeight);
+    return () => window.removeEventListener('resize', updateMaxHeight);
+  }, [isExpanded]);
 
   /** Snap cursor to the correct pixel position after a state update */
   const snapDobCursor = (input: HTMLInputElement, afterDigitIdx: number, immediate = false) => {
@@ -308,6 +339,11 @@ export default function AttendeeForm({
     incompleteReasons.push('Enter date of birth');
   } else if (!isValidDob(attendee.dateOfBirth.trim())) {
     incompleteReasons.push('Use a valid date of birth in dd/mm/yyyy');
+  } else if (selectedDate) {
+    const age = calculateAge(attendee.dateOfBirth.trim(), selectedDate);
+    if (age >= 0 && age < 16) {
+      incompleteReasons.push('Attendee must be at least 16 on the course date');
+    }
   }
   if (!emailValue) {
     incompleteReasons.push('Enter email');
@@ -339,7 +375,11 @@ export default function AttendeeForm({
     }
   }
   if (requiresRegistrationPassword) {
-    if (attendee.password.length < 8) incompleteReasons.push('Use a password with at least 8 characters');
+    if (attendee.password.length < 8) {
+      incompleteReasons.push('Use a password with at least 8 characters');
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(attendee.password)) {
+      incompleteReasons.push('Password must contain at least one lowercase letter, one uppercase letter, and one number');
+    }
     if (attendee.password !== attendee.confirmPassword) incompleteReasons.push('Password and confirm password must match');
   }
   return (
@@ -388,10 +428,12 @@ export default function AttendeeForm({
       </button>
 
       <div
-        className="p-6 pt-3 transition-all duration-500 ease-in-out overflow-hidden bg-gray-50"
-        style={{ maxHeight: isExpanded ? 'auto' : '0px', padding: isExpanded ? undefined : '0px' }}
+        ref={formBodyRef}
+        className="transition-all duration-500 ease-in-out overflow-hidden bg-gray-50"
+        style={{ maxHeight: isExpanded ? expandedMaxHeight : '0px' }}
         aria-hidden={!isExpanded}
       >
+      <div ref={formContentRef} className="p-6 pt-3">
 
       {/* First name and Last name - 2 columns */}
       <div className="grid gap-4 sm:grid-cols-2 mb-4">
@@ -528,7 +570,6 @@ export default function AttendeeForm({
             onChange={(e) => onChange('phone', e.target.value)}
             placeholder="07123456789"
           />
-          <p className="mt-1 text-xs text-slate-500">Numbers, spaces, brackets, hyphens, and &quot;+&quot; are allowed</p>
           {phoneValue && (!phoneRegex.test(phoneValue) || !isPhoneValid) && (
             <p className="mt-1 text-xs text-red-500">Please enter a valid phone number</p>
           )}
@@ -666,52 +707,63 @@ export default function AttendeeForm({
           )}
 
           {requiresRegistrationPassword && (
-            <div className="grid gap-4 sm:grid-cols-2 mt-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Password <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  className={`w-full rounded-sm border bg-white px-3 py-3 text-sm ${
-                    attendee.password && attendee.confirmPassword && attendee.password.length >= 8
-                      ? attendee.password === attendee.confirmPassword
-                        ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
-                        : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                      : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
-                  }`}
-                  value={attendee.password || ''}
-                  onChange={(e) => onChange('password', e.target.value)}
-                  placeholder="Min 8 chars"
-                />
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Password <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    className={`w-full rounded-sm border bg-white px-3 py-3 text-sm ${
+                      attendee.password
+                        ? attendee.password.length >= 8 && /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(attendee.password)
+                          ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
+                          : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+                        : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
+                    }`}
+                    value={attendee.password || ''}
+                    onChange={(e) => onChange('password', e.target.value)}
+                    placeholder="Min 8 chars"
+                  />
+                  {attendee.password && (
+                    attendee.password.length < 8 ? (
+                      <p className="mt-1 text-xs text-red-500">Password must be at least 8 characters long</p>
+                    ) : !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(attendee.password) ? (
+                      <p className="mt-1 text-xs text-red-500">Password must contain at least one lowercase letter, one uppercase letter, and one number</p>
+                    ) : (
+                      <p className="mt-1 text-xs text-green-500">Password looks good</p>
+                    )
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Confirm Password <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    className={`w-full rounded-sm border bg-white px-3 py-3 text-sm ${
+                      attendee.password && attendee.confirmPassword && attendee.password.length >= 8
+                        ? attendee.password === attendee.confirmPassword
+                          ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
+                          : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+                        : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
+                    }`}
+                    value={attendee.confirmPassword || ''}
+                    onChange={(e) => onChange('confirmPassword', e.target.value)}
+                    placeholder="Confirm password"
+                  />
+                  {attendee.password && attendee.confirmPassword && attendee.password.length >= 8 && (
+                    <p className={`mt-1 text-xs ${
+                      attendee.password === attendee.confirmPassword ? 'text-green-500' : 'text-red-500'
+                    }`}>
+                      {attendee.password === attendee.confirmPassword ? 'Passwords match' : 'Passwords do not match'}
+                    </p>
+                  )}
+                </div>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Confirm Password <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  className={`w-full rounded-sm border bg-white px-3 py-3 text-sm ${
-                    attendee.password && attendee.confirmPassword && attendee.password.length >= 8
-                      ? attendee.password === attendee.confirmPassword
-                        ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
-                        : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                      : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
-                  }`}
-                  value={attendee.confirmPassword || ''}
-                  onChange={(e) => onChange('confirmPassword', e.target.value)}
-                  placeholder="Confirm password"
-                />
-                {attendee.password && attendee.confirmPassword && attendee.password.length >= 8 && (
-                  <p className={`mt-1 text-xs ${
-                    attendee.password === attendee.confirmPassword ? 'text-green-500' : 'text-red-500'
-                  }`}>
-                    {attendee.password === attendee.confirmPassword ? 'Passwords match' : 'Passwords do not match'}
-                  </p>
-                )}
-              </div>
-            </div>
+              <p className='text-sm text-slate-700 opacity-60'>Password must contain at least one lowercase letter, one uppercase letter, and one number and be at least 8 characters long</p>
+            </>
           )}
         </div>
       )}
@@ -747,6 +799,7 @@ export default function AttendeeForm({
             </ul>
           </div>
         )}
+      </div>
       </div>
       </div>
     </div>
