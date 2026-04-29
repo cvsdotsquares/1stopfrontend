@@ -417,15 +417,15 @@ function RadioCard({ checked, onChange, onClick, title, caption, right, disabled
       type="button"
       onClick={handleClick}
       disabled={disabled}
-      className={`w-full rounded-xl border p-4 pr-8 text-left transition-all ${disabled ? 'cursor-not-allowed opacity-60' : 'hover:shadow-sm'} focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${checked ? "border-green-500 bg-green-50" : "border-slate-200 bg-white"
+      className={`w-full h-full rounded-xl border p-4 pr-8 text-left transition-all ${disabled ? 'cursor-not-allowed opacity-60' : 'hover:shadow-sm'} focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${checked ? "border-green-500 bg-green-50" : "border-slate-200 bg-white"
         }`}
       aria-pressed={!!checked}
       aria-disabled={disabled ? true : undefined}
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 h-full">
         <div>
-          <div className="flex items-start gap-2">
-            <div className={`h-4 w-4 mt-1 flex-none rounded-full border ${checked ? "border-green-600 bg-green-600" : "border-slate-400"}`} />
+          <div className="flex items-center gap-2">
+            <div className={`h-4 w-4 flex-none rounded-full border ${checked ? "border-green-600 bg-green-600" : "border-slate-400"}`} />
             <div>
               <p className="font-medium text-slate-900 mb-1">{title}</p>
               {caption && <p className="mt-1 text-sm text-slate-500">{caption}</p>}
@@ -809,12 +809,13 @@ export default function OnePageBookingCheckout() {
     }
   }, [sectionComplete[1]]);
 
-  // Scroll to section 2 when course changes manually (after initial load)
+  // Scroll to section 2 when course is selected (without URL params) or changes manually (after initial load)
   useEffect(() => {
     if (selectedCourse && !hasUrlParams && !isInitialLoad) {
       const currentCourseId = selectedCourse.id;
-      // Check if course actually changed (not initial selection)
-      if (prevCourseIdRef.current !== null && prevCourseIdRef.current !== currentCourseId) {
+      // If no URL params: scroll on any course selection (initial or change)
+      // If URL params exist: never scroll (handled by URL param logic)
+      if (prevCourseIdRef.current === null || prevCourseIdRef.current !== currentCourseId) {
         setTimeout(() => {
           document.getElementById('section-2')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 150);
@@ -2176,7 +2177,7 @@ export default function OnePageBookingCheckout() {
                 {Array.isArray(courses) && courses.map((c, index) => {
                   const isSelected = !!(selectedCourse?.id === c.id && selectedCourse?.course_name === c.course_name);
                   return (
-                    <div key={`course-${c.id}-${c.course_name}-${index}`} className="relative">
+                    <div key={`course-${c.id}-${c.course_name}-${index}`} className="relative h-full">
                       <RadioCard
                         checked={isSelected}
                         onChange={() => {
@@ -2328,7 +2329,6 @@ export default function OnePageBookingCheckout() {
                         const currentMonth = new Date();
                         currentMonth.setMonth(currentMonth.getMonth() + calendarMonthOffset);
                         const inCurrentMonth = cell.date.getMonth() === currentMonth.getMonth() && cell.date.getFullYear() === currentMonth.getFullYear();
-                        console.log(cell);
                         return (
                           <button
                             key={idx}
@@ -2354,7 +2354,7 @@ export default function OnePageBookingCheckout() {
                             className={`aspect-square rounded-lg border text-sm tabular-nums transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
                               !inCurrentMonth || cell.courseEventId === undefined
                                 ? "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed"
-                                : cell.available 
+                                : cell.available
                                 ? isSelected
                                   ? "border-emerald-600 bg-emerald-600 text-white font-semibold"
                                   : "border-emerald-500 bg-white text-slate-900 hover:border-emerald-600"

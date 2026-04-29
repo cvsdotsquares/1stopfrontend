@@ -307,9 +307,8 @@ export default function Hero({ data }: { data: HeroData }) {
 
             { data.promotion?.promoCode && (
               <p className="mt-2  mb-2 xl:mb-4 xl:mt-5 xl:text-xl">
-                Use Promo Code{" "}
                 <span className="text-xl xl:text-2xl font-bold">
-                  {data.promotion?.promoCode || 'SUMMER10'}
+                  {data.promotion?.promoCode}
                 </span>
               </p>
             )}
