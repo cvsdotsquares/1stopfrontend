@@ -39,7 +39,13 @@ export const useAuthStore = create<AuthState>()(
           });
         },
       logout: () => {
-        localStorage.removeItem('auth_token');
+        if (typeof window !== 'undefined') {
+          // Clear both the legacy token key (read by lib/api.ts) and the
+          // zustand-persist blob so a hard refresh can't resurrect a dead
+          // session from localStorage.
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth-storage');
+        }
         set({
           token: null,
           user: null,

@@ -77,6 +77,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title,
     description: page.meta_description || undefined,
     keywords: page.meta_keywords || undefined,
+    alternates: { canonical: `/location/${slugStr}` },
+    openGraph: {
+      title,
+      description: page.meta_description || undefined,
+      url: `/location/${slugStr}`,
+      images: page.locationPicture ? [page.locationPicture] : undefined,
+    },
   };
 }
 

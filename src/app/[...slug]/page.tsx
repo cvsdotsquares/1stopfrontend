@@ -130,14 +130,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const rawTitle = page.meta_title || page.link_title || page.page_title || '';
   const title = stripHtml(rawTitle);
   const description = stripHtml(page.meta_desc || page.meta?.description || '');
-  const canonical = page.meta?.canonical || undefined;
+  const canonical = page.meta?.canonical || `/${slugStr}`;
   const ogImage = page.meta?.ogImage || page.carousel_static_image || '';
 
   const metadata: Metadata = {
     title,
     description,
-    alternates: canonical ? { canonical } : undefined,
-    openGraph: ogImage ? { title, description, images: [ogImage] } as any : undefined,
+    keywords: page.meta_keyword || undefined,
+    alternates: { canonical },
+    openGraph: ogImage ? { title, description, url: canonical, images: [ogImage] } as any : { title, description, url: canonical },
   };
 
   return metadata;

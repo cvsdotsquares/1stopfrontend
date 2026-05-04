@@ -49,9 +49,9 @@ export async function generateMetadata() {
     keywords:
       stripHtml(pageContent?.meta_keyword),
 
-    viewport: "width=device-width, initial-scale=1, user-scalable=no",
-
-    robots: "noindex, nofollow, noarchive, nosnippet"
+    alternates: {
+      canonical: "/",
+    },
   };
 }
 

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { GoogleTagManager } from '@next/third-parties/google';
@@ -7,11 +8,38 @@ import Footer from "@/components/layout/Footer";
 import QueryProvider from "@/providers/QueryProvider";
 import { Toaster } from "@/components/ui/sonner";
 import Script from "next/script";
+import { getSiteUrl, isSiteIndexable } from "@/lib/seo";
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
 });
+
+export const metadata: Metadata = {
+  metadataBase: new URL(getSiteUrl()),
+  robots: isSiteIndexable()
+    ? {
+        index: true,
+        follow: true,
+        googleBot: {
+          index: true,
+          follow: true,
+          "max-image-preview": "large",
+          "max-snippet": -1,
+          "max-video-preview": -1,
+        },
+      }
+    : {
+        index: false,
+        follow: false,
+        nocache: true,
+        googleBot: {
+          index: false,
+          follow: false,
+          noimageindex: true,
+        },
+      },
+};
 
 export default function RootLayout({
   children,
@@ -24,7 +52,6 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
-        <meta name="robots" content="noindex, nofollow, noarchive, nosnippet"></meta>
         <Script
           id="gtm-script"
           strategy="afterInteractive"
