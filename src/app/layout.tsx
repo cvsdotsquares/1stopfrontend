@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { GoogleTagManager } from '@next/third-parties/google';
@@ -41,12 +42,20 @@ export const metadata: Metadata = {
       },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const gtmId = process.env.NEXT_PUBLIC_GA_ID;
+
+  // `x-pathname` is set by src/middleware.ts on every request. We use it to
+  // detect the maintenance page and render it without the global Header /
+  // Footer chrome (which depends on backend APIs that may be unavailable
+  // during a maintenance window).
+  const headerStore = await headers();
+  const pathname = headerStore.get("x-pathname") || "";
+  const isMaintenance = pathname === "/maintenance" || pathname.startsWith("/maintenance/");
 
   return (
     <html lang="en">
@@ -80,13 +89,17 @@ export default function RootLayout({
         </noscript>
         <QueryProvider>
           <RouteChangeTracker />
-          <div className="flex flex-col min-h-screen">
-            <Header />
-            <main className="flex-1">
-              {children}
-            </main>
-            <Footer />
-          </div>
+          {isMaintenance ? (
+            children
+          ) : (
+            <div className="flex flex-col min-h-screen">
+              <Header />
+              <main className="flex-1">
+                {children}
+              </main>
+              <Footer />
+            </div>
+          )}
           <Toaster />
         </QueryProvider>
         {/* reCAPTCHA Script */}

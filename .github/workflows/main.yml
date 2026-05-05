@@ -43,6 +43,8 @@ jobs:
             NEXT_PUBLIC_GA_ID=${{ secrets.NEXT_PUBLIC_GA_ID }}
             NODE_ENV=production
             NEXT_PUBLIC_INDEXABLE=${{ secrets.NEXT_PUBLIC_INDEXABLE }}
+            MAINTENANCE_MODE=${{ secrets.MAINTENANCE_MODE }}
+            MAINTENANCE_BYPASS_TOKEN=${{ secrets.MAINTENANCE_BYPASS_TOKEN }}
             EOF
 
             echo "📦 Installing dependencies..."
