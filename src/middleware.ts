@@ -67,10 +67,17 @@ export function middleware(request: NextRequest) {
     const cleanUrl = nextUrl.clone();
     cleanUrl.searchParams.delete(BYPASS_QUERY_PARAM);
     const response = NextResponse.redirect(cleanUrl);
+    // Intentionally NOT httpOnly: the same token must be readable by client
+    // JS so the axios layer can forward it to the backend as
+    // `X-Maintenance-Bypass`, otherwise an admin previewing the site would
+    // see the maintenance page in every backend response. The token isn't a
+    // session credential — anyone who already has it can use it via the
+    // query string anyway, so dropping httpOnly doesn't change the security
+    // posture.
     response.cookies.set(BYPASS_COOKIE, bypassToken, {
       path: "/",
       maxAge: BYPASS_COOKIE_MAX_AGE_SECONDS,
-      httpOnly: true,
+      httpOnly: false,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
     });

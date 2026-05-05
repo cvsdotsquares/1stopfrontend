@@ -17,7 +17,22 @@ export const api = axios.create({
 // 1stopbackend/src/middleware/auth.js.
 const AUTH_ERROR_CODES = new Set(['NO_TOKEN', 'TOKEN_EXPIRED', 'INVALID_TOKEN']);
 
-// Request interceptor to add auth token
+// Cookie set by the frontend middleware (src/middleware.ts) when an admin
+// previews the site via `?maintenance_bypass=<token>`. We forward its value
+// to the backend on every request so the backend's matching maintenance
+// gate (1stopbackend/src/middleware/maintenance.js) lets us through too.
+const MAINTENANCE_BYPASS_COOKIE = 'maintenance-bypass';
+
+function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = document.cookie.match(
+    new RegExp('(?:^|;\\s*)' + escaped + '=([^;]*)')
+  );
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+// Request interceptor to add auth token + forward maintenance bypass token
 api.interceptors.request.use(
   (config) => {
 
@@ -30,6 +45,11 @@ api.interceptors.request.use(
       if (token) {
         config.headers.Authorization =
           `Bearer ${token}`;
+      }
+
+      const bypass = readCookie(MAINTENANCE_BYPASS_COOKIE);
+      if (bypass) {
+        config.headers['X-Maintenance-Bypass'] = bypass;
       }
 
     }
