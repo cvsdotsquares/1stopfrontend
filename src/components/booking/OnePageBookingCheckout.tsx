@@ -2866,7 +2866,23 @@ export default function OnePageBookingCheckout() {
                       </div>
                     )}
 
-                    <Elements key={paymentKey} stripe={stripePromise}>
+                    <Elements
+                      key={paymentKey}
+                      stripe={stripePromise}
+                      options={{
+                        // Deferred-intent mode: lets PaymentElement render Apple Pay /
+                        // Google Pay / card before we've created the PaymentIntent on
+                        // the backend. The actual PI is still created at submit time
+                        // via handleCreateBooking and confirmed with confirmPayment.
+                        // amount must be at least the currency minimum (30p for GBP),
+                        // so we floor at 50p when the live total is 0 (e.g. fully
+                        // discounted) — those bookings short-circuit via paymentRequired.
+                        mode: 'payment',
+                        amount: Math.max(50, Math.round(total * 100)),
+                        currency: 'gbp',
+                        appearance: { theme: 'stripe' },
+                      }}
+                    >
                       <StripePaymentForm
                         onCreatePaymentIntent={handleCreateBooking}
                         onSuccess={(refs) => {
