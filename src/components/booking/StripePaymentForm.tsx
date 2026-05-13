@@ -25,6 +25,8 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [cardComplete, setCardComplete] = useState(false);
+  const [cardError, setCardError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +38,19 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
     setIsProcessing(true);
 
     try {
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) {
+        toast.error('Please enter your card details before paying.');
+        setIsProcessing(false);
+        return;
+      }
+
+      if (!cardComplete) {
+        toast.error('Please enter valid card details before paying.');
+        setIsProcessing(false);
+        return;
+      }
+
       const creationResult = await onCreatePaymentIntent();
 
       if (!creationResult) {
@@ -51,11 +66,6 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
 
       if (!creationResult.clientSecret) {
         throw new Error('Payment client secret missing');
-      }
-
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) {
-        throw new Error('Card details are not available');
       }
 
       // GTM: add_payment_info
@@ -172,7 +182,14 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
                 },
               },
             }}
+            onChange={(event) => {
+              setCardComplete(event.complete && !event.error);
+              setCardError(event.error?.message || '');
+            }}
           />
+          {cardError && (
+            <p className="mt-2 text-sm text-red-600">{cardError}</p>
+          )}
         </div>
 
         <div className="flex gap-3">
@@ -186,7 +203,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
           </button>
           <button
             type="submit"
-            disabled={!stripe || isProcessing || paymentDisabled}
+            disabled={!stripe || isProcessing || paymentDisabled || !cardComplete}
             className="flex-1 px-6 py-3.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg shadow-green-600/30 transition-all"
           >
             {isProcessing ? (

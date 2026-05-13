@@ -162,6 +162,19 @@ function formatLocalDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+function parseLocalDate(dateValue: string | null | undefined): Date | null {
+  if (!dateValue) return null;
+  const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(dateValue);
+  if (match) {
+    const year = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    return new Date(year, month, day);
+  }
+  const parsed = new Date(dateValue);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function getMonthOffsetFromToday(targetDateInput: Date | string | null | undefined): number {
   if (!targetDateInput) return 0;
 
@@ -1170,7 +1183,7 @@ export default function OnePageBookingCheckout() {
         selectedCourseId: selectedCourse?.id ?? null,
         selectedCourseName: selectedCourse?.course_name ?? null,
         locationId,
-        selectedDate: (selectedDate instanceof Date && !isNaN(selectedDate.getTime())) ? selectedDate.toISOString() : null,
+        selectedDate: (selectedDate instanceof Date && !isNaN(selectedDate.getTime())) ? formatLocalDate(selectedDate) : null,
         selectedCourseEventId,
         attendees,
         attendeeDetails: attendeeDetails.map(a => ({
@@ -1205,7 +1218,7 @@ export default function OnePageBookingCheckout() {
       selectedCourseId: selectedCourse?.id ?? null,
       locationId: locationId ?? null,
       selectedCourseEventId: selectedCourseEventId ?? null,
-      selectedDateISO: (selectedDate instanceof Date && !isNaN(selectedDate.getTime())) ? selectedDate.toISOString() : null,
+      selectedDateISO: (selectedDate instanceof Date && !isNaN(selectedDate.getTime())) ? formatLocalDate(selectedDate) : null,
       attendees,
     };
 
@@ -1239,7 +1252,7 @@ export default function OnePageBookingCheckout() {
     };
 
     loadStep5Data();
-  }, [selectedDate instanceof Date && !isNaN(selectedDate.getTime()) ? selectedDate.toISOString() : null, attendees, selectedCourse?.id, locationId, selectedCourseEventId]);
+  }, [selectedDate instanceof Date && !isNaN(selectedDate.getTime()) ? formatLocalDate(selectedDate) : null, attendees, selectedCourse?.id, locationId, selectedCourseEventId]);
 
   // Get user IP and check block status on load
   useEffect(() => {
@@ -1322,7 +1335,7 @@ export default function OnePageBookingCheckout() {
         }
 
         if (dateParam) {
-          setSelectedDate(new Date(dateParam));
+          setSelectedDate(parseLocalDate(dateParam));
         }
 
         if (courseEventId) {
@@ -1372,7 +1385,7 @@ export default function OnePageBookingCheckout() {
           }
 
           setLocationId(formData.locationId ?? null);
-          setSelectedDate(formData.selectedDate ? new Date(formData.selectedDate) : null);
+          setSelectedDate(parseLocalDate(formData.selectedDate));
           setSelectedCourseEventId(formData.selectedCourseEventId ?? null);
           setAttendees(formData.attendees ?? 1);
 
@@ -2052,7 +2065,7 @@ export default function OnePageBookingCheckout() {
         course_id: selectedCourse!.id,
         course_event_id: selectedCourseEventId,
         location_id: locationId,
-        selected_date: selectedDate!.toISOString().split('T')[0],
+        selected_date: formatLocalDate(selectedDate!),
         promo_code: promoData?.valid ? promoCode.trim() : undefined,
         attendees: attendeeDetails.slice(0, attendees).map((attendee, index) => ({
           first_name: toProperCase(attendee.firstName),
