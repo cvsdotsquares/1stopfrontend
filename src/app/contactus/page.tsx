@@ -51,7 +51,6 @@ export async function generateMetadata() {
     description: stripHtml(pageContent?.meta_desc),
     keywords: stripHtml(pageContent?.meta_keyword),
     viewport: "width=device-width, initial-scale=1, user-scalable=no",
-    robots: "noindex, nofollow, noarchive, nosnippet"
   };
 }
 
