@@ -58,7 +58,7 @@ jobs:
             npx pm2 stop 1stopfrontend-stage || true
             npx pm2 delete 1stopfrontend-stage || true
 
-            npx pm2 start npm --name "1stopfrontend-stage" -- start -- -p 3002
+            npx pm2 start npm --name "1stopfrontend-stage" -- start -- -p 3004
             npx pm2 save
 
             echo "✅ PM2 process list:" && npx pm2 list
