@@ -1,6 +1,15 @@
 "use client";
-import React, { useState } from 'react';
-import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import React, { useState, useCallback } from 'react';
+import {
+  PaymentElement,
+  ExpressCheckoutElement,
+  useStripe,
+  useElements,
+} from '@stripe/react-stripe-js';
+import type {
+  StripeExpressCheckoutElementConfirmEvent,
+  StripeExpressCheckoutElementReadyEvent,
+} from '@stripe/stripe-js';
 import { toast } from 'sonner';
 import { trackAddPaymentInfo } from '@/lib/gtm';
 
@@ -19,23 +28,67 @@ interface StripePaymentFormProps {
   };
   onCreatePaymentIntent: () => Promise<{ clientSecret?: string; bookingRef: string; bookingRefs: string[]; paymentRequired: boolean } | undefined>;
   paymentDisabled?: boolean;
+  /**
+   * Optional return_url override for redirect-based payment methods (e.g. Klarna,
+   * some 3DS flows). For card / Apple Pay / Google Pay this is unused because we
+   * pass `redirect: 'if_required'`. Defaults to the current origin's payment-success
+   * page so refreshes after redirects land somewhere reasonable.
+   */
+  returnUrl?: string;
 }
 
-export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, courseEventId, itemVariant, attendeeCount = 1, amount, billingDetails, onCreatePaymentIntent, paymentDisabled = false }: Readonly<StripePaymentFormProps>) {
+export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, courseEventId, itemVariant, attendeeCount = 1, amount, billingDetails, onCreatePaymentIntent, paymentDisabled = false, returnUrl }: Readonly<StripePaymentFormProps>) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [cardComplete, setCardComplete] = useState(false);
   const [cardError, setCardError] = useState('');
+  // null = ECE hasn't reported yet (avoids flash of "no wallets")
+  // true/false = wallet buttons available on this device + dashboard config
+  const [walletsAvailable, setWalletsAvailable] = useState<boolean | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const persistPendingPurchase = (bookingRefs: string[], primaryRef: string | undefined) => {
+    try {
+      const purchaseTransactionId =
+        bookingRefs?.filter(Boolean).join(',')
+        || primaryRef
+        || bookingRef
+        || 'pending-booking';
 
-    if (!stripe || !elements) {
-      return;
+      const totalValue = amount / 100;
+
+      const pendingItems = [{
+        item_id: courseEventId ?? 'unknown',
+        item_name: 'Course Booking',
+        item_category: 'Booking',
+        item_variant: itemVariant,
+        quantity: Math.max(1, attendeeCount),
+        price: Number(totalValue.toFixed(2)),
+      }];
+
+      const pendingPurchasePayload = {
+        transactionId: purchaseTransactionId,
+        courseEventId: courseEventId ?? null,
+        items: pendingItems,
+        value: Number(totalValue.toFixed(2)),
+        createdAt: Date.now(),
+      };
+
+      sessionStorage.setItem('gtm_purchase_pending', JSON.stringify(pendingPurchasePayload));
+    } catch {
+      // Non-blocking: continue redirect flow even if storage is unavailable
     }
+  };
 
-    setIsProcessing(true);
+  /**
+   * Shared confirm flow used by both the card-form submit AND the Express
+   * Checkout (Apple Pay / Google Pay) onConfirm. Always validates Elements,
+   * creates the PaymentIntent, then calls stripe.confirmPayment with
+   * redirect:'if_required'. Returns true on success so callers can decide
+   * what to do (close wallet sheet, navigate, etc.).
+   */
+  const confirmPaymentFlow = useCallback(async (): Promise<boolean> => {
+    if (!stripe || !elements) return false;
 
     try {
       const cardElement = elements.getElement(CardElement);
@@ -80,67 +133,124 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
         },
         amount / 100,
       );
+    const { error: submitError } = await elements.submit();
+    if (submitError) {
+      toast.error(submitError.message || 'Please check your payment details');
+      return false;
+    }
 
-      const { error } = await stripe.confirmCardPayment(creationResult.clientSecret, {
-        payment_method: {
-          card: cardElement,
+    const creationResult = await onCreatePaymentIntent();
+    if (!creationResult) return false;
+
+    if (!creationResult.paymentRequired) {
+      toast.success('Booking created successfully!');
+      onSuccess(creationResult.bookingRefs);
+      return true;
+    }
+
+    if (!creationResult.clientSecret) {
+      throw new Error('Payment client secret missing');
+    }
+
+    trackAddPaymentInfo(
+      {
+        item_id: courseEventId ?? 'unknown',
+        item_name: 'Course Booking',
+        item_category: 'Booking',
+        item_variant: itemVariant,
+        quantity: Math.max(1, attendeeCount),
+        price: amount / 100,
+      },
+      amount / 100,
+    );
+
+    // Pre-thread booking refs into the return URL so redirect-based methods
+    // (Klarna etc.) land on a success page that can resolve them.
+    const refsQuery = encodeURIComponent((creationResult.bookingRefs || []).filter(Boolean).join(','));
+    const fallbackReturnUrl = typeof window !== 'undefined'
+      ? `${window.location.origin}/bookings/payment-success${refsQuery ? `?refs=${refsQuery}` : ''}`
+      : undefined;
+
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      clientSecret: creationResult.clientSecret,
+      confirmParams: {
+        return_url: returnUrl || fallbackReturnUrl || '',
+        payment_method_data: {
           billing_details: {
             name: billingDetails?.name,
             email: billingDetails?.email,
             phone: billingDetails?.phone,
-          }
+          },
         },
-      }, {
-        handleActions: true,
-      });
+      },
+      // Card / Apple Pay / Google Pay finish in-page; only redirect for methods
+      // that genuinely require it (Klarna, some 3DS, etc.).
+      redirect: 'if_required',
+    });
 
-      if (error) {
-        toast.error(error.message || 'Payment failed');
-        setIsProcessing(false);
-        return;
-      }
+    if (error) {
+      toast.error(error.message || 'Payment failed');
+      return false;
+    }
 
-      // Store purchase payload and fire purchase only from success page.
-      // This avoids counting failed payment attempts as purchases.
-      try {
-        const purchaseTransactionId =
-          creationResult.bookingRefs?.filter(Boolean).join(',')
-          || creationResult.bookingRef
-          || bookingRef
-          || 'pending-booking';
-
-        const totalValue = amount / 100;
-
-        const pendingItems = [{
-          item_id: courseEventId ?? 'unknown',
-          item_name: 'Course Booking',
-          item_category: 'Booking',
-          item_variant: itemVariant,
-          quantity: Math.max(1, attendeeCount),
-          price: Number(totalValue.toFixed(2)),
-        }];
-
-        const pendingPurchasePayload = {
-          transactionId: purchaseTransactionId,
-          courseEventId: courseEventId ?? null,
-          items: pendingItems,
-          value: Number(totalValue.toFixed(2)),
-          createdAt: Date.now(),
-        };
-
-        sessionStorage.setItem('gtm_purchase_pending', JSON.stringify(pendingPurchasePayload));
-      } catch {
-        // Non-blocking: continue redirect flow even if storage is unavailable
-      }
-
-      toast.success('Payment successful!');
+    if (paymentIntent?.status === 'succeeded' || paymentIntent?.status === 'processing') {
+      persistPendingPurchase(creationResult.bookingRefs, creationResult.bookingRef);
+      toast.success(paymentIntent.status === 'succeeded' ? 'Payment successful!' : 'Payment is being processed');
       onSuccess(creationResult.bookingRefs);
+      return true;
+    }
+
+    toast.error('Payment could not be completed. Please try again.');
+    return false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stripe, elements, onCreatePaymentIntent, onSuccess, amount, attendeeCount, billingDetails?.email, billingDetails?.name, billingDetails?.phone, courseEventId, itemVariant, returnUrl]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+
+    setIsProcessing(true);
+    try {
+      await confirmPaymentFlow();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Payment processing failed';
       toast.error(errorMessage);
+    } finally {
       setIsProcessing(false);
     }
   };
+
+  const handleExpressReady = (event: StripeExpressCheckoutElementReadyEvent) => {
+    const methods = event.availablePaymentMethods;
+    const anyAvailable = Boolean(
+      methods?.applePay ||
+      methods?.googlePay ||
+      methods?.amazonPay ||
+      methods?.paypal ||
+      methods?.link,
+    );
+    setWalletsAvailable(anyAvailable);
+  };
+
+  const handleExpressConfirm = async (_event: StripeExpressCheckoutElementConfirmEvent) => {
+    if (!stripe || !elements) return;
+    setIsProcessing(true);
+    try {
+      await confirmPaymentFlow();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Payment processing failed';
+      toast.error(errorMessage);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Express checkout (Apple Pay / Google Pay) only makes sense when there's an
+  // actual amount to authorize. Free bookings (amount === 0) skip ECE entirely
+  // since the wallet sheet would quote the floored Stripe minimum (50p) which
+  // doesn't match the real charge.
+  const showExpressCheckout = amount > 0 && walletsAvailable !== false;
 
   return (
     <div className="space-y-6">
@@ -164,6 +274,59 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/*
+          Express Checkout Element renders dedicated Apple Pay / Google Pay (and
+          optionally Link / PayPal / Amazon Pay) buttons at the top. Stripe shows
+          only the wallets that the buyer's device + browser actually support
+          AND that are enabled in your Stripe Dashboard. When nothing is
+          available, ECE renders an empty container and we hide the divider.
+        */}
+        {amount > 0 && (
+          <div
+            className={
+              walletsAvailable
+                ? 'bg-white rounded-xl border border-slate-200 p-6'
+                : 'hidden'
+            }
+            aria-hidden={!walletsAvailable}
+          >
+            <h3 className="text-base font-semibold text-slate-900 mb-4">Express Checkout</h3>
+            <ExpressCheckoutElement
+              onReady={handleExpressReady}
+              onConfirm={handleExpressConfirm}
+              options={{
+                paymentMethods: {
+                  applePay: 'always',
+                  googlePay: 'always',
+                  amazonPay: 'never',
+                  paypal: 'never',
+                  link: 'auto',
+                },
+                buttonType: {
+                  // Apple Pay button types differ from Google Pay's. 'buy' is the
+                  // closest analogue to "Pay" for one-off purchases.
+                  applePay: 'buy',
+                  googlePay: 'pay',
+                },
+                buttonTheme: {
+                  applePay: 'black',
+                  googlePay: 'black',
+                },
+                layout: { maxColumns: 2, maxRows: 1, overflow: 'auto' },
+              }}
+            />
+          </div>
+        )}
+
+        {showExpressCheckout && (
+          <div className="relative flex items-center justify-center" aria-hidden>
+            <div className="absolute inset-x-0 top-1/2 h-px bg-slate-200" />
+            <span className="relative bg-white px-3 text-xs uppercase tracking-wider text-slate-400">
+              Or pay with card
+            </span>
+          </div>
+        )}
+
         <div className="bg-white rounded-xl border border-slate-200 p-6">
           <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
             <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
@@ -171,14 +334,20 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
             </svg>
             Secure Payment Details
           </h3>
-          <CardElement
+          {/* PaymentElement handles the regular card form. Wallets are turned
+              off here so they don't duplicate the ECE row above. */}
+          <PaymentElement
             options={{
-              hidePostalCode: true,
-              style: {
-                base: {
-                  fontSize: '16px',
-                  color: '#0f172a',
-                  '::placeholder': { color: '#94a3b8' },
+              layout: 'tabs',
+              wallets: {
+                applePay: 'never',
+                googlePay: 'never',
+              },
+              defaultValues: {
+                billingDetails: {
+                  name: billingDetails?.name,
+                  email: billingDetails?.email,
+                  phone: billingDetails?.phone,
                 },
               },
             }}

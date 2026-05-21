@@ -344,7 +344,17 @@ export default function GiftVoucherPage() {
               </div>
             </div>
 
-            <Elements stripe={stripePromise}>
+            <Elements
+              stripe={stripePromise}
+              options={{
+                // The PaymentIntent is already created server-side before this UI
+                // mounts, so we pass clientSecret directly. PaymentElement will
+                // render Apple Pay / Google Pay / card based on the PI's
+                // automatic_payment_methods config.
+                clientSecret,
+                appearance: { theme: 'stripe' },
+              }}
+            >
               <StripePaymentForm
                 onCreatePaymentIntent={async () => {
                   if (!clientSecret || !voucherRef) {
@@ -360,6 +370,7 @@ export default function GiftVoucherPage() {
                 }}
                 bookingRef={voucherRef}
                 amount={Math.round(total * 100)}
+                returnUrl={typeof window !== 'undefined' ? `${window.location.origin}/gift-voucher/success?ref=${voucherRef}` : undefined}
               />
             </Elements>
           </div>
