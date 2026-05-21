@@ -186,6 +186,17 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
       methods?.paypal ||
       methods?.link,
     );
+    // Temporary diagnostic for stage: surface exactly what Stripe reports so we
+    // can tell whether wallets are blocked by domain verification, account
+    // config, browser support, etc. Safe to remove once Apple Pay / Google Pay
+    // are confirmed working on stage + prod.
+    console.info('[ECE] availablePaymentMethods', {
+      methods,
+      anyAvailable,
+      origin: typeof window !== 'undefined' ? window.location.origin : null,
+      protocol: typeof window !== 'undefined' ? window.location.protocol : null,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+    });
     setWalletsAvailable(anyAvailable);
   };
 
