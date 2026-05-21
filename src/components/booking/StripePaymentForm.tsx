@@ -42,7 +42,6 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [cardComplete, setCardComplete] = useState(false);
-  const [cardError, setCardError] = useState('');
   // null = ECE hasn't reported yet (avoids flash of "no wallets")
   // true/false = wallet buttons available on this device + dashboard config
   const [walletsAvailable, setWalletsAvailable] = useState<boolean | null>(null);
@@ -90,49 +89,6 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
   const confirmPaymentFlow = useCallback(async (): Promise<boolean> => {
     if (!stripe || !elements) return false;
 
-    try {
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) {
-        toast.error('Please enter your card details before paying.');
-        setIsProcessing(false);
-        return;
-      }
-
-      if (!cardComplete) {
-        toast.error('Please enter valid card details before paying.');
-        setIsProcessing(false);
-        return;
-      }
-
-      const creationResult = await onCreatePaymentIntent();
-
-      if (!creationResult) {
-        setIsProcessing(false);
-        return;
-      }
-
-      if (!creationResult.paymentRequired) {
-        toast.success('Booking created successfully!');
-        onSuccess(creationResult.bookingRefs);
-        return;
-      }
-
-      if (!creationResult.clientSecret) {
-        throw new Error('Payment client secret missing');
-      }
-
-      // GTM: add_payment_info
-      trackAddPaymentInfo(
-        {
-          item_id: courseEventId ?? 'unknown',
-          item_name: 'Course Booking',
-          item_category: 'Booking',
-          item_variant: itemVariant,
-          quantity: Math.max(1, attendeeCount),
-          price: amount / 100,
-        },
-        amount / 100,
-      );
     const { error: submitError } = await elements.submit();
     if (submitError) {
       toast.error(submitError.message || 'Please check your payment details');
@@ -352,13 +308,9 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
               },
             }}
             onChange={(event) => {
-              setCardComplete(event.complete && !event.error);
-              setCardError(event.error?.message || '');
+              setCardComplete(event.complete);
             }}
           />
-          {cardError && (
-            <p className="mt-2 text-sm text-red-600">{cardError}</p>
-          )}
         </div>
 
         <div className="flex gap-3">
