@@ -31,7 +31,12 @@ interface CalendarCell {
   date: Date;
   available: boolean;
   spots: number;
+  /** First event's id (kept for back-compat — only auto-applied when there is exactly one event on the date). */
   courseEventId?: number;
+  /** All events scheduled on this date (>=1 means selectable; >1 means user must pick a timing). */
+  events: CourseEvent[];
+  /** True when this date has more than one timing/event the user can choose from. */
+  hasMultipleEvents: boolean;
 }
 
 interface AttendeeDetails {
@@ -218,20 +223,30 @@ function generateCalendarWeeksFrom(startRefDate = new Date(), courseEvents: Cour
     const inPast = d < today;
     const inCurrentMonth = d.getMonth() === baseDate.getMonth() && d.getFullYear() === baseDate.getFullYear();
 
-    // Check if this date has a course event
+    // Collect ALL course events on this date (a single course/location can have several
+    // events on the same calendar day at different timings — e.g. 08:30-17:00 and 10:30-19:00).
     const dateStr = formatLocalDate(d);
-    const courseEvent = courseEvents.find(event => {
-      const eventDate = new Date(event.date);
-      return formatLocalDate(eventDate) === dateStr;
-    });
-    const available = !inPast && inCurrentMonth && courseEvent ? courseEvent.available && courseEvent.available_spaces > 0 : false;
-    const spots = courseEvent?.available_spaces || 0;
+    const eventsForDate = courseEvents
+      .filter(event => {
+        const eventDate = new Date(event.date);
+        return formatLocalDate(eventDate) === dateStr;
+      })
+      .slice()
+      .sort((a, b) => String(a.event_start_time || '').localeCompare(String(b.event_start_time || '')));
+
+    const hasAnyAvailable = eventsForDate.some(ev => ev.available && ev.available_spaces > 0);
+    const totalSpots = eventsForDate.reduce((sum, ev) => sum + (ev.available_spaces || 0), 0);
+    const available = !inPast && inCurrentMonth && hasAnyAvailable;
 
     return {
       date: d,
       available: inCurrentMonth ? available : false,
-      spots: inCurrentMonth ? spots : 0,
-      courseEventId: courseEvent?.course_event_id
+      spots: inCurrentMonth ? totalSpots : 0,
+      // Only expose courseEventId for direct auto-selection when there is exactly one event on the date.
+      // For multi-event dates the user must pick a slot explicitly.
+      courseEventId: eventsForDate.length === 1 ? eventsForDate[0].course_event_id : undefined,
+      events: inCurrentMonth ? eventsForDate : [],
+      hasMultipleEvents: inCurrentMonth && eventsForDate.length > 1,
     };
   });
 
@@ -778,7 +793,7 @@ export default function OnePageBookingCheckout() {
   const sectionComplete: Record<number, boolean> = {
     1: !!selectedCourse,
     2: !!locationId,
-    3: !!selectedDate && attendees > 0 && dateTimeConfirmed,
+    3: !!selectedDate && !!selectedCourseEventId && attendees > 0 && dateTimeConfirmed,
     4: attendeeDetails.slice(0, attendees).every((a, index) => isAttendeeComplete(a, index)) && photocardConfirmed.slice(0, attendees).every(c => c),
     5: false, // Final section never auto-completes
   };
@@ -788,8 +803,10 @@ export default function OnePageBookingCheckout() {
   const paymentBlockingMessages: string[] = [];
   if (!selectedDate) {
     paymentBlockingMessages.push('Please select a course date.');
+  } else if (!selectedCourseEventId) {
+    paymentBlockingMessages.push('Please choose a course timing for the selected date.');
   } else if (!dateTimeConfirmed) {
-    paymentBlockingMessages.push('You changed the course date or spaces. Please click "Confirm Date & Time" in Step 3 to continue.');
+    paymentBlockingMessages.push('You changed the course date, timing or spaces. Please click "Confirm Date & Time" in Step 3 to continue.');
   }
   if (!sectionComplete[4]) {
     paymentBlockingMessages.push('Please complete all attendee details and photocard confirmations in Step 4.');
@@ -1591,7 +1608,13 @@ export default function OnePageBookingCheckout() {
         if (availability.length > 0 && !selectedDate && dateParam) {
           if (earliestAvailable) {
             setSelectedDate(new Date(earliestAvailable.date));
-            setSelectedCourseEventId(earliestAvailable.course_event_id);
+            // Only auto-pick the course_event_id when the earliest date has exactly one event.
+            // If multiple events share that date the user must explicitly choose a timing slot.
+            const earliestDateKey = String(earliestAvailable.date);
+            const earliestDateEvents = availability.filter(ev => String(ev.date) === earliestDateKey);
+            if (earliestDateEvents.length === 1) {
+              setSelectedCourseEventId(earliestAvailable.course_event_id);
+            }
           }
         }
       } catch (err) {
@@ -1704,6 +1727,44 @@ export default function OnePageBookingCheckout() {
     const selectedDateKey = resolveEventDateKey(selectedDate);
     return courseEvents.find((event) => resolveEventDateKey(event.date) === selectedDateKey) || null;
   }, [selectedDate, selectedCourseEventId, courseEvents]);
+
+  // All events scheduled on the currently selected calendar date (sorted by start time).
+  // Used to decide whether to show the time-slot picker, and to compute max spaces for the
+  // selected slot. When a date has more than one event, the user must pick a slot explicitly
+  // before the rest of Step 3 unlocks.
+  const eventsOnSelectedDate = useMemo<CourseEvent[]>(() => {
+    if (!selectedDate || courseEvents.length === 0) return [];
+    const selectedDateKey = resolveEventDateKey(selectedDate);
+    return courseEvents
+      .filter((event) => resolveEventDateKey(event.date) === selectedDateKey)
+      .slice()
+      .sort((a, b) => String(a.event_start_time || '').localeCompare(String(b.event_start_time || '')));
+  }, [selectedDate, courseEvents]);
+
+  const selectedCourseEvent = useMemo<CourseEvent | null>(() => {
+    if (!selectedCourseEventId) return null;
+    return courseEvents.find((event) => event.course_event_id === selectedCourseEventId) || null;
+  }, [selectedCourseEventId, courseEvents]);
+
+  const selectedEventSpots = selectedCourseEvent
+    ? Math.max(0, selectedCourseEvent.available_spaces || 0)
+    : 0;
+
+  // Reset booking-flow confirmation whenever the chosen slot changes so the user
+  // re-confirms Step 3 explicitly. This mirrors the date-change reset above.
+  useEffect(() => {
+    setDateTimeConfirmed(false);
+  }, [selectedCourseEventId]);
+
+  // Clamp the requested attendees count to the chosen slot's remaining spaces.
+  // This handles the case where a user switches from a slot with many spaces to one with fewer.
+  useEffect(() => {
+    if (!selectedCourseEvent) return;
+    const maxSpots = Math.max(1, selectedCourseEvent.available_spaces || 1);
+    if (attendees > maxSpots) {
+      setAttendees(maxSpots);
+    }
+  }, [selectedCourseEventId]);
 
   const trackingFallbackValue = useMemo(() => {
     const eventPricing = selectedEventForTracking?.pricing;
@@ -2346,14 +2407,18 @@ export default function OnePageBookingCheckout() {
                           <button
                             key={idx}
                             type="button"
-                            disabled={!cell.available || !inCurrentMonth}
+                            disabled={!cell.available || !inCurrentMonth || cell.events.length === 0}
                             onClick={() => {
                               setSelectedDate(cell.date);
-                              setSelectedCourseEventId(cell.courseEventId || null);
+                              // Auto-pick the courseEventId only when the date has a single event.
+                              // When multiple events exist on the same date, leave the id empty
+                              // so the time-slot picker below the calendar takes over.
+                              const autoPickedEventId = cell.hasMultipleEvents ? null : (cell.courseEventId || null);
+                              setSelectedCourseEventId(autoPickedEventId);
                               // GTM: add_to_cart
                               trackAddToCart(
                                 {
-                                  item_id: cell.courseEventId ?? 'unknown',
+                                  item_id: autoPickedEventId ?? 'unknown',
                                   item_name: selectedCourse?.course_name ?? 'Course',
                                   item_category: 'Booking',
                                   item_variant: cell.date.toLocaleDateString('en-GB'),
@@ -2363,9 +2428,9 @@ export default function OnePageBookingCheckout() {
                                 trackingItemPrice,
                               );
                             }}
-                            title={cell.available && inCurrentMonth ? `${cell.spots} spots left` : "Not available"}
+                            title={cell.available && inCurrentMonth ? (cell.hasMultipleEvents ? `${cell.events.length} sessions · ${cell.spots} spots total` : `${cell.spots} spots left`) : "Not available"}
                             className={`aspect-square rounded-lg border text-sm tabular-nums transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
-                              !inCurrentMonth || cell.courseEventId === undefined
+                              !inCurrentMonth || cell.events.length === 0
                                 ? "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed"
                                 : cell.available
                                 ? isSelected
@@ -2375,7 +2440,7 @@ export default function OnePageBookingCheckout() {
                               }`}
                           >
                             <div>{cell.date.getDate()}</div>
-                            <div className="text-[10px]">{inCurrentMonth && cell.available ? `x${cell.spots}` : inCurrentMonth && cell.courseEventId !== undefined ? "FULL" : ""}</div>
+                            <div className="text-[10px]">{inCurrentMonth && cell.available ? `x${cell.spots}` : inCurrentMonth && cell.events.length > 0 ? "FULL" : ""}</div>
                           </button>
                         );
                       })}
@@ -2384,33 +2449,88 @@ export default function OnePageBookingCheckout() {
                 )}
               </div>
 
+              {/* Time Slot Picker - shown when the selected calendar date has more than one event/timing */}
+              {selectedDate && eventsOnSelectedDate.length > 1 && (
+                <div className="mt-4 rounded-xl border border-slate-200 bg-gray-50 p-4">
+                  <h4 className="mb-1 text-sm font-semibold text-slate-900">Select Course Timing</h4>
+                  <p className="mb-3 text-xs text-slate-500">This date has more than one course timing. Please choose the slot you'd like to book.</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {eventsOnSelectedDate.map((slotEvent) => {
+                      const slotAvailable = slotEvent.available && (slotEvent.available_spaces || 0) > 0;
+                      const isSlotSelected = selectedCourseEventId === slotEvent.course_event_id;
+                      const formatSlotTime = (time?: string | null) => {
+                        if (!time) return '';
+                        const [hStr, mStr] = String(time).split(':');
+                        const h = parseInt(hStr, 10);
+                        if (Number.isNaN(h)) return time;
+                        const ampm = h >= 12 ? 'pm' : 'am';
+                        const displayHour = h > 12 ? h - 12 : h === 0 ? 12 : h;
+                        return `${displayHour}:${mStr ?? '00'} ${ampm}`;
+                      };
+                      return (
+                        <button
+                          key={slotEvent.course_event_id}
+                          type="button"
+                          disabled={!slotAvailable}
+                          onClick={() => {
+                            setSelectedCourseEventId(slotEvent.course_event_id);
+                            trackAddToCart(
+                              {
+                                item_id: slotEvent.course_event_id,
+                                item_name: selectedCourse?.course_name ?? 'Course',
+                                item_category: 'Booking',
+                                item_variant: `${selectedDate.toLocaleDateString('en-GB')} ${slotEvent.event_start_time || ''}`.trim(),
+                                quantity: attendees,
+                                price: trackingItemPrice,
+                              },
+                              trackingItemPrice,
+                            );
+                          }}
+                          className={`rounded-lg border p-3 text-left text-sm transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
+                            !slotAvailable
+                              ? 'border-red-200 bg-red-50 text-red-500 cursor-not-allowed'
+                              : isSlotSelected
+                              ? 'border-emerald-600 bg-emerald-600 text-white font-semibold'
+                              : 'border-emerald-500 bg-white text-slate-900 hover:border-emerald-600'
+                          }`}
+                          aria-pressed={isSlotSelected}
+                        >
+                          <div className="font-medium">
+                            {formatSlotTime(slotEvent.event_start_time)}
+                            {slotEvent.event_end_time ? ` – ${formatSlotTime(slotEvent.event_end_time)}` : ''}
+                          </div>
+                          <div className={`text-xs mt-0.5 ${isSlotSelected ? 'text-emerald-50' : slotAvailable ? 'text-slate-500' : 'text-red-500'}`}>
+                            {slotAvailable ? `${slotEvent.available_spaces} space${slotEvent.available_spaces === 1 ? '' : 's'} available` : 'Fully booked'}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Attendees Selector - moved from sidebar */}
-              {selectedDate && (
+              {selectedDate && selectedCourseEvent && (
                 <div className="mt-4 rounded-xl border border-slate-200 bg-gray-50 p-4">
                   <h4 className="mb-3 text-sm font-semibold text-slate-900">Select Number of Spaces</h4>
                   <div className="flex items-center justify-center gap-3">
                     <button type="button" disabled={attendees <= 1} className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => setAttendees((n) => Math.max(1, n - 1))}>−</button>
-                    <input type="number" min={1} max={selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1} className="w-16 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm" value={attendees} onChange={(e) => {
-                      const maxSpots = selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1;
+                    <input type="number" min={1} max={Math.max(1, selectedEventSpots)} className="w-16 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm" value={attendees} onChange={(e) => {
+                      const maxSpots = Math.max(1, selectedEventSpots);
                       setAttendees(Math.max(1, Math.min(maxSpots, parseInt(e.target.value || "1", 10))));
                     }} />
-                    <button type="button" disabled={attendees >= (selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1)} className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => {
-                      const maxSpots = selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1;
+                    <button type="button" disabled={attendees >= Math.max(1, selectedEventSpots)} className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => {
+                      const maxSpots = Math.max(1, selectedEventSpots);
                       setAttendees((n) => Math.min(maxSpots, n + 1));
                     }}>+</button>
                   </div>
-                  <p className="mt-2 text-xs text-slate-500 text-center">{selectedDate ? "Spaces Available: " + (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? "—") : ""}</p>
+                  <p className="mt-2 text-xs text-slate-500 text-center">{`Spaces Available: ${selectedEventSpots}`}</p>
                 </div>
               )}
 
               {/* Course Details Summary */}
-              {selectedDate && (() => {
-                const selectedEvent = courseEvents.find(event => {
-                  const eventDate = new Date(event.date);
-                  return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
-                });
-
-                if (!selectedEvent) return null;
+              {selectedDate && selectedCourseEvent && (() => {
+                const selectedEvent = selectedCourseEvent;
 
                 const formatTime = (time: string | null) => {
                   if (!time) return '';
@@ -2563,7 +2683,7 @@ export default function OnePageBookingCheckout() {
               })()}
 
               {/* Confirm Button */}
-              {selectedDate && attendees > 0 && !dateTimeConfirmed && (
+              {selectedDate && selectedCourseEvent && attendees > 0 && !dateTimeConfirmed && (
                 <div className="mt-4">
                   <button
                     type="button"
@@ -2774,13 +2894,7 @@ export default function OnePageBookingCheckout() {
                     <li><span className="text-slate-500">Course:</span> {selectedCourse?.course_name}</li>
                     <li><span className="text-slate-500">Location:</span> {currentLocation?.location_name}</li>
                     <li><span className="text-slate-500">Date:</span> {selectedDate ? selectedDate.toLocaleDateString('en-GB') : "—"}</li>
-                    <li><span className="text-slate-500">Start Time:</span> {selectedDate ? (() => {
-                      const selectedEvent = courseEvents.find(event => {
-                        const eventDate = new Date(event.date);
-                        return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
-                      });
-                      return selectedEvent ? selectedEvent.event_start_time : '07:00';
-                    })() : "—"}</li>
+                    <li><span className="text-slate-500">Start Time:</span> {selectedCourseEvent ? selectedCourseEvent.event_start_time : "—"}</li>
                     <li><span className="text-slate-500">Spaces:</span> {attendees}</li>
                   </ul>
                 </div>
@@ -2927,13 +3041,7 @@ export default function OnePageBookingCheckout() {
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Course</dt><dd className="text-right text-slate-900">{selectedCourse?.course_name}</dd></div>
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Location</dt><dd className="text-right text-slate-900">{currentLocation?.location_name || "—"}</dd></div>
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Date</dt><dd className="text-right text-slate-900">{selectedDate ? selectedDate.toLocaleDateString('en-GB') : "—"}</dd></div>
-                  <div className="flex items-center justify-between"><dt className="text-slate-500">Start Time</dt><dd className="text-right text-slate-900">{selectedDate ? (() => {
-                    const selectedEvent = courseEvents.find(event => {
-                      const eventDate = new Date(event.date);
-                      return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
-                    });
-                    return selectedEvent ? selectedEvent.event_start_time : '07:00';
-                  })() : "—"}</dd></div>
+                  <div className="flex items-center justify-between"><dt className="text-slate-500">Start Time</dt><dd className="text-right text-slate-900">{selectedCourseEvent ? selectedCourseEvent.event_start_time : "—"}</dd></div>
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Spaces</dt><dd className="text-right text-slate-900">{attendees}</dd></div>
                 </dl>
                 <div className="my-3 border-t" />
