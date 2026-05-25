@@ -9,7 +9,7 @@ import CryptoJS from 'crypto-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import StripePaymentForm from './StripePaymentForm';
-import { trackAddToCart, trackBeginCheckout } from '@/lib/gtm';
+import { trackAddToCart, trackBeginCheckout, trackCheckout } from '@/lib/gtm';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
@@ -621,6 +621,7 @@ export default function OnePageBookingCheckout() {
   const step5FetchedRef = useRef<{ selectedCourseId?: number | null; locationId?: number | null; selectedCourseEventId?: number | null; selectedDateISO?: string | null; attendees?: number } | null>(null);
   const availabilityFetchedRef = useRef<{ courseId?: number | null; locationId?: number | null } | null>(null);
   const addToCartVehicleTrackedKeyRef = useRef<string>('');
+  const checkoutTrackedKeyRef = useRef<string>('');
 
   // Track previous course for change detection
   const prevCourseIdRef = useRef<number | null>(null);
@@ -1746,21 +1747,45 @@ export default function OnePageBookingCheckout() {
   const trackingValue = total > 0 ? total : trackingFallbackValue;
   const trackingItemPrice = trackingValue > 0 ? Number(trackingValue.toFixed(2)) : 0;
 
+  // Full course price for GTM `add_to_cart` (always uses the FULL course price,
+  // never the deposit amount). Defaults to school_vehicle pricing when an
+  // attendee has not yet picked a vehicle type.
+  const trackingFullCoursePrice = useMemo(() => {
+    const eventPricing = selectedEventForTracking?.pricing;
+    if (!eventPricing) return 0;
+
+    const getVehicleUnitFullPrice = (vehicleType?: string) => {
+      const vehicleTypeNum = Number.parseInt(String(vehicleType || ''), 10);
+      const isOwnVehicle = vehicleTypeNum === 3;
+      const chosenPricing = isOwnVehicle ? eventPricing.own_vehicle : eventPricing.school_vehicle;
+
+      if (chosenPricing.pricing_type === 'deposit') {
+        return Number(chosenPricing.total || 0);
+      }
+
+      return Number(chosenPricing.price || 0);
+    };
+
+    const attendeeSlice = attendeeDetails.slice(0, Math.max(1, attendees));
+    const baseAmount = attendeeSlice.reduce(
+      (sum, attendee) => sum + getVehicleUnitFullPrice(attendee.vehicleType),
+      0
+    );
+
+    return Math.max(0, Number(baseAmount.toFixed(2)));
+  }, [selectedEventForTracking, attendeeDetails, attendees]);
+
   const attendeeVehicleSelectionKey = useMemo(
     () => attendeeDetails.slice(0, attendees).map((attendee, index) => `${index}:${attendee.vehicleType || ''}`).join('|'),
     [attendeeDetails, attendees]
   );
 
-  const areAllAttendeeVehiclesSelected = useMemo(
-    () => attendeeDetails.slice(0, attendees).length === attendees
-      && attendeeDetails.slice(0, attendees).every((attendee) => String(attendee.vehicleType || '').trim() !== ''),
-    [attendeeDetails, attendees]
-  );
-
+  // GTM: add_to_cart — fires after the user selects a date. The value sent is
+  // the FULL course price (not the deposit). Re-fires if attendees count or
+  // selected vehicle types change because the cart total changes too.
   useEffect(() => {
     if (!selectedDate || !selectedCourse || !selectedCourseEventId) return;
-    if (!areAllAttendeeVehiclesSelected) return;
-    if (trackingItemPrice <= 0) return;
+    if (trackingFullCoursePrice <= 0) return;
 
     const variant = selectedDate.toLocaleDateString('en-GB');
     const eventKey = [
@@ -1768,7 +1793,7 @@ export default function OnePageBookingCheckout() {
       variant,
       attendees,
       attendeeVehicleSelectionKey,
-      trackingItemPrice.toFixed(2),
+      trackingFullCoursePrice.toFixed(2),
     ].join('|');
 
     if (addToCartVehicleTrackedKeyRef.current === eventKey) {
@@ -1784,9 +1809,9 @@ export default function OnePageBookingCheckout() {
         item_category: 'Booking',
         item_variant: variant,
         quantity: attendees,
-        price: trackingItemPrice,
+        price: trackingFullCoursePrice,
       },
-      trackingItemPrice,
+      trackingFullCoursePrice,
     );
   }, [
     selectedDate,
@@ -1794,8 +1819,52 @@ export default function OnePageBookingCheckout() {
     selectedCourseEventId,
     attendees,
     attendeeVehicleSelectionKey,
-    areAllAttendeeVehiclesSelected,
-    trackingItemPrice,
+    trackingFullCoursePrice,
+  ]);
+
+  // GTM: checkout — fires once the user has ticked the
+  // "I have read Course Description and agree to the Terms & Conditions"
+  // checkbox. The value sent is the Total Payable (matches the order summary).
+  useEffect(() => {
+    if (!acceptTerms) return;
+    if (!selectedDate || !selectedCourse || !selectedCourseEventId) return;
+    if (total <= 0) return;
+
+    const variant = selectedDate.toLocaleDateString('en-GB');
+    const totalPayable = Number(total.toFixed(2));
+    const eventKey = [
+      selectedCourseEventId,
+      variant,
+      attendees,
+      attendeeVehicleSelectionKey,
+      totalPayable.toFixed(2),
+    ].join('|');
+
+    if (checkoutTrackedKeyRef.current === eventKey) {
+      return;
+    }
+
+    checkoutTrackedKeyRef.current = eventKey;
+
+    trackCheckout(
+      {
+        item_id: selectedCourseEventId,
+        item_name: selectedCourse.course_name ?? 'Course',
+        item_category: 'Booking',
+        item_variant: variant,
+        quantity: attendees,
+        price: totalPayable,
+      },
+      totalPayable,
+    );
+  }, [
+    acceptTerms,
+    selectedDate,
+    selectedCourse,
+    selectedCourseEventId,
+    attendees,
+    attendeeVehicleSelectionKey,
+    total,
   ]);
 
   const handleLogin = async () => {
@@ -2350,18 +2419,10 @@ export default function OnePageBookingCheckout() {
                             onClick={() => {
                               setSelectedDate(cell.date);
                               setSelectedCourseEventId(cell.courseEventId || null);
-                              // GTM: add_to_cart
-                              trackAddToCart(
-                                {
-                                  item_id: cell.courseEventId ?? 'unknown',
-                                  item_name: selectedCourse?.course_name ?? 'Course',
-                                  item_category: 'Booking',
-                                  item_variant: cell.date.toLocaleDateString('en-GB'),
-                                  quantity: attendees,
-                                  price: trackingItemPrice,
-                                },
-                                trackingItemPrice,
-                              );
+                              // GTM `add_to_cart` is fired by the effect that
+                              // watches selectedDate / selectedCourseEventId so
+                              // the value reflects the freshly-resolved course
+                              // pricing rather than stale state.
                             }}
                             title={cell.available && inCurrentMonth ? `${cell.spots} spots left` : "Not available"}
                             className={`aspect-square rounded-lg border text-sm tabular-nums transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${

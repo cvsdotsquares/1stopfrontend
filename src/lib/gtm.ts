@@ -61,6 +61,17 @@ export function trackBeginCheckout(item: GTMItem, value?: number, currency = 'GB
   });
 }
 
+export function trackCheckout(item: GTMItem, value?: number, currency = 'GBP'): void {
+  pushEvent({
+    event: 'checkout',
+    ecommerce: {
+      currency,
+      value: value ?? item.price ?? 0,
+      items: [withAttendeeCount(item)],
+    },
+  });
+}
+
 export function trackAddPaymentInfo(item: GTMItem, value?: number, currency = 'GBP'): void {
   pushEvent({
     event: 'add_payment_info',
