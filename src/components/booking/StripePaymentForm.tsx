@@ -307,8 +307,8 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
             options={{
               layout: 'tabs',
               wallets: {
-                applePay: 'never',
-                googlePay: 'never',
+                applePay: 'auto',
+                googlePay: 'auto',
               },
               defaultValues: {
                 billingDetails: {
