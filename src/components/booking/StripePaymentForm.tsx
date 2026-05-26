@@ -177,15 +177,14 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
     }
   };
 
-  const handleExpressReady = (event: StripeExpressCheckoutElementReadyEvent) => {
-    const methods = event.availablePaymentMethods;
-    const anyAvailable = Boolean(
-      methods?.applePay ||
-      methods?.googlePay ||
-      methods?.amazonPay ||
-      methods?.paypal ||
-      methods?.link,
-    );
+  const handleExpressReady = (event: any) => {
+    console.log('=== ECE READY ===');
+    console.log(event);
+    console.log('keys:', Object.keys(event || {}));
+    console.log('availablePaymentMethods:', event?.availablePaymentMethods);
+  
+    setWalletsAvailable(true); // TEMPORARY FOR DEBUGGING
+  };
     // Temporary diagnostic for stage: surface exactly what Stripe reports so we
     // can tell whether wallets are blocked by domain verification, account
     // config, browser support, etc. Safe to remove once Apple Pay / Google Pay
@@ -250,16 +249,14 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
         */}
         {amount > 0 && (
           <div
-            className={
-              walletsAvailable
-                ? 'bg-white rounded-xl border border-slate-200 p-6'
-                : 'hidden'
-            }
-            aria-hidden={!walletsAvailable}
+            className="bg-white rounded-xl border border-slate-200 p-6"
           >
             <h3 className="text-base font-semibold text-slate-900 mb-4">Express Checkout</h3>
             <ExpressCheckoutElement
               onReady={handleExpressReady}
+              onLoadError={(e) => {
+                console.error('ECE LOAD ERROR', e);
+              }}
               onConfirm={handleExpressConfirm}
               options={{
                 paymentMethods: {
