@@ -178,25 +178,19 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
   };
 
   const handleExpressReady = (event: any) => {
-    console.log('=== ECE READY ===');
+    console.log('=== ECE READY RAW EVENT ===');
     console.log(event);
-    console.log('keys:', Object.keys(event || {}));
-    console.log('availablePaymentMethods:', event?.availablePaymentMethods);
+    console.log('EVENT KEYS:', Object.keys(event || {}));
   
-    setWalletsAvailable(true); // TEMPORARY FOR DEBUGGING
-  };
-    // Temporary diagnostic for stage: surface exactly what Stripe reports so we
-    // can tell whether wallets are blocked by domain verification, account
-    // config, browser support, etc. Safe to remove once Apple Pay / Google Pay
-    // are confirmed working on stage + prod.
-    console.info('[ECE] availablePaymentMethods', {
-      methods,
-      anyAvailable,
-      origin: typeof window !== 'undefined' ? window.location.origin : null,
-      protocol: typeof window !== 'undefined' ? window.location.protocol : null,
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-    });
-    setWalletsAvailable(anyAvailable);
+    const methods = event?.availablePaymentMethods;
+  
+    console.log('availablePaymentMethods:', methods);
+  
+    const anyAvailable = !!methods && Object.values(methods).some(Boolean);
+  
+    console.log('anyAvailable:', anyAvailable);
+  
+    setWalletsAvailable(true); // DEBUG ONLY
   };
 
   const handleExpressConfirm = async (_event: StripeExpressCheckoutElementConfirmEvent) => {
