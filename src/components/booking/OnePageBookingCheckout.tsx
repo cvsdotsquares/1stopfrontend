@@ -1841,11 +1841,19 @@ export default function OnePageBookingCheckout() {
     [attendeeDetails, attendees]
   );
 
-  // GTM: add_to_cart — fires after the user selects a date. The value sent is
-  // the FULL course price (not the deposit). Re-fires if attendees count or
-  // selected vehicle types change because the cart total changes too.
+  const areAllAttendeeVehiclesSelected = useMemo(
+    () => attendeeDetails.slice(0, attendees).length === attendees
+      && attendeeDetails.slice(0, attendees).every((attendee) => String(attendee.vehicleType || '').trim() !== ''),
+    [attendeeDetails, attendees]
+  );
+
+  // GTM: add_to_cart — fires once every attendee has selected a vehicle type.
+  // The value sent is the FULL course price (not the deposit). Re-fires if the
+  // selected vehicle types or attendee count change because the cart total
+  // changes too.
   useEffect(() => {
     if (!selectedDate || !selectedCourse || !selectedCourseEventId) return;
+    if (!areAllAttendeeVehiclesSelected) return;
     if (trackingFullCoursePrice <= 0) return;
 
     const variant = selectedDate.toLocaleDateString('en-GB');
@@ -1880,6 +1888,7 @@ export default function OnePageBookingCheckout() {
     selectedCourseEventId,
     attendees,
     attendeeVehicleSelectionKey,
+    areAllAttendeeVehiclesSelected,
     trackingFullCoursePrice,
   ]);
 
@@ -2137,7 +2146,7 @@ export default function OnePageBookingCheckout() {
       if (!isOtherLicense && attendee.licenseNumber && attendee.licenseNumber.length === 16) {
         const isBlacklisted = await checkBlacklisted(attendee.licenseNumber);
         if (isBlacklisted) {
-          const msg = `Attendee ${idx + 1}: This driving licence number is not allowed to book`;
+          const msg = `Attendee ${idx + 1}: Please contact our office regarding this booking quoting Error Code “BL”`;
           // Show server-side error modal instead of only a toast
           setCourseLocationError(msg);
           return;
