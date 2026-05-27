@@ -2540,17 +2540,9 @@ export default function OnePageBookingCheckout() {
                           disabled={!slotAvailable}
                           onClick={() => {
                             setSelectedCourseEventId(slotEvent.course_event_id);
-                            trackAddToCart(
-                              {
-                                item_id: slotEvent.course_event_id,
-                                item_name: selectedCourse?.course_name ?? 'Course',
-                                item_category: 'Booking',
-                                item_variant: `${selectedDate.toLocaleDateString('en-GB')} ${slotEvent.event_start_time || ''}`.trim(),
-                                quantity: attendees,
-                                price: trackingItemPrice,
-                              },
-                              trackingItemPrice,
-                            );
+                            // GTM `add_to_cart` is fired by the effect that
+                            // watches vehicle selection — not here — so it only
+                            // fires once every attendee has picked a vehicle.
                           }}
                           className={`rounded-lg border p-3 text-left text-sm transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
                             !slotAvailable
