@@ -179,10 +179,6 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
     }
   };
 
-  const handleExpressReady = (event: any) => {
-    console.log('ECE READY', event);
-  };
-
   const handleExpressConfirm = async (_event: StripeExpressCheckoutElementConfirmEvent) => {
     if (!stripe || !elements) return;
 
@@ -234,11 +230,15 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
         */}
         {amount > 0 && (
           <div
-            className="bg-white rounded-xl border border-slate-200 p-6"
+          className={
+            walletsAvailable
+              ? 'bg-white rounded-xl border border-slate-200 p-6'
+              : 'hidden'
+          }
+          aria-hidden={!walletsAvailable}
           >
             <h3 className="text-base font-semibold text-slate-900 mb-4">Express Checkout</h3>
             <ExpressCheckoutElement
-              onReady={handleExpressReady}
               onLoadError={(e) => {
                 console.error('ECE LOAD ERROR', e);
               }}
