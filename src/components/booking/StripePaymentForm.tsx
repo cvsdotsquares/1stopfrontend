@@ -190,18 +190,6 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
   const handleExpressReady = (event: StripeExpressCheckoutElementReadyEvent) => {
     const methods = event?.availablePaymentMethods;
     const anyWalletAvailable = !!methods && (!!methods.applePay || !!methods.googlePay);
-
-    // Stage diagnostic — leave in until Apple Pay / Google Pay are confirmed
-    // working on stage + prod. Helps distinguish browser support vs. dashboard
-    // / domain-verification issues.
-    console.info('[ECE] availablePaymentMethods', {
-      methods,
-      anyWalletAvailable,
-      origin: typeof window !== 'undefined' ? window.location.origin : null,
-      protocol: typeof window !== 'undefined' ? window.location.protocol : null,
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-    });
-
     setWalletsAvailable(anyWalletAvailable);
   };
 
@@ -275,8 +263,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
             <h3 className="text-base font-semibold text-slate-900 mb-4">Express Checkout</h3>
             <ExpressCheckoutElement
               onReady={handleExpressReady}
-              onLoadError={(e) => {
-                console.error('ECE LOAD ERROR', e);
+              onLoadError={() => {
                 setWalletsAvailable(false);
               }}
               onConfirm={handleExpressConfirm}
