@@ -195,6 +195,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
 
   const handleExpressConfirm = async (_event: StripeExpressCheckoutElementConfirmEvent) => {
     if (!stripe || !elements) return;
+    
     setIsProcessing(true);
     try {
       await confirmPaymentFlow();
