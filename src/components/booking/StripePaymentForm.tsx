@@ -43,10 +43,9 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
   const [isProcessing, setIsProcessing] = useState(false);
   const [cardComplete, setCardComplete] = useState(false);
   // null = ECE hasn't reported yet (avoids flash of "no wallets")
-  // true/false = wallet buttons available on this device + dashboard config
-  // const [walletsAvailable, setWalletsAvailable] = useState<boolean | null>(null);
-
-  const [walletsAvailable] = useState(true);
+  // true  = Apple Pay or Google Pay is available on this device + dashboard config
+  // false = neither wallet is available -> hide the Express Checkout section entirely
+  const [walletsAvailable, setWalletsAvailable] = useState<boolean | null>(null);
 
   const persistPendingPurchase = (bookingRefs: string[], primaryRef: string | undefined) => {
     try {
@@ -179,6 +178,33 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
     }
   };
 
+  /**
+   * Stripe fires `onReady` once ECE has finished its availability checks
+   * (device support, dashboard config, domain verification, etc.). We use it
+   * to decide whether to render the Express Checkout section at all.
+   *
+   * The user-facing contract is "Express Checkout = Apple Pay or Google Pay",
+   * so we explicitly gate on those two even though `availablePaymentMethods`
+   * also reports Link / PayPal / Amazon Pay.
+   */
+  const handleExpressReady = (event: StripeExpressCheckoutElementReadyEvent) => {
+    const methods = event?.availablePaymentMethods;
+    const anyWalletAvailable = !!methods && (!!methods.applePay || !!methods.googlePay);
+
+    // Stage diagnostic — leave in until Apple Pay / Google Pay are confirmed
+    // working on stage + prod. Helps distinguish browser support vs. dashboard
+    // / domain-verification issues.
+    console.info('[ECE] availablePaymentMethods', {
+      methods,
+      anyWalletAvailable,
+      origin: typeof window !== 'undefined' ? window.location.origin : null,
+      protocol: typeof window !== 'undefined' ? window.location.protocol : null,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+    });
+
+    setWalletsAvailable(anyWalletAvailable);
+  };
+
   const handleExpressConfirm = async (_event: StripeExpressCheckoutElementConfirmEvent) => {
     if (!stripe || !elements) return;
 
@@ -197,7 +223,16 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
   // actual amount to authorize. Free bookings (amount === 0) skip ECE entirely
   // since the wallet sheet would quote the floored Stripe minimum (50p) which
   // doesn't match the real charge.
-  const showExpressCheckout = amount > 0 && walletsAvailable !== false;
+  //
+  // We need to MOUNT the ExpressCheckoutElement to receive the `onReady` event
+  // (Stripe only tells us what's available after the element is mounted), so
+  // `mountExpressCheckout` is broader than `showExpressCheckout`:
+  //   - mountExpressCheckout: amount > 0 AND we haven't confirmed wallets are
+  //     unavailable yet (null or true). Container may be visually hidden.
+  //   - showExpressCheckout: amount > 0 AND wallets are confirmed available.
+  //     Controls the visible "Express Checkout" card + "Or pay with card" divider.
+  const mountExpressCheckout = amount > 0 && walletsAvailable !== false;
+  const showExpressCheckout = amount > 0 && walletsAvailable === true;
 
   return (
     <div className="space-y-6">
@@ -228,19 +263,21 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
           AND that are enabled in your Stripe Dashboard. When nothing is
           available, ECE renders an empty container and we hide the divider.
         */}
-        {amount > 0 && (
+        {mountExpressCheckout && (
           <div
-          className={
-            walletsAvailable
-              ? 'bg-white rounded-xl border border-slate-200 p-6'
-              : 'hidden'
-          }
-          aria-hidden={!walletsAvailable}
+            className={
+              showExpressCheckout
+                ? 'bg-white rounded-xl border border-slate-200 p-6'
+                : 'hidden'
+            }
+            aria-hidden={!showExpressCheckout}
           >
             <h3 className="text-base font-semibold text-slate-900 mb-4">Express Checkout</h3>
             <ExpressCheckoutElement
+              onReady={handleExpressReady}
               onLoadError={(e) => {
                 console.error('ECE LOAD ERROR', e);
+                setWalletsAvailable(false);
               }}
               onConfirm={handleExpressConfirm}
               options={{
