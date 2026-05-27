@@ -44,7 +44,9 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
   const [cardComplete, setCardComplete] = useState(false);
   // null = ECE hasn't reported yet (avoids flash of "no wallets")
   // true/false = wallet buttons available on this device + dashboard config
-  const [walletsAvailable, setWalletsAvailable] = useState<boolean | null>(null);
+  // const [walletsAvailable, setWalletsAvailable] = useState<boolean | null>(null);
+
+  const [walletsAvailable] = useState(true);
 
   const persistPendingPurchase = (bookingRefs: string[], primaryRef: string | undefined) => {
     try {
@@ -178,24 +180,12 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
   };
 
   const handleExpressReady = (event: any) => {
-    console.log('=== ECE READY RAW EVENT ===');
-    console.log(event);
-    console.log('EVENT KEYS:', Object.keys(event || {}));
-  
-    const methods = event?.availablePaymentMethods;
-  
-    console.log('availablePaymentMethods:', methods);
-  
-    const anyAvailable = !!methods && Object.values(methods).some(Boolean);
-  
-    console.log('anyAvailable:', anyAvailable);
-  
-    setWalletsAvailable(true); // DEBUG ONLY
+    console.log('ECE READY', event);
   };
 
   const handleExpressConfirm = async (_event: StripeExpressCheckoutElementConfirmEvent) => {
     if (!stripe || !elements) return;
-    
+
     setIsProcessing(true);
     try {
       await confirmPaymentFlow();
