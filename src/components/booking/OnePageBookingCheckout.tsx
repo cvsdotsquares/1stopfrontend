@@ -2934,7 +2934,7 @@ export default function OnePageBookingCheckout() {
             <Section
               index={5}
               title="Review & proceed to payment"
-              subtitle="You'll be redirected to the secure payment page."
+              subtitle="Review your booking details and confirm you have read the course description, and terms and conditions."
               complete={sectionComplete[5]}
               open={expandedSections[5]}
               onToggle={() => {
