@@ -55,6 +55,7 @@ export interface CourseEventPricing {
   deposit_period_check_enabled: boolean;
   deposit_available: boolean;
   deposit_days: number;
+  deposit_cutoff_days?: number;
   deposit_note: string | null;
   school_vehicle: CourseEventVehiclePricing;
   own_vehicle: CourseEventVehiclePricing;
