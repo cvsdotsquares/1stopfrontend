@@ -314,29 +314,33 @@ function resolvePaymentType(
     return { paymentType: 'FULL', paymentMessage: null };
   }
 
-  const depositDays = Math.max(0, Number(pricing.deposit_days) || 0);
+  const balanceDueDays = Math.max(0, Number(pricing.deposit_days) || 0);
+  const depositCutoffDays = Math.max(
+    0,
+    Number(pricing.deposit_cutoff_days ?? pricing.deposit_days) || 0
+  );
   const isDepositPeriodCheckEnabled = pricing.deposit_period_check_enabled === true;
 
   if (isDepositPeriodCheckEnabled) {
     if (courseStartDate) {
       const days = daysUntilCourseStart(courseStartDate);
-      if (days <= depositDays) {
+      if (days <= depositCutoffDays) {
         return {
           paymentType: 'FULL',
-          paymentMessage: `This course requires full payment, as it is due to start within ${depositDays} days.`,
+          paymentMessage: `This course requires full payment, as it is due to start within ${depositCutoffDays} days.`,
         };
       }
     }
 
     return {
       paymentType: 'DEPOSIT',
-      paymentMessage: `This course only requires a deposit payment to secure your place. The balance will need to be paid no later than ${depositDays} days before the first day of your course.`,
+      paymentMessage: `This course only requires a deposit payment to secure your place. The balance will need to be paid no later than ${balanceDueDays} days before the first day of your course.`,
     };
   }
 
   return {
     paymentType: 'DEPOSIT',
-    paymentMessage: `This course only requires a deposit payment to secure your place. The balance will need to be paid no later than ${depositDays} days before the first day of your course. If the date you are booking is within ${depositDays} days, then we will be contact you shortly after you complete your booking to collect any outstanding balance, which will be due immediately.`,
+    paymentMessage: `This course only requires a deposit payment to secure your place. The balance will need to be paid no later than ${balanceDueDays} days before the first day of your course. If the date you are booking is within ${balanceDueDays} days, then we will be contact you shortly after you complete your booking to collect any outstanding balance, which will be due immediately.`,
   };
 }
 
