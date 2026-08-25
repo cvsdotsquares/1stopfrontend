@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { getRetryAfterSeconds, formatRetryClock } from '@/hooks/useRetryTimer';
 
 const DOB_DIGIT_POSITIONS = [0, 1, 3, 4, 6, 7, 8, 9] as const;
 const DOB_MASK_CHARS = ['_', '_', '/', '_', '_', '/', '_', '_', '_', '_'] as const;
@@ -87,8 +88,8 @@ export default function RegisterPage() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const resendTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const startResendCooldown = () => {
-    setResendCooldown(60);
+  const startResendCooldown = (seconds = 60) => {
+    setResendCooldown(seconds);
     if (resendTimerRef.current) clearInterval(resendTimerRef.current);
     resendTimerRef.current = setInterval(() => {
       setResendCooldown(prev => {
@@ -149,7 +150,7 @@ export default function RegisterPage() {
       if (data?.requiresVerification) {
         setPendingEmail(formData.email);
         setOtpValue('');
-        startResendCooldown();
+        startResendCooldown(120);
         setStep('otp');
         toast.success('Account created! Check your email for the verification code.');
       } else {
@@ -200,9 +201,11 @@ export default function RegisterPage() {
     mutationFn: () => authApi.resendRegistrationOtp(pendingEmail),
     onSuccess: () => {
       toast.success('A new verification code has been sent to your email.');
-      startResendCooldown();
+      startResendCooldown(120);
     },
     onError: (error: any) => {
+      const wait = getRetryAfterSeconds(error, 120);
+      if (wait > 0) startResendCooldown(wait);
       toast.error(error.response?.data?.message || 'Failed to resend code');
     },
   });
@@ -428,7 +431,7 @@ export default function RegisterPage() {
                   <p className="text-sm text-gray-600">
                     Didn&apos;t receive the code?{' '}
                     {resendCooldown > 0 ? (
-                      <span className="text-gray-400">Resend in {resendCooldown}s</span>
+                      <span className="text-gray-400">Resend in {formatRetryClock(resendCooldown)}</span>
                     ) : (
                       <button
                         type="button"
