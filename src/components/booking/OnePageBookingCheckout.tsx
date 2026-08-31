@@ -193,19 +193,17 @@ function getMonthOffsetFromToday(targetDateInput: Date | string | null | undefin
   return Math.max(0, Math.min(2, targetMonthIndex - currentMonthIndex));
 }
 
+/** First day of (reference month + offset). Avoids setMonth overflow on month-end dates (e.g. Aug 31 + 1 → Sep, not Oct). */
+function getCalendarMonthStart(referenceDate: Date, monthOffset: number): Date {
+  return new Date(referenceDate.getFullYear(), referenceDate.getMonth() + monthOffset, 1);
+}
+
 function generateCalendarWeeksFrom(startRefDate = new Date(), courseEvents: CourseEvent[] = [], monthOffset = 0) {
   const today = new Date(startRefDate);
   today.setHours(0, 0, 0, 0);
 
-  // Calculate the start date based on month offset
-  const baseDate = new Date(today);
-  baseDate.setMonth(baseDate.getMonth() + monthOffset);
-  baseDate.setDate(1); // Start from first day of the month
-
-  // Get the last day of the month
-  const lastDay = new Date(baseDate);
-  lastDay.setMonth(lastDay.getMonth() + 1);
-  lastDay.setDate(0);
+  const baseDate = getCalendarMonthStart(today, monthOffset);
+  const lastDay = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
 
   const start = new Date(baseDate);
   start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // Monday start
@@ -2438,18 +2436,10 @@ export default function OnePageBookingCheckout() {
                     disabled={calendarMonthOffset === 0}
                     className="px-1.5 md:px-3 py-1.5 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    ← {(() => {
-                      const prevMonth = new Date();
-                      prevMonth.setMonth(prevMonth.getMonth() + calendarMonthOffset - 1);
-                      return prevMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-                    })()}
+                    ← {getCalendarMonthStart(new Date(), calendarMonthOffset - 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
                   </button>
                   <span className="text-sm font-semibold text-slate-900 text-center">
-                    {(() => {
-                      const currentMonth = new Date();
-                      currentMonth.setMonth(currentMonth.getMonth() + calendarMonthOffset);
-                      return currentMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-                    })()}
+                    {getCalendarMonthStart(new Date(), calendarMonthOffset).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
                   </span>
                   <button
                     type="button"
@@ -2457,12 +2447,7 @@ export default function OnePageBookingCheckout() {
                     disabled={calendarMonthOffset >= 2}
                     className="px-1.5 md:px-3 py-1.5 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {(() => {
-                      const nextMonth = new Date();
-                      // add 1 month to the current month
-                      nextMonth.setMonth(nextMonth.getMonth() + calendarMonthOffset + 1);
-                      return nextMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-                    })()} →
+                    {getCalendarMonthStart(new Date(), calendarMonthOffset + 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })} →
                   </button>
                 </div>
 
@@ -2482,8 +2467,7 @@ export default function OnePageBookingCheckout() {
                     <div className="mt-1 grid grid-cols-7 gap-1">
                       {weeks.flat().map((cell, idx) => {
                         const isSelected = selectedDate && new Date(selectedDate).toDateString() === cell.date.toDateString();
-                        const currentMonth = new Date();
-                        currentMonth.setMonth(currentMonth.getMonth() + calendarMonthOffset);
+                        const currentMonth = getCalendarMonthStart(new Date(), calendarMonthOffset);
                         const inCurrentMonth = cell.date.getMonth() === currentMonth.getMonth() && cell.date.getFullYear() === currentMonth.getFullYear();
                         return (
                           <button
@@ -3347,6 +3331,12 @@ export function __runDevTests() {
     const w = generateCalendarWeeksFrom(new Date("2025-10-01"), []);
     const pass1 = Array.isArray(w) && w.length === 6 && w.flat().length === 42;
     results.push({ name: "calendar weeks shape", pass: pass1 });
+
+    // Test 1b: month-end dates must not skip a month (Aug 31 + 1 offset = September, not October)
+    const aug31Weeks = generateCalendarWeeksFrom(new Date(2026, 7, 31), [], 1);
+    const septCells = aug31Weeks.flat().filter((cell) => cell.date.getMonth() === 8 && cell.date.getFullYear() === 2026);
+    const pass1b = septCells.length > 0;
+    results.push({ name: "calendar month offset on Aug 31", pass: pass1b });
 
     // Test 2: pricing math with VAT
     const { subtotal: s2, vat: v2, total: t2 } = computeTotals(129, 2, 0.2);
