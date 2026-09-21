@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { trackAddPaymentInfo } from '@/lib/gtm';
 
 interface StripePaymentFormProps {
-  onSuccess: (bookingRefs: string[]) => void;
+  onSuccess: (bookingRefs: string[], extra?: { paymentIntentId?: string; status?: string }) => void;
   onCancel: (bookingRef?: string) => void;
   bookingRef?: string;
   courseEventId?: number | string;
@@ -41,7 +41,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [cardComplete, setCardComplete] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   // null = ECE hasn't reported yet (avoids flash of "no wallets")
   // true  = Apple Pay or Google Pay is available on this device + dashboard config
   // false = neither wallet is available -> hide the Express Checkout section entirely
@@ -99,7 +99,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
     const creationResult = await onCreatePaymentIntent();
     if (!creationResult) return false;
 
-    if (!creationResult.paymentRequired) {
+    if (creationResult.paymentRequired === false) {
       toast.success('Booking created successfully!');
       onSuccess(creationResult.bookingRefs);
       return true;
@@ -108,6 +108,8 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
     if (!creationResult.clientSecret) {
       throw new Error('Payment client secret missing');
     }
+
+    persistPendingPurchase(creationResult.bookingRefs, creationResult.bookingRef);
 
     trackAddPaymentInfo(
       {
@@ -151,10 +153,19 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
       return false;
     }
 
-    if (paymentIntent?.status === 'succeeded' || paymentIntent?.status === 'processing') {
-      persistPendingPurchase(creationResult.bookingRefs, creationResult.bookingRef);
-      toast.success(paymentIntent.status === 'succeeded' ? 'Payment successful!' : 'Payment is being processed');
-      onSuccess(creationResult.bookingRefs);
+    const status = paymentIntent?.status;
+    const paymentIntentId = paymentIntent?.id;
+
+    // Still requiring action after confirm means authentication was never
+    // completed, so treat it as a failure rather than sending them to success.
+    if (status === 'requires_action') {
+      toast.error('Payment was not completed. Please try again.');
+      return false;
+    }
+
+    if (status === 'succeeded' || status === 'processing') {
+      toast.success(status === 'succeeded' ? 'Payment successful!' : 'Payment is being processed');
+      onSuccess(creationResult.bookingRefs, { paymentIntentId, status });
       return true;
     }
 
@@ -295,7 +306,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
           <div className="relative flex items-center justify-center" aria-hidden>
             <div className="absolute inset-x-0 top-1/2 h-px bg-slate-200" />
             <span className="relative bg-white px-3 text-xs uppercase tracking-wider text-slate-400">
-              Or pay with card
+              Or pay another way
             </span>
           </div>
         )}
@@ -312,6 +323,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
           <PaymentElement
             options={{
               layout: 'tabs',
+              paymentMethodOrder: ['card', 'pay_by_bank', 'link'],
               wallets: {
                 applePay: 'auto',
                 googlePay: 'auto',
@@ -325,7 +337,7 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
               },
             }}
             onChange={(event) => {
-              setCardComplete(event.complete);
+              setSelectedMethod(event.value?.type || null);
             }}
           />
         </div>
@@ -341,7 +353,11 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
           </button>
           <button
             type="submit"
-            disabled={!stripe || isProcessing || paymentDisabled || !cardComplete}
+            // Not gated on PaymentElement `complete`: methods with no input to
+            // fill (Pay by Bank, bank transfer) never report complete, which
+            // would leave the customer with a permanently disabled button.
+            // `elements.submit()` validates before any booking row is created.
+            disabled={!stripe || isProcessing || paymentDisabled}
             className="flex-1 px-6 py-3.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg shadow-green-600/30 transition-all"
           >
             {isProcessing ? (
@@ -352,6 +368,8 @@ export default function StripePaymentForm({ onSuccess, onCancel, bookingRef, cou
                 </svg>
                 Processing...
               </span>
+            ) : selectedMethod === 'pay_by_bank' ? (
+              `Pay by Bank £${(amount / 100).toFixed(2)}`
             ) : (
               `Pay £${(amount / 100).toFixed(2)}`
             )}
