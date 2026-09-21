@@ -1,6 +1,7 @@
 // services/api.ts
 import api from '@/lib/api';
 import { encryptPassword } from '@/lib/encryption';
+import { getRecaptchaToken } from '@/lib/recaptcha';
 import {
   User,
   Course,
@@ -38,8 +39,13 @@ export const authApi = {
     return response.data.data;
   },
 
-  sendOtp: async (email: string) => {
-    const response = await api.post<ApiResponse<any>>('/auth/send-otp', { email });
+  sendOtp: async (email: string, purpose?: string) => {
+    const recaptchaToken = await getRecaptchaToken(purpose === 'password_reset' ? 'password_reset' : 'send_otp');
+    const response = await api.post<ApiResponse<any>>('/auth/send-otp', {
+      email,
+      purpose,
+      recaptchaToken,
+    });
     return response.data;
   },
 
@@ -54,7 +60,12 @@ export const authApi = {
   },
 
   resendRegistrationOtp: async (email: string) => {
-    const response = await api.post<ApiResponse<any>>('/auth/resend-registration-otp', { email, purpose: 'email_verification' });
+    const recaptchaToken = await getRecaptchaToken('send_otp');
+    const response = await api.post<ApiResponse<any>>('/auth/resend-registration-otp', {
+      email,
+      purpose: 'email_verification',
+      recaptchaToken,
+    });
     return response.data;
   },
 
