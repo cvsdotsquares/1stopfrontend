@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { trackPurchase } from '@/lib/gtm';
 import { useAuthStore } from '@/store/auth';
 
-type PaymentOutcome = 'confirmed' | 'processing' | 'failed';
+type PaymentOutcome = 'confirmed' | 'processing' | 'failed' | 'refunded';
 
 /**
  * Stripe returns the customer to `return_url` for redirect methods (Pay by Bank,
@@ -22,6 +22,11 @@ function resolvePaymentOutcome(
     case 'confirmed':
     case 'requires_capture':
       return 'confirmed';
+    // Paid, but the seat had already been released, so the money is coming
+    // back. Reporting this as a confirmed booking would be a lie.
+    case 'refunded':
+    case 'booking_released':
+      return 'refunded';
     case 'processing':
       return 'processing';
     // Still awaiting authentication the customer never finished.
@@ -270,6 +275,88 @@ function PaymentSuccessContent() {
                 className="inline-flex items-center justify-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-teal-700 transition"
               >
                 Try payment again
+              </Link>
+              <Link
+                href="/contactus"
+                className="inline-flex items-center justify-center gap-2 bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-medium hover:bg-slate-300 transition"
+              >
+                Contact Support
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (outcome === 'refunded') {
+    const refundedAmount = Number(bookingDetails?.amount_refunded || bookingDetails?.amount_paid || 0);
+
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="max-w-2xl mx-auto p-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+            <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v1M3 10l4-4M3 10l4 4" />
+              </svg>
+            </div>
+
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Payment refunded</h1>
+            <p className="text-lg text-slate-600 mb-2">
+              Your payment arrived after the place had been released, so this booking is not confirmed
+              and we have refunded you in full.
+            </p>
+            <p className="text-sm text-slate-500 mb-6">
+              Refunds usually reach your account within 5–10 working days.
+            </p>
+
+            <div className="bg-slate-50 rounded-xl p-6 mb-8 text-left">
+              <h3 className="font-semibold text-slate-900 mb-4">Payment Details</h3>
+              <div className="space-y-2 text-sm">
+                {bookingRefsFromUrl.length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">{bookingRefsFromUrl.length > 1 ? 'Booking References:' : 'Booking Reference:'}</span>
+                    <span className="font-medium text-slate-900 text-right">{bookingRefsFromUrl.join(', ')}</span>
+                  </div>
+                )}
+                {refundedAmount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Amount Refunded:</span>
+                    <span className="font-medium text-slate-900">£{refundedAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Booking Status:</span>
+                  <span className="font-medium text-amber-600">Not confirmed</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 rounded-xl p-6 mb-8 text-left">
+              <h3 className="font-semibold text-blue-900 mb-3">What happens next?</h3>
+              <ul className="space-y-2 text-sm text-blue-800">
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Please book again to secure a place — completing payment promptly keeps your place held
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  If you do not see the refund after 10 working days, contact us on <Link href="tel:02085977333">020 8597 7333</Link>
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/bookings"
+                className="inline-flex items-center justify-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-teal-700 transition"
+              >
+                Book again
               </Link>
               <Link
                 href="/contactus"
