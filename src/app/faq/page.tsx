@@ -78,9 +78,6 @@ export async function generateMetadata() {
 
     viewport:
       "width=device-width, initial-scale=1, user-scalable=no",
-
-    robots:
-      "noindex, nofollow, noarchive, nosnippet"
   };
 }
 

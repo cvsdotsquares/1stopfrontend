@@ -88,13 +88,33 @@ type CmsPage = {
   display_counter?: string | number;
 };
 
-async function fetchCmsPage(slug: string): Promise<CmsPage | null> {
+async function fetchCmsPage(
+  slug: string,
+  options?: { preview?: boolean; pageId?: string | null }
+): Promise<CmsPage | null> {
   try {
     // Encode each segment separately so slashes remain as path separators
     const encoded = slug.split('/').map(s => encodeURIComponent(s)).join('/');
-    const res = await fetch(`${API_BASE}/cmspages/${encoded}`, {
-      cache: "no-store"
-    });
+    const params = new URLSearchParams();
+    if (options?.preview) {
+      params.set('preview', '1');
+    }
+    if (options?.pageId) {
+      params.set('page_id', options.pageId);
+    }
+    const qs = params.toString();
+    const headers: HeadersInit = {};
+    const previewKey = process.env.CMS_PREVIEW_KEY;
+    if (options?.preview && previewKey) {
+      headers['X-CMS-Preview-Key'] = previewKey;
+    }
+    const res = await fetch(
+      `${API_BASE}/cmspages/${encoded}${qs ? `?${qs}` : ''}`,
+      {
+        cache: 'no-store',
+        headers,
+      }
+    );
     if (!res.ok) return null;
     const json = await res.json();
     if (!json.success) return null;
@@ -144,12 +164,22 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return metadata;
 }
 
-export default async function CmsCatchAllPage({ params }: { params: Promise<{ slug: string[] }> }) {
+export default async function CmsCatchAllPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string[] }>;
+  searchParams: Promise<{ preview?: string; page_id?: string }>;
+}) {
   const { slug } = await params;
+  const { preview, page_id: pageId } = await searchParams;
   const slugStr = (slug || []).join('/');
   if (!slugStr) notFound();
 
-  const page = await fetchCmsPage(slugStr);
+  const page = await fetchCmsPage(slugStr, {
+    preview: preview === '1' || preview === 'true',
+    pageId: pageId ?? null,
+  });
   if (!page) notFound();
 
   // Sort sections by order

@@ -51,7 +51,6 @@ export async function generateMetadata() {
     description: stripHtml(pageContent?.meta_desc),
     keywords: stripHtml(pageContent?.meta_keyword),
     viewport: "width=device-width, initial-scale=1, user-scalable=no",
-    robots: "noindex, nofollow, noarchive, nosnippet"
   };
 }
 
@@ -111,7 +110,7 @@ export default async function Page() {
         {RECAPTCHA_SITE_KEY && (
           <Script
             src={`https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`}
-            strategy="lazyOnload"
+            strategy="afterInteractive"
           />
         )}
         {/* Carousel Banner when banner_type is 2

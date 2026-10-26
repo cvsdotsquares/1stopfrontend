@@ -40,33 +40,60 @@ function withAttendeeCount(item: GTMItem): Record<string, unknown> {
 }
 
 export function trackAddToCart(item: GTMItem, value?: number, currency = 'GBP'): void {
+  const eventValue = value ?? item.price ?? 0;
   pushEvent({
     event: 'add_to_cart',
+    price: eventValue,
+    currency,
     ecommerce: {
       currency,
-      value: value ?? item.price ?? 0,
+      value: eventValue,
+      price: eventValue,
       items: [withAttendeeCount(item)],
     },
   });
 }
 
 export function trackBeginCheckout(item: GTMItem, value?: number, currency = 'GBP'): void {
+  const eventValue = value ?? item.price ?? 0;
   pushEvent({
     event: 'begin_checkout',
+    price: eventValue,
+    currency,
     ecommerce: {
       currency,
-      value: value ?? item.price ?? 0,
+      value: eventValue,
+      price: eventValue,
+      items: [withAttendeeCount(item)],
+    },
+  });
+}
+
+export function trackCheckout(item: GTMItem, value?: number, currency = 'GBP'): void {
+  const eventValue = value ?? item.price ?? 0;
+  pushEvent({
+    event: 'checkout',
+    price: eventValue,
+    currency,
+    ecommerce: {
+      currency,
+      value: eventValue,
+      price: eventValue,
       items: [withAttendeeCount(item)],
     },
   });
 }
 
 export function trackAddPaymentInfo(item: GTMItem, value?: number, currency = 'GBP'): void {
+  const eventValue = value ?? item.price ?? 0;
   pushEvent({
     event: 'add_payment_info',
+    price: eventValue,
+    currency,
     ecommerce: {
       currency,
-      value: value ?? item.price ?? 0,
+      value: eventValue,
+      price: eventValue,
       payment_type: 'Credit Card',
       items: [withAttendeeCount(item)],
     },
@@ -86,11 +113,14 @@ export function trackPurchase(
 
   pushEvent({
     event: 'purchase',
+    price: value,
+    currency,
     ecommerce: {
       transaction_id: transactionId,
       booking_ref: transactionId,
       currency,
       value,
+      price: value,
       payment_type: paymentType,
       items: normalizedItems,
     },
