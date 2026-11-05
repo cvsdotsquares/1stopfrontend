@@ -46,6 +46,16 @@ const nextConfig = {
         hostname: 'admin.1stopinstruction.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: '1stopstaging.24livehost.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '1stop.24livehost.com',
+        pathname: '/**',
+      },
     ],
   },
   // Turbopack configuration for Next.js 16

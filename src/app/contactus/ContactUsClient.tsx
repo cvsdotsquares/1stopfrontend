@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { getRetryAfterSeconds, useRetryTimer } from "@/hooks/useRetryTimer";
+import { getRecaptchaToken } from "@/lib/recaptcha";
 
 type Office = {
   id: number;
@@ -34,9 +36,19 @@ export default function ContactUsClient({
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [website, setWebsite] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const submitTimer = useRetryTimer();
   const [recaptchaReady, setRecaptchaReady] = useState(false);
+
+  useEffect(() => {
+    if (!submitTimer.isWaiting) {
+      setStatusMsg((current) =>
+        current && /too many requests/i.test(current) ? null : current
+      );
+    }
+  }, [submitTimer.isWaiting]);
 
   const [offices, setOffices] = useState<Office[]>([]);
   const [selectedOfficeId, setSelectedOfficeId] = useState<number | "all">("all");
@@ -203,27 +215,30 @@ export default function ContactUsClient({
     setStatusMsg(null);
 
     try {
-      // Get reCAPTCHA v3 token
-      let recaptchaToken = "";
-      const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+      const recaptchaToken = await getRecaptchaToken("contact_form");
 
-      if (siteKey && (window as any).grecaptcha && (window as any).grecaptcha.execute) {
-        try {
-          recaptchaToken = await (window as any).grecaptcha.execute(siteKey, { action: 'submit' });
-        } catch (err) {
-          console.warn("Failed to get reCAPTCHA token", err);
-        }
-      }
-
-      const payload = { name, email, subject, message, recaptchaToken };
+      const payload = { name, email, subject, message, recaptchaToken, website };
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contactus`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      const json = await res.json();
-      if (res.ok && json.success) {
+      const json = await res.json().catch(() => ({}));
+      if (res.status === 429) {
+        const wait = getRetryAfterSeconds(
+          {
+            response: {
+              status: 429,
+              data: json,
+              headers: { 'retry-after': res.headers.get('Retry-After') || '' },
+            },
+          },
+          0
+        );
+        if (wait > 0) submitTimer.start(wait);
+        setStatusMsg(json?.message || "Too many requests. Please try again later.");
+      } else if (res.ok && json.success) {
         setStatusMsg("Message sent successfully");
         setName("");
         setEmail("");
@@ -253,26 +268,45 @@ export default function ContactUsClient({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="flex flex-col gap-4 bg-gray-50 p-6 rounded">
           <form onSubmit={handleSubmit}>
+            <div className="absolute -left-[10000px] h-0 w-0 overflow-hidden" aria-hidden="true">
+              <label htmlFor="website">Website</label>
+              <input
+                id="website"
+                name="website"
+                tabIndex={-1}
+                autoComplete="off"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+              />
+            </div>
             <div className="mb-2">
               <label className="block text-sm font-bold mb-1">Your name</label>
-              <input required value={name} onChange={(e) => setName(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
+              <input required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
             </div>
             <div className="mb-2">
               <label className="block text-sm font-bold mb-1">Your email</label>
-              <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
+              <input required maxLength={254} type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
             </div>
             <div className="mb-2">
               <label className="block text-sm font-bold mb-1">Subject</label>
-              <input required value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
+              <input required maxLength={200} value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full border rounded px-3 py-2 bg-white" />
             </div>
             <div>
               <label className="block text-sm font-bold mb-1">Message</label>
-              <textarea required value={message} onChange={(e) => setMessage(e.target.value)} className="w-full border rounded px-3 py-2 h-32  bg-white" />
+              <textarea required maxLength={5000} value={message} onChange={(e) => setMessage(e.target.value)} className="w-full border rounded px-3 py-2 h-32  bg-white" />
             </div>
 
             <div>
-              <button disabled={submitting} type="submit" className="min-w-[210px] mt-6 inline-block radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-center text-lg text-white hover:bg-red-500 cursor-pointer">
-                {submitting ? "Sending..." : "Submit"}
+              <button
+                disabled={submitting || submitTimer.isWaiting}
+                type="submit"
+                className="min-w-[210px] mt-6 inline-block radius20-left radius20-right-bottom bg-red-600 px-6 py-3 text-center text-lg text-white hover:bg-red-500 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {submitting
+                  ? "Sending..."
+                  : submitTimer.isWaiting
+                    ? `Try again in ${submitTimer.clock}`
+                    : "Submit"}
               </button>
             </div>
 
