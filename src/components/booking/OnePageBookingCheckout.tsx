@@ -10,6 +10,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import StripePaymentForm from './StripePaymentForm';
 import { trackAddToCart, trackBeginCheckout, trackCheckout } from '@/lib/gtm';
+import { isValidDrivingLicenceNumber } from '@/lib/drivingLicenceNumber';
 import { getBookingElementsPaymentOptions } from '@/lib/stripeBookingPayment';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -719,7 +720,6 @@ export default function OnePageBookingCheckout() {
   // Check if an attendee form is complete (all required fields filled)
   const isAttendeeComplete = (attendee: typeof attendeeDetails[0], index: number) => {
     const phoneRegex = /^\+?[0-9\s()-]+$/;
-    const licenseRegex = /^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const firstName = String(attendee.firstName ?? '').trim();
     const lastName = String(attendee.lastName ?? '').trim();
@@ -768,10 +768,7 @@ export default function OnePageBookingCheckout() {
       licenseType !== '';
 
     // License number validation - skip if license type is 4
-    const licenseComplete = isOtherLicense || (
-      licenseNumber.length === 16 &&
-      licenseRegex.test(licenseNumber)
-    );
+    const licenseComplete = isOtherLicense || isValidDrivingLicenceNumber(licenseNumber);
 
     if (!basicFieldsComplete || !licenseComplete) return false;
 
@@ -2114,9 +2111,10 @@ export default function OnePageBookingCheckout() {
       // License number validation - skip if license type is 4 (Other/No Licence)
       const isOtherLicense = attendee.licenseType === '4';
       if (!isOtherLicense) {
-        if (!attendee.licenseNumber || attendee.licenseNumber.length !== 16) {
-          missing.push(`Attendee ${idx + 1}: Driving licence number (16 characters)`);
-        } else if (!/^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber)) {
+        const licenseNumber = String(attendee.licenseNumber ?? '').trim();
+        if (!licenseNumber) {
+          missing.push(`Attendee ${idx + 1}: Driving licence number`);
+        } else if (!isValidDrivingLicenceNumber(licenseNumber)) {
           toast.error(`Attendee ${idx + 1}: Invalid Licence Number.`);
           return;
         }
@@ -2146,8 +2144,8 @@ export default function OnePageBookingCheckout() {
       }
 
       // Check if license is blacklisted (skip if license type is 4)
-      if (!isOtherLicense && attendee.licenseNumber && attendee.licenseNumber.length === 16) {
-        const isBlacklisted = await checkBlacklisted(attendee.licenseNumber);
+      if (!isOtherLicense && attendee.licenseNumber && isValidDrivingLicenceNumber(attendee.licenseNumber)) {
+        const isBlacklisted = await checkBlacklisted(attendee.licenseNumber.trim());
         if (isBlacklisted) {
           const msg = `Attendee ${idx + 1}: Please contact our office regarding this booking quoting Error Code “BL”`;
           // Show server-side error modal instead of only a toast
