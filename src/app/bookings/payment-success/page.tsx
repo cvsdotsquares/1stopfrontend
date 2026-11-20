@@ -8,6 +8,9 @@ import { useAuthStore } from '@/store/auth';
 
 type PaymentOutcome = 'confirmed' | 'processing' | 'failed' | 'refunded';
 
+const VERIFY_POLL_MS = 2500;
+const VERIFY_POLL_MAX_ATTEMPTS = 72; // ~3 minutes
+
 /**
  * Stripe returns the customer to `return_url` for redirect methods (Pay by Bank,
  * 3DS) whether the payment succeeded OR failed, so the PaymentIntent status is
@@ -51,48 +54,127 @@ function PaymentSuccessContent() {
   const [outcome, setOutcome] = useState<PaymentOutcome>('confirmed');
   const [attendees, setAttendees] = useState<any[]>([]);
   const [purchaseTracked, setPurchaseTracked] = useState(false);
+  const [pollTimedOut, setPollTimedOut] = useState(false);
+
+  const refsParam = searchParams.get('refs') || searchParams.get('ref');
+  const bookingRefsFromParams = refsParam
+    ? refsParam.split(',').map((r) => r.trim()).filter(Boolean)
+    : [];
+  const paymentIntentId = searchParams.get('payment_intent');
+  const redirectStatus = searchParams.get('redirect_status');
+  const primaryRef = bookingRefsFromParams[0] || null;
+
+  const applyVerificationPayload = (
+    payload: Record<string, unknown> | undefined,
+    bookingRefs: string[],
+  ) => {
+    setBookingDetails({ ...payload, booking_refs: bookingRefs });
+    setOutcome(
+      resolvePaymentOutcome(
+        typeof payload?.payment_status === 'string' ? payload.payment_status : undefined,
+        redirectStatus,
+      ),
+    );
+    setVerificationStatus('success');
+  };
 
   useEffect(() => {
-    const sessionId = searchParams.get('payment_intent');
-    const redirectStatus = searchParams.get('redirect_status');
-    // Support both ?refs=1SRC1,1SRC2 (multi) and legacy ?ref=1SRC1 (single)
-    const refsParam = searchParams.get('refs') || searchParams.get('ref');
-    const bookingRefs = refsParam ? refsParam.split(',').map(r => r.trim()).filter(Boolean) : [];
-    const primaryRef = bookingRefs[0] || null;
-
     if (!primaryRef) {
       setVerificationStatus('error');
       return;
     }
 
-    if (!sessionId) {
-      setBookingDetails({ booking_refs: bookingRefs, payment_status: 'confirmed' });
+    if (!paymentIntentId) {
+      setBookingDetails({ booking_refs: bookingRefsFromParams, payment_status: 'confirmed' });
       setOutcome(redirectStatus === 'failed' ? 'failed' : 'confirmed');
       setVerificationStatus('success');
       return;
     }
 
+    let cancelled = false;
+
     const verifyPayment = async () => {
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/webhook/stripe/verify?payment_intent=${sessionId}&ref=${primaryRef}`
+          `${process.env.NEXT_PUBLIC_API_URL}/webhook/stripe/verify?payment_intent=${paymentIntentId}&ref=${primaryRef}`
         );
+        if (cancelled) return;
         if (response.ok) {
           const data = await response.json();
-          setBookingDetails({ ...data.data, booking_refs: bookingRefs });
-          setOutcome(resolvePaymentOutcome(data.data?.payment_status, redirectStatus));
-          setVerificationStatus('success');
+          applyVerificationPayload(data.data, bookingRefsFromParams);
         } else {
           setVerificationStatus('error');
         }
       } catch (error) {
-        console.error('Payment verification failed:', error);
-        setVerificationStatus('error');
+        if (!cancelled) {
+          console.error('Payment verification failed:', error);
+          setVerificationStatus('error');
+        }
       }
     };
 
+    setPollTimedOut(false);
     verifyPayment();
-  }, [searchParams]);
+    return () => {
+      cancelled = true;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- initial verify only when URL params change
+  }, [paymentIntentId, primaryRef, refsParam, redirectStatus]);
+
+  // Pay by Bank: customer lands before the webhook confirms or refunds — keep polling.
+  useEffect(() => {
+    if (verificationStatus !== 'success' || outcome !== 'processing') return;
+    if (!paymentIntentId || !primaryRef) return;
+
+    let attempts = 0;
+    let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+
+    const stopPolling = () => {
+      if (intervalId !== undefined) {
+        clearInterval(intervalId);
+        intervalId = undefined;
+      }
+    };
+
+    const pollVerification = async () => {
+      if (cancelled) return;
+      attempts += 1;
+
+      if (attempts > VERIFY_POLL_MAX_ATTEMPTS) {
+        stopPolling();
+        setPollTimedOut(true);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/webhook/stripe/verify?payment_intent=${paymentIntentId}&ref=${primaryRef}`
+        );
+        if (cancelled || !response.ok) return;
+
+        const data = await response.json();
+        const nextOutcome = resolvePaymentOutcome(data.data?.payment_status, redirectStatus);
+        setBookingDetails({ ...data.data, booking_refs: bookingRefsFromParams });
+        setOutcome(nextOutcome);
+
+        if (nextOutcome !== 'processing') {
+          stopPolling();
+        }
+      } catch (error) {
+        console.error('Payment verification poll failed:', error);
+      }
+    };
+
+    intervalId = setInterval(() => {
+      void pollVerification();
+    }, VERIFY_POLL_MS);
+
+    return () => {
+      cancelled = true;
+      stopPolling();
+    };
+  }, [verificationStatus, outcome, paymentIntentId, primaryRef, refsParam, redirectStatus]);
 
   useEffect(() => {
     if (purchaseTracked) return;
@@ -291,6 +373,17 @@ function PaymentSuccessContent() {
 
   if (outcome === 'refunded') {
     const refundedAmount = Number(bookingDetails?.amount_refunded || bookingDetails?.amount_paid || 0);
+    const refundReason = String(bookingDetails?.refund_reason || '').trim();
+    const capacityTaken =
+      refundReason === 'course_full' ||
+      refundReason === 'stripe-webhook-capacity-exceeded' ||
+      refundReason === 'admin-stripe-link-capacity-exceeded';
+
+    const refundIntro = capacityTaken
+      ? 'Unfortunately the space(s) you were trying to book were taken by another customer during the time it took you to process your payment. As such, your booking(s) have not been confirmed, and we have automatically refunded your transaction.'
+      : refundReason === 'course_frozen'
+        ? 'This course was frozen before your payment finished, so your booking is not confirmed and we have automatically refunded your transaction.'
+        : 'Your payment arrived after the place had been released, so this booking is not confirmed and we have refunded you in full.';
 
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -304,8 +397,7 @@ function PaymentSuccessContent() {
 
             <h1 className="text-3xl font-bold text-slate-900 mb-2">Payment refunded</h1>
             <p className="text-lg text-slate-600 mb-2">
-              Your payment arrived after the place had been released, so this booking is not confirmed
-              and we have refunded you in full.
+              {refundIntro}
             </p>
             <p className="text-sm text-slate-500 mb-6">
               Refunds usually reach your account within 5–10 working days.
@@ -375,7 +467,9 @@ function PaymentSuccessContent() {
 
   const heading = isProcessingPayment ? 'Payment is being processed' : 'Payment Successful!';
   const intro = isProcessingPayment
-    ? 'Your Pay by Bank payment is being confirmed. We’ll email you as soon as the booking is confirmed.'
+    ? pollTimedOut
+      ? 'Your payment was received. Confirmation is taking longer than usual — we’ll email you as soon as the booking is confirmed or if a refund is needed. You can also refresh this page in a moment.'
+      : 'Your Pay by Bank payment is being confirmed. This page will update automatically — we’ll email you as soon as the booking is confirmed.'
     : 'Your booking has been confirmed and payment processed successfully.';
   const headingColor = isProcessingPayment ? 'bg-amber-100' : 'bg-green-100';
   const iconColor = isProcessingPayment ? 'text-amber-600' : 'text-green-600';
@@ -386,17 +480,24 @@ function PaymentSuccessContent() {
       <div className="max-w-2xl mx-auto p-6">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
           <div className={`w-20 h-20 ${headingColor} rounded-full flex items-center justify-center mx-auto mb-6`}>
-            <svg className={`w-10 h-10 ${iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {isProcessingPayment ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              )}
-            </svg>
+            {isProcessingPayment && !pollTimedOut ? (
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-600" />
+            ) : (
+              <svg className={`w-10 h-10 ${iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {isProcessingPayment ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                )}
+              </svg>
+            )}
           </div>
 
           <h1 className="text-3xl font-bold text-slate-900 mb-2">{heading}</h1>
           <p className="text-lg text-slate-600 mb-8">{intro}</p>
+          {isProcessingPayment && !pollTimedOut && (
+            <p className="text-sm text-amber-700 -mt-4 mb-8">Checking confirmation status…</p>
+          )}
 
           {/* Booking Details */}
           {bookingDetails && (

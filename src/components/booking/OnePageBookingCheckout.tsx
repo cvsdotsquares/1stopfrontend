@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { bookingApi, type Course, type Location, type Settings, type VehicleType, type LicenseType, type CourseEvent } from "@/services/bookingApi";
 import { authApi } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
@@ -12,6 +12,7 @@ import StripePaymentForm from './StripePaymentForm';
 import { trackAddToCart, trackBeginCheckout, trackCheckout } from '@/lib/gtm';
 import { isValidDrivingLicenceNumber } from '@/lib/drivingLicenceNumber';
 import { getBookingElementsPaymentOptions } from '@/lib/stripeBookingPayment';
+import type { User } from '@/types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
@@ -57,6 +58,16 @@ interface AttendeeDetails {
   registerAsUser: boolean;
   password: string;
   confirmPassword: string;
+}
+
+function isFirstAttendeeBlank(attendee: AttendeeDetails): boolean {
+  return (
+    !String(attendee.firstName).trim() &&
+    !String(attendee.lastName).trim() &&
+    !String(attendee.email).trim() &&
+    !String(attendee.phone).trim() &&
+    !String(attendee.licenseNumber).trim()
+  );
 }
 
 function createAttendeeDetails(seed: Partial<AttendeeDetails> = {}): AttendeeDetails {
@@ -129,23 +140,63 @@ type PrefillSourceFields = {
   theoryNumber: string;
 };
 
+const EMPTY_PREFILL: PrefillSourceFields = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  dateOfBirth: '',
+  licenseNumber: '',
+  licenseType: '',
+  alternativePhone: '',
+  theoryNumber: '',
+};
+
+function mergePrefillSources(
+  primary: PrefillSourceFields,
+  secondary: PrefillSourceFields | null,
+): PrefillSourceFields {
+  if (!secondary) return primary;
+  const pick = (a: string, b: string) => (a.trim() ? a : b);
+  return {
+    firstName: pick(primary.firstName, secondary.firstName),
+    lastName: pick(primary.lastName, secondary.lastName),
+    email: pick(primary.email, secondary.email),
+    phone: pick(primary.phone, secondary.phone),
+    dateOfBirth: pick(primary.dateOfBirth, secondary.dateOfBirth),
+    licenseNumber: pick(primary.licenseNumber, secondary.licenseNumber),
+    licenseType: pick(primary.licenseType, secondary.licenseType),
+    alternativePhone: pick(primary.alternativePhone, secondary.alternativePhone),
+    theoryNumber: pick(primary.theoryNumber, secondary.theoryNumber),
+  };
+}
+
+/** Logged-in session user (auth store) — used when booking history prefill is not ready yet. */
+function getAttendeePrefillFromUser(user: User | null | undefined): PrefillSourceFields | null {
+  if (!user?.email) return null;
+  const profile = user as User & { sur_name?: string; contact1?: string };
+  return {
+    firstName: String(user.first_name ?? '').trim(),
+    lastName: String(user.last_name ?? profile.sur_name ?? '').trim(),
+    email: String(user.email ?? '').trim(),
+    phone: String(user.phone ?? profile.contact1 ?? '').trim(),
+    alternativePhone: String(user.contact2 ?? '').trim(),
+    dateOfBirth: formatPrefillDobToUk(user.date_of_birth),
+    licenseNumber: String(user.license_number ?? '').trim(),
+    licenseType:
+      user.license_type != null && String(user.license_type).trim() !== ''
+        ? String(user.license_type)
+        : '',
+    theoryNumber: String(user.theory_number ?? '').trim(),
+  };
+}
+
 /**
- * Attendee[0] prefill for logged-in users: only from booking_attendees_dropdown (via /auth/booking-prefill).
- * When there is no row, all strings are empty — never read from the users table.
+ * Attendee[0] prefill for logged-in users from /auth/booking-prefill (booking history, then profile).
  */
 function getAttendeePrefillFromDropdown(bookingPrefill: BookingPrefillPayload | null): PrefillSourceFields {
   if (!bookingPrefill) {
-    return {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      dateOfBirth: "",
-      licenseNumber: "",
-      licenseType: "",
-      alternativePhone: "",
-      theoryNumber: "",
-    };
+    return { ...EMPTY_PREFILL };
   }
   return {
     firstName: String(bookingPrefill.first_name ?? "").trim(),
@@ -521,9 +572,100 @@ export default function OnePageBookingCheckout() {
 
   // Auth state
   const { isAuthenticated, user, login } = useAuthStore();
-  // Server-only booking prefill (legacy users with no users.license_number) — not merged into /profile
   const [bookingPrefill, setBookingPrefill] = useState<BookingPrefillPayload | null>(null);
+  const bookingPrefillRef = useRef<BookingPrefillPayload | null>(null);
+  const lastPrefillKeyRef = useRef('');
+  const loadBookingPrefillRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const serverPrefillApplyRef = useRef<{ userId: number | null; applied: boolean }>({ userId: null, applied: false });
+
+  const applyFirstAttendeePrefill = useCallback(
+    (source: PrefillSourceFields, opts?: { force?: boolean }) => {
+      const hasData = Boolean(
+        source.firstName ||
+          source.lastName ||
+          source.email ||
+          source.phone ||
+          source.licenseNumber,
+      );
+      if (!hasData) return;
+
+      const key = `${source.email}|${source.licenseNumber}|${source.firstName}|${source.lastName}`;
+      setAttendeeDetails((prev) => {
+        if (!prev.length) return prev;
+        const first = prev[0];
+        const force = opts?.force === true;
+        const keyChanged = key !== lastPrefillKeyRef.current;
+        if (!force && !keyChanged && !isFirstAttendeeBlank(first)) {
+          return prev;
+        }
+
+        const next: AttendeeDetails = {
+          ...first,
+          firstName: source.firstName,
+          lastName: source.lastName,
+          email: source.email,
+          confirmEmail: source.email,
+          phone: source.phone,
+          alternativePhone: source.alternativePhone,
+          dateOfBirth: source.dateOfBirth,
+          licenseNumber: source.licenseNumber,
+          licenseType: source.licenseType,
+          theoryNumber: source.theoryNumber,
+        };
+        lastPrefillKeyRef.current = key;
+        serverPrefillApplyRef.current.applied = true;
+        serverPrefillApplyRef.current.userId = user?.id ?? null;
+        const copy = [...prev];
+        copy[0] = next;
+        return copy;
+      });
+    },
+    [user?.id],
+  );
+
+  const loadBookingPrefill = useCallback(async () => {
+    if (!isAuthenticated || !user?.id) {
+      setBookingPrefill(null);
+      bookingPrefillRef.current = null;
+      return;
+    }
+    try {
+      const data = await authApi.getBookingPrefill();
+      if (data?.has_fallback && data.prefill) {
+        const payload = data.prefill as BookingPrefillPayload;
+        setBookingPrefill(payload);
+        bookingPrefillRef.current = payload;
+        lastPrefillKeyRef.current = '';
+        serverPrefillApplyRef.current.applied = false;
+        const source = mergePrefillSources(
+          getAttendeePrefillFromDropdown(payload),
+          getAttendeePrefillFromUser(user),
+        );
+        applyFirstAttendeePrefill(source, { force: true });
+        return;
+      }
+      setBookingPrefill(null);
+      bookingPrefillRef.current = null;
+      const fromUser = getAttendeePrefillFromUser(user);
+      if (fromUser) {
+        lastPrefillKeyRef.current = '';
+        applyFirstAttendeePrefill(fromUser, { force: true });
+      }
+    } catch {
+      setBookingPrefill(null);
+      bookingPrefillRef.current = null;
+      const fromUser = getAttendeePrefillFromUser(user);
+      if (fromUser) {
+        applyFirstAttendeePrefill(fromUser, { force: true });
+      }
+    }
+  }, [isAuthenticated, user, applyFirstAttendeePrefill]);
+
+  loadBookingPrefillRef.current = loadBookingPrefill;
+
+  useEffect(() => {
+    bookingPrefillRef.current = bookingPrefill;
+  }, [bookingPrefill]);
   // API Data State
   const [courses, setCourses] = useState<Course[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -668,23 +810,27 @@ export default function OnePageBookingCheckout() {
     setExpandedAttendeeIndex(0);
     // Reset date tracking ref so next date selection is treated as "first" (no auto-reset of attendees)
     prevDateStrRef.current = null;
-    setAttendeeDetails(() => {
-      const s = getAttendeePrefillFromDropdown(bookingPrefill);
-      return [
-        createAttendeeDetails({
-          firstName: s.firstName,
-          lastName: s.lastName,
-          email: s.email,
-          confirmEmail: s.email,
-          phone: s.phone,
-          alternativePhone: s.alternativePhone,
-          dateOfBirth: s.dateOfBirth,
-          licenseNumber: s.licenseNumber,
-          licenseType: s.licenseType,
-          theoryNumber: s.theoryNumber,
-        }),
-      ];
-    });
+    const s = mergePrefillSources(
+      getAttendeePrefillFromDropdown(bookingPrefillRef.current),
+      getAttendeePrefillFromUser(user),
+    );
+    setAttendeeDetails([
+      createAttendeeDetails({
+        firstName: s.firstName,
+        lastName: s.lastName,
+        email: s.email,
+        confirmEmail: s.email,
+        phone: s.phone,
+        alternativePhone: s.alternativePhone,
+        dateOfBirth: s.dateOfBirth,
+        licenseNumber: s.licenseNumber,
+        licenseType: s.licenseType,
+        theoryNumber: s.theoryNumber,
+      }),
+    ]);
+    lastPrefillKeyRef.current = '';
+    serverPrefillApplyRef.current.applied = false;
+    void loadBookingPrefillRef.current();
     setFirstAttendeeUserLookup({ email: '', status: 'idle' });
     // Keep section 3 expanded so user can pick a new date
     setExpandedSections(prev => ({ ...prev, 3: true, 4: false, 5: false }));
@@ -999,86 +1145,18 @@ export default function OnePageBookingCheckout() {
     });
   }, [canOfferFastCheckoutRegistration]);
 
-  // Load first-attendee prefill: only from booking_attendees_dropdown (last booking, first card)
+  // Load prefill on sign-in / page load.
   useEffect(() => {
-    if (!isAuthenticated || !user?.id) {
-      setBookingPrefill(null);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await authApi.getBookingPrefill();
-        if (cancelled) return;
-        if (data?.has_fallback && data.prefill) {
-          setBookingPrefill(data.prefill as BookingPrefillPayload);
-        } else {
-          setBookingPrefill(null);
-        }
-      } catch {
-        if (!cancelled) setBookingPrefill(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, user?.id]);
+    void loadBookingPrefill();
+  }, [loadBookingPrefill]);
 
-  // Re-seed first attendee when /auth/booking-prefill returns; never merge from the users table.
+  // Re-apply when attendee details step opens (second+ booking in the same tab).
   useEffect(() => {
-    if (!user) return;
-
-    setAttendeeDetails((prev) => {
-      if (!prev.length) return prev;
-      const first = prev[0];
-
-      if (serverPrefillApplyRef.current.userId !== user.id) {
-        serverPrefillApplyRef.current = { userId: user.id, applied: false };
-      }
-
-      if (bookingPrefill) {
-        if (serverPrefillApplyRef.current.applied) {
-          return prev;
-        }
-        const source = getAttendeePrefillFromDropdown(bookingPrefill);
-        const next: AttendeeDetails = {
-          ...first,
-          firstName: source.firstName,
-          lastName: source.lastName,
-          email: source.email,
-          confirmEmail: source.email,
-          phone: source.phone,
-          alternativePhone: source.alternativePhone,
-          dateOfBirth: source.dateOfBirth,
-          licenseNumber: source.licenseNumber,
-          licenseType: source.licenseType,
-          theoryNumber: source.theoryNumber,
-        };
-        const unchanged =
-          next.firstName === first.firstName &&
-          next.lastName === first.lastName &&
-          next.email === first.email &&
-          next.confirmEmail === first.confirmEmail &&
-          next.phone === first.phone &&
-          next.alternativePhone === first.alternativePhone &&
-          next.dateOfBirth === first.dateOfBirth &&
-          next.licenseNumber === first.licenseNumber &&
-          next.licenseType === first.licenseType &&
-          next.theoryNumber === first.theoryNumber;
-        if (unchanged) {
-          serverPrefillApplyRef.current.applied = true;
-          return prev;
-        }
-        serverPrefillApplyRef.current.applied = true;
-        const copy = [...prev];
-        copy[0] = next;
-        return copy;
-      }
-
-      serverPrefillApplyRef.current.applied = false;
-      return prev;
-    });
-  }, [user, bookingPrefill]);
+    if (!expandedSections[4] || !isAuthenticated) return;
+    lastPrefillKeyRef.current = '';
+    serverPrefillApplyRef.current.applied = false;
+    void loadBookingPrefill();
+  }, [expandedSections[4], isAuthenticated, loadBookingPrefill]);
 
   // Scroll newly-expanded attendee cards into view after confirming the previous attendee.
   useEffect(() => {
@@ -2230,6 +2308,9 @@ export default function OnePageBookingCheckout() {
       const response = await bookingApi.createBookingWithAttendeesNew(bookingData);
 
       localStorage.removeItem('booking_form_data');
+      if (isAuthenticated) {
+        void loadBookingPrefill();
+      }
 
       const allRefs: string[] = response.booking_refs || [response.booking_ref];
       setBookingRef(response.booking_ref);
