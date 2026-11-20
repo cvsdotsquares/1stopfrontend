@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { authApi } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
+import { getRetryAfterSeconds, useRetryTimer } from '@/hooks/useRetryTimer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,36 +33,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [otp, setOtp] = useState('');
-  const [requiresVerification, setRequiresVerification] = useState(false);
-
-  const checkEmailMutation = useMutation({
-    mutationFn: () => authApi.checkEmail(email),
-    onSuccess: (data: any) => {
-      if (data.action === 'register') {
-        toast.error('Email not found. Please register first.');
-        router.push('/auth/register');
-      } else if (data.action === 'reset_password') {
-        setRequiresVerification(data.requiresVerification);
-        if (data.requiresVerification) {
-          sendOtpMutation.mutate();
-        } else {
-          toast.info('Please reset your password');
-          setStep('set-password');
-        }
-      } else if (data.action === 'enter_password') {
-        setStep('password');
-      }
-    },
-    onError: () => toast.error('Email not found'),
-  });
+  const otpTimer = useRetryTimer();
 
   const sendOtpMutation = useMutation({
-    mutationFn: () => authApi.sendOtp(email),
-    onSuccess: () => {
+    mutationFn: () => authApi.sendOtp(email, 'password_reset'),
+    onSuccess: (data: any) => {
       toast.success('OTP sent to your email');
       setStep('otp');
+      otpTimer.start(Number(data?.resendAfter) || 120);
     },
-    onError: () => toast.error('Failed to send OTP'),
+    onError: (error: any) => {
+      const wait = getRetryAfterSeconds(error, 120);
+      if (wait > 0) otpTimer.start(wait);
+      toast.error(error.response?.data?.message || 'Failed to send OTP');
+    },
   });
 
   const verifyOtpMutation = useMutation({
@@ -99,7 +84,7 @@ export default function LoginPage() {
 
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    checkEmailMutation.mutate();
+    sendOtpMutation.mutate();
   };
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
@@ -162,9 +147,13 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 className="w-full radius20-left radius20-right-bottom text-center text-white hover:bg-red-500"
-                disabled={checkEmailMutation.isPending}
+                disabled={sendOtpMutation.isPending || otpTimer.isWaiting}
               >
-                {checkEmailMutation.isPending ? 'Checking...' : 'Forgot Password'}
+                {sendOtpMutation.isPending
+                  ? 'Sending...'
+                  : otpTimer.isWaiting
+                    ? `Try again in ${otpTimer.clock}`
+                    : 'Send reset code'}
               </Button>
             </form>
           )}
@@ -181,9 +170,10 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => { setStep('otp'); sendOtpMutation.mutate(); }}
-                    className="text-sm text-blue-600 hover:text-red-600 underline"
+                    disabled={sendOtpMutation.isPending || otpTimer.isWaiting}
+                    className="text-sm text-blue-600 hover:text-red-600 underline disabled:text-gray-400 disabled:no-underline"
                   >
-                    Forgot Password?
+                    {otpTimer.isWaiting ? `Wait ${otpTimer.clock}` : 'Forgot Password?'}
                   </button>
                 </div>
                 <Input
@@ -240,9 +230,13 @@ export default function LoginPage() {
                 variant="ghost"
                 className="w-full"
                 onClick={() => sendOtpMutation.mutate()}
-                disabled={sendOtpMutation.isPending}
+                disabled={sendOtpMutation.isPending || otpTimer.isWaiting}
               >
-                Resend OTP
+                {sendOtpMutation.isPending
+                  ? 'Sending...'
+                  : otpTimer.isWaiting
+                    ? `Resend in ${otpTimer.clock}`
+                    : 'Resend OTP'}
               </Button>
             </form>
           )}

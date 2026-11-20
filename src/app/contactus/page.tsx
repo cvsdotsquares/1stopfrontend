@@ -110,7 +110,7 @@ export default async function Page() {
         {RECAPTCHA_SITE_KEY && (
           <Script
             src={`https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`}
-            strategy="lazyOnload"
+            strategy="afterInteractive"
           />
         )}
         {/* Carousel Banner when banner_type is 2

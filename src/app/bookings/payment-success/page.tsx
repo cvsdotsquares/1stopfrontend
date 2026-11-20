@@ -6,16 +6,55 @@ import Link from 'next/link';
 import { trackPurchase } from '@/lib/gtm';
 import { useAuthStore } from '@/store/auth';
 
+type PaymentOutcome = 'confirmed' | 'processing' | 'failed' | 'refunded';
+
+/**
+ * Stripe returns the customer to `return_url` for redirect methods (Pay by Bank,
+ * 3DS) whether the payment succeeded OR failed, so the PaymentIntent status is
+ * the only thing that decides what we show here.
+ */
+function resolvePaymentOutcome(
+  paymentStatus: string | undefined,
+  redirectStatus: string | null,
+): PaymentOutcome {
+  switch (paymentStatus) {
+    case 'succeeded':
+    case 'confirmed':
+    case 'requires_capture':
+      return 'confirmed';
+    // Paid, but the seat had already been released, so the money is coming
+    // back. Reporting this as a confirmed booking would be a lie.
+    case 'refunded':
+    case 'booking_released':
+      return 'refunded';
+    case 'processing':
+      return 'processing';
+    // Still awaiting authentication the customer never finished.
+    case 'requires_action':
+    case 'requires_payment_method':
+    case 'requires_confirmation':
+    case 'canceled':
+      return 'failed';
+    default:
+      if (redirectStatus === 'failed') return 'failed';
+      // No status at all means there was nothing to pay (e.g. fully discounted
+      // booking). An unrecognised status must never be reported as paid.
+      return paymentStatus ? 'processing' : 'confirmed';
+  }
+}
+
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();
   const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [bookingDetails, setBookingDetails] = useState<any>(null);
+  const [outcome, setOutcome] = useState<PaymentOutcome>('confirmed');
   const [attendees, setAttendees] = useState<any[]>([]);
   const [purchaseTracked, setPurchaseTracked] = useState(false);
 
   useEffect(() => {
     const sessionId = searchParams.get('payment_intent');
+    const redirectStatus = searchParams.get('redirect_status');
     // Support both ?refs=1SRC1,1SRC2 (multi) and legacy ?ref=1SRC1 (single)
     const refsParam = searchParams.get('refs') || searchParams.get('ref');
     const bookingRefs = refsParam ? refsParam.split(',').map(r => r.trim()).filter(Boolean) : [];
@@ -28,6 +67,7 @@ function PaymentSuccessContent() {
 
     if (!sessionId) {
       setBookingDetails({ booking_refs: bookingRefs, payment_status: 'confirmed' });
+      setOutcome(redirectStatus === 'failed' ? 'failed' : 'confirmed');
       setVerificationStatus('success');
       return;
     }
@@ -37,10 +77,10 @@ function PaymentSuccessContent() {
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/webhook/stripe/verify?payment_intent=${sessionId}&ref=${primaryRef}`
         );
-        console.log('Verification response:', response);
         if (response.ok) {
           const data = await response.json();
           setBookingDetails({ ...data.data, booking_refs: bookingRefs });
+          setOutcome(resolvePaymentOutcome(data.data?.payment_status, redirectStatus));
           setVerificationStatus('success');
         } else {
           setVerificationStatus('error');
@@ -56,7 +96,8 @@ function PaymentSuccessContent() {
 
   useEffect(() => {
     if (purchaseTracked) return;
-    if (verificationStatus !== 'success' || !bookingDetails?.booking_refs?.length) return;
+    if (verificationStatus !== 'success' || outcome !== 'confirmed') return;
+    if (!bookingDetails?.booking_refs?.length) return;
 
     const refs: string[] = bookingDetails.booking_refs;
     const transactionId = refs.join(',');
@@ -110,7 +151,7 @@ function PaymentSuccessContent() {
     sessionStorage.setItem(trackedKey, '1');
     sessionStorage.removeItem('gtm_purchase_pending');
     setPurchaseTracked(true);
-  }, [verificationStatus, bookingDetails, attendees, purchaseTracked]);
+  }, [verificationStatus, outcome, bookingDetails, attendees, purchaseTracked]);
 
   // Fetch attendee names based on booking_refs
   useEffect(() => {
@@ -173,22 +214,189 @@ function PaymentSuccessContent() {
     );
   }
 
+  const bookingRefsFromUrl: string[] = bookingDetails?.booking_refs || [];
+
+  if (outcome === 'failed') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="max-w-2xl mx-auto p-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Payment not completed</h1>
+            <p className="text-lg text-slate-600 mb-2">
+              Your payment was not successful, so this booking is not confirmed and you have not been charged.
+            </p>
+            {bookingDetails?.last_payment_error && (
+              <p className="text-sm text-red-600 mb-6">{bookingDetails.last_payment_error}</p>
+            )}
+
+            <div className="bg-slate-50 rounded-xl p-6 mb-8 text-left">
+              <h3 className="font-semibold text-slate-900 mb-4">Booking Details</h3>
+              <div className="space-y-2 text-sm">
+                {bookingRefsFromUrl.length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">{bookingRefsFromUrl.length > 1 ? 'Booking References:' : 'Booking Reference:'}</span>
+                    <span className="font-medium text-slate-900 text-right">{bookingRefsFromUrl.join(', ')}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Payment Status:</span>
+                  <span className="font-medium text-red-600">Not paid</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 rounded-xl p-6 mb-8 text-left">
+              <h3 className="font-semibold text-blue-900 mb-3">What happens next?</h3>
+              <ul className="space-y-2 text-sm text-blue-800">
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Your place has been released, so please make the booking again to secure it
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Try a different payment method, or contact us on <Link href="tel:02085977333">020 8597 7333</Link> if the problem continues
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/bookings"
+                className="inline-flex items-center justify-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-teal-700 transition"
+              >
+                Try payment again
+              </Link>
+              <Link
+                href="/contactus"
+                className="inline-flex items-center justify-center gap-2 bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-medium hover:bg-slate-300 transition"
+              >
+                Contact Support
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (outcome === 'refunded') {
+    const refundedAmount = Number(bookingDetails?.amount_refunded || bookingDetails?.amount_paid || 0);
+
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="max-w-2xl mx-auto p-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+            <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v1M3 10l4-4M3 10l4 4" />
+              </svg>
+            </div>
+
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Payment refunded</h1>
+            <p className="text-lg text-slate-600 mb-2">
+              Your payment arrived after the place had been released, so this booking is not confirmed
+              and we have refunded you in full.
+            </p>
+            <p className="text-sm text-slate-500 mb-6">
+              Refunds usually reach your account within 5–10 working days.
+            </p>
+
+            <div className="bg-slate-50 rounded-xl p-6 mb-8 text-left">
+              <h3 className="font-semibold text-slate-900 mb-4">Payment Details</h3>
+              <div className="space-y-2 text-sm">
+                {bookingRefsFromUrl.length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">{bookingRefsFromUrl.length > 1 ? 'Booking References:' : 'Booking Reference:'}</span>
+                    <span className="font-medium text-slate-900 text-right">{bookingRefsFromUrl.join(', ')}</span>
+                  </div>
+                )}
+                {refundedAmount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Amount Refunded:</span>
+                    <span className="font-medium text-slate-900">£{refundedAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Booking Status:</span>
+                  <span className="font-medium text-amber-600">Not confirmed</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 rounded-xl p-6 mb-8 text-left">
+              <h3 className="font-semibold text-blue-900 mb-3">What happens next?</h3>
+              <ul className="space-y-2 text-sm text-blue-800">
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Please book again to secure a place — completing payment promptly keeps your place held
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  If you do not see the refund after 10 working days, contact us on <Link href="tel:02085977333">020 8597 7333</Link>
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/bookings"
+                className="inline-flex items-center justify-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-teal-700 transition"
+              >
+                Book again
+              </Link>
+              <Link
+                href="/contactus"
+                className="inline-flex items-center justify-center gap-2 bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-medium hover:bg-slate-300 transition"
+              >
+                Contact Support
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const isProcessingPayment = outcome === 'processing';
+
+  const heading = isProcessingPayment ? 'Payment is being processed' : 'Payment Successful!';
+  const intro = isProcessingPayment
+    ? 'Your Pay by Bank payment is being confirmed. We’ll email you as soon as the booking is confirmed.'
+    : 'Your booking has been confirmed and payment processed successfully.';
+  const headingColor = isProcessingPayment ? 'bg-amber-100' : 'bg-green-100';
+  const iconColor = isProcessingPayment ? 'text-amber-600' : 'text-green-600';
+  const statusLabel = isProcessingPayment ? 'Processing' : 'Confirmed';
+
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
       <div className="max-w-2xl mx-auto p-6">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
-          {/* Success Icon */}
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          <div className={`w-20 h-20 ${headingColor} rounded-full flex items-center justify-center mx-auto mb-6`}>
+            <svg className={`w-10 h-10 ${iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {isProcessingPayment ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              )}
             </svg>
           </div>
 
-          {/* Success Message */}
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Payment Successful!</h1>
-          <p className="text-lg text-slate-600 mb-8">
-            Your booking has been confirmed and payment processed successfully.
-          </p>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">{heading}</h1>
+          <p className="text-lg text-slate-600 mb-8">{intro}</p>
 
           {/* Booking Details */}
           {bookingDetails && (
@@ -198,15 +406,13 @@ function PaymentSuccessContent() {
               <div className="flex justify-between">
                   <span className="text-slate-600">{bookingDetails.booking_refs?.length > 1 ? 'Booking References:' : 'Booking Reference:'}</span>
                   <span className="font-medium text-slate-900 text-right">
-                      {(() => {
-                        if (attendees) {
-                          return attendees.map((attendee: any) => (
+                      {attendees.length > 0
+                        ? attendees.map((attendee: any) => (
                             <div key={attendee.booking_ref}>
                               {attendee.name.firstname} {attendee.name.surname}: {attendee.booking_ref}
                             </div>
-                          ));
-                        }
-                      })()}
+                          ))
+                        : bookingRefsFromUrl.join(', ')}
                   </span>
                 </div>
                 {typeof bookingDetails.amount_paid === 'number' && (
@@ -217,7 +423,7 @@ function PaymentSuccessContent() {
                 )}
                 <div className="flex justify-between">
                   <span className="text-slate-600">Payment Status:</span>
-                  <span className="font-medium text-green-600 capitalize">{bookingDetails.payment_status}</span>
+                  <span className={`font-medium capitalize ${isProcessingPayment ? 'text-amber-700' : 'text-green-600'}`}>{statusLabel}</span>
                 </div>
               </div>
             </div>

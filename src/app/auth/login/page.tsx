@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { authApi } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
+import { getRetryAfterSeconds, useRetryTimer } from '@/hooks/useRetryTimer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +34,8 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [requiresVerification, setRequiresVerification] = useState(false);
+  const otpTimer = useRetryTimer();
+  const loginTimer = useRetryTimer();
 
   const checkEmailMutation = useMutation({
     mutationFn: () => authApi.checkEmail(email),
@@ -52,16 +55,25 @@ export default function LoginPage() {
         setStep('password');
       }
     },
-    onError: () => toast.error('Email not found'),
+    onError: (error: any) => {
+      const wait = getRetryAfterSeconds(error, 900);
+      if (wait > 0) loginTimer.start(wait);
+      toast.error(error.response?.data?.message || 'Email not found');
+    },
   });
 
   const sendOtpMutation = useMutation({
     mutationFn: () => authApi.sendOtp(email),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       toast.success('OTP sent to your email');
       setStep('otp');
+      otpTimer.start(Number(data?.resendAfter) || 120);
     },
-    onError: () => toast.error('Failed to send OTP'),
+    onError: (error: any) => {
+      const wait = getRetryAfterSeconds(error, 120);
+      if (wait > 0) otpTimer.start(wait);
+      toast.error(error.response?.data?.message || 'Failed to send OTP');
+    },
   });
 
   const verifyOtpMutation = useMutation({
@@ -93,6 +105,8 @@ export default function LoginPage() {
       }, 100);
     },
     onError: (error: any) => {
+      const wait = getRetryAfterSeconds(error, 900);
+      if (wait > 0) loginTimer.start(wait);
       toast.error(error.response?.data?.message || 'Login failed');
     },
   });
@@ -162,9 +176,13 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 className="w-full radius20-left radius20-right-bottom text-center text-white hover:bg-red-500"
-                disabled={checkEmailMutation.isPending}
+                disabled={checkEmailMutation.isPending || loginTimer.isWaiting}
               >
-                {checkEmailMutation.isPending ? 'Checking...' : 'Continue'}
+                {checkEmailMutation.isPending
+                  ? 'Checking...'
+                  : loginTimer.isWaiting
+                    ? `Try again in ${loginTimer.clock}`
+                    : 'Continue'}
               </Button>
             </form>
           )}
@@ -181,9 +199,10 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => { setStep('otp'); sendOtpMutation.mutate(); }}
-                    className="text-sm text-blue-600 hover:text-red-600 underline"
+                    disabled={sendOtpMutation.isPending || otpTimer.isWaiting}
+                    className="text-sm text-blue-600 hover:text-red-600 underline disabled:text-gray-400 disabled:no-underline"
                   >
-                    Forgot Password?
+                    {otpTimer.isWaiting ? `Wait ${otpTimer.clock}` : 'Forgot Password?'}
                   </button>
                 </div>
                 <Input
@@ -198,9 +217,13 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 className="w-full radius20-left radius20-right-bottom text-center text-white hover:bg-red-500"
-                disabled={loginMutation.isPending}
+                disabled={loginMutation.isPending || loginTimer.isWaiting}
               >
-                {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
+                {loginMutation.isPending
+                  ? 'Signing in...'
+                  : loginTimer.isWaiting
+                    ? `Try again in ${loginTimer.clock}`
+                    : 'Sign In'}
               </Button>
               <Button
                 type="button"
@@ -240,9 +263,13 @@ export default function LoginPage() {
                 variant="ghost"
                 className="w-full"
                 onClick={() => sendOtpMutation.mutate()}
-                disabled={sendOtpMutation.isPending}
+                disabled={sendOtpMutation.isPending || otpTimer.isWaiting}
               >
-                Resend OTP
+                {sendOtpMutation.isPending
+                  ? 'Sending...'
+                  : otpTimer.isWaiting
+                    ? `Resend in ${otpTimer.clock}`
+                    : 'Resend OTP'}
               </Button>
             </form>
           )}
