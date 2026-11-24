@@ -10,7 +10,10 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import StripePaymentForm from './StripePaymentForm';
 import { trackAddToCart, trackBeginCheckout, trackCheckout } from '@/lib/gtm';
-import { isValidDrivingLicenceNumber } from '@/lib/drivingLicenceNumber';
+import {
+  isValidDrivingLicenceNumber,
+  validateDrivingLicenceNumber,
+} from '@/lib/drivingLicenceNumber';
 import { getBookingElementsPaymentOptions } from '@/lib/stripeBookingPayment';
 import type { User } from '@/types';
 
@@ -914,7 +917,8 @@ export default function OnePageBookingCheckout() {
       licenseType !== '';
 
     // License number validation - skip if license type is 4
-    const licenseComplete = isOtherLicense || isValidDrivingLicenceNumber(licenseNumber);
+    const licenseComplete =
+      isOtherLicense || validateDrivingLicenceNumber(licenseNumber, { required: true }).valid;
 
     if (!basicFieldsComplete || !licenseComplete) return false;
 
@@ -2189,11 +2193,9 @@ export default function OnePageBookingCheckout() {
       // License number validation - skip if license type is 4 (Other/No Licence)
       const isOtherLicense = attendee.licenseType === '4';
       if (!isOtherLicense) {
-        const licenseNumber = String(attendee.licenseNumber ?? '').trim();
-        if (!licenseNumber) {
-          missing.push(`Attendee ${idx + 1}: Driving licence number`);
-        } else if (!isValidDrivingLicenceNumber(licenseNumber)) {
-          toast.error(`Attendee ${idx + 1}: Invalid Licence Number.`);
+        const licenceCheck = validateDrivingLicenceNumber(attendee.licenseNumber, { required: true });
+        if (!licenceCheck.valid) {
+          toast.error(`Attendee ${idx + 1}: ${licenceCheck.message || 'Driving licence number is required'}`);
           return;
         }
       }

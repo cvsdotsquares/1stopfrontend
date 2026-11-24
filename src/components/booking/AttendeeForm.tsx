@@ -1,8 +1,5 @@
 import React from 'react';
-import {
-  isValidDrivingLicenceNumber,
-  shouldShowDrivingLicenceFormatError,
-} from '@/lib/drivingLicenceNumber';
+import { validateDrivingLicenceNumber } from '@/lib/drivingLicenceNumber';
 
 // ---------- DOB masked-input helpers ----------
 // Character positions in 'dd/mm/yyyy' (10 chars) that hold digits
@@ -335,6 +332,11 @@ export default function AttendeeForm({
     return entries;
   };
 
+  const drivingLicenceValidation =
+    attendee.licenseType !== '4'
+      ? validateDrivingLicenceNumber(attendee.licenseNumber, { required: true })
+      : { valid: true as const };
+
   const incompleteReasons: string[] = [];
 
   if (!attendee.firstName.trim()) incompleteReasons.push('Enter first name');
@@ -368,12 +370,8 @@ export default function AttendeeForm({
   }
   if (!attendee.vehicleType.trim()) incompleteReasons.push('Select vehicle type');
   if (!attendee.licenseType.trim()) incompleteReasons.push('Select driving licence type');
-  if (attendee.licenseType !== '4') {
-    if (!attendee.licenseNumber.trim()) {
-      incompleteReasons.push('Enter driving licence number');
-    } else if (!isValidDrivingLicenceNumber(attendee.licenseNumber)) {
-      incompleteReasons.push('Use a valid driving licence number (16 characters or 8 digits)');
-    }
+  if (!drivingLicenceValidation.valid && drivingLicenceValidation.message) {
+    incompleteReasons.push(drivingLicenceValidation.message);
   }
   if (requiresRegistrationPassword) {
     if (attendee.password.length < 8) {
@@ -641,25 +639,31 @@ export default function AttendeeForm({
           className={`w-full rounded-sm border bg-white px-3 py-3 text-sm ${
             duplicateLicenseIndex !== null
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-              : isValidDrivingLicenceNumber(attendee.licenseNumber)
+              : drivingLicenceValidation.valid && attendee.licenseNumber.trim()
               ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
-              : shouldShowDrivingLicenceFormatError(attendee.licenseNumber)
+              : attendee.licenseType !== '4' && !drivingLicenceValidation.valid
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
               : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
           }`}
           value={attendee.licenseNumber || ''}
           onChange={(e) => onChange('licenseNumber', e.target.value.toUpperCase())}
-          placeholder={attendee.licenseType === '4' ? 'Not required for this license type' : '16 characters or 8 digits'}
-          maxLength={16}
+          placeholder={
+            attendee.licenseType === '4'
+              ? 'Not required for this license type'
+              : 'UK photocard (16) or NI licence (8 digits)'
+          }
+          maxLength={24}
           disabled={attendee.licenseType === '4'}
         />
-        <p className="mt-1 text-xs text-slate-500">{attendee.licenseType === '4' ? 'Not required for Other/No Licence' : '16-character UK licence or 8-digit number'}</p>
+        <p className="mt-1 text-xs text-slate-500">{attendee.licenseType === '4' ? 'Not required for Other/No Licence' : '16-character UK photocard licence or 8-digit Northern Ireland licence'}</p>
         {duplicateLicenseIndex !== null && (
           <p className="mt-1 text-xs text-red-500">This driving licence number is already used by Attendee {duplicateLicenseIndex + 1}</p>
         )}
-        {shouldShowDrivingLicenceFormatError(attendee.licenseNumber) && (
-          <p className="mt-1 text-xs text-red-500">Invalid Licence Number.</p>
-        )}
+        {attendee.licenseType !== '4' &&
+          !drivingLicenceValidation.valid &&
+          drivingLicenceValidation.message && (
+            <p className="mt-1 text-xs text-red-500">{drivingLicenceValidation.message}</p>
+          )}
       </div>
 
       {/* Theory Number - full width */}

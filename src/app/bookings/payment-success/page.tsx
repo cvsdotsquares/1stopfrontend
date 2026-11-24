@@ -11,6 +11,11 @@ type PaymentOutcome = 'confirmed' | 'processing' | 'failed' | 'refunded';
 const VERIFY_POLL_MS = 2500;
 const VERIFY_POLL_MAX_ATTEMPTS = 72; // ~3 minutes
 
+/** Capacity or frozen course: payment taken but booking could not be confirmed. */
+const PAYMENT_REFUND_AUTO_HEADING = 'Payment Refunded.';
+const PAYMENT_REFUND_AUTO_BODY =
+  'Unfortunately the space(s) you were trying to book were taken by another customer during the time it took you to process your payment. As such, your booking(s) have not been confirmed, and we have automatically refunded your transaction.';
+
 /**
  * Stripe returns the customer to `return_url` for redirect methods (Pay by Bank,
  * 3DS) whether the payment succeeded OR failed, so the PaymentIntent status is
@@ -378,12 +383,12 @@ function PaymentSuccessContent() {
       refundReason === 'course_full' ||
       refundReason === 'stripe-webhook-capacity-exceeded' ||
       refundReason === 'admin-stripe-link-capacity-exceeded';
+    const showAutoRefundMessage = capacityTaken || refundReason === 'course_frozen';
 
-    const refundIntro = capacityTaken
-      ? 'Unfortunately the space(s) you were trying to book were taken by another customer during the time it took you to process your payment. As such, your booking(s) have not been confirmed, and we have automatically refunded your transaction.'
-      : refundReason === 'course_frozen'
-        ? 'This course was frozen before your payment finished, so your booking is not confirmed and we have automatically refunded your transaction.'
-        : 'Your payment arrived after the place had been released, so this booking is not confirmed and we have refunded you in full.';
+    const refundHeading = showAutoRefundMessage ? PAYMENT_REFUND_AUTO_HEADING : 'Payment refunded';
+    const refundIntro = showAutoRefundMessage
+      ? PAYMENT_REFUND_AUTO_BODY
+      : 'Your payment arrived after the place had been released, so this booking is not confirmed and we have refunded you in full.';
 
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -395,7 +400,7 @@ function PaymentSuccessContent() {
               </svg>
             </div>
 
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Payment refunded</h1>
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">{refundHeading}</h1>
             <p className="text-lg text-slate-600 mb-2">
               {refundIntro}
             </p>

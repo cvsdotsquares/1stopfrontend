@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { getRetryAfterSeconds, formatRetryClock } from '@/hooks/useRetryTimer';
+import { validateDrivingLicenceNumber } from '@/lib/drivingLicenceNumber';
 
 const DOB_DIGIT_POSITIONS = [0, 1, 3, 4, 6, 7, 8, 9] as const;
 const DOB_MASK_CHARS = ['_', '_', '/', '_', '_', '/', '_', '_', '_', '_'] as const;
@@ -341,13 +342,11 @@ export default function RegisterPage() {
     if (!formData.date_of_birth.trim()) newErrors.date_of_birth = 'Date of birth is required';
     else if (!isValidDob(formData.date_of_birth.trim())) newErrors.date_of_birth = 'Use a valid date of birth in dd/mm/yyyy format';
 
-    if (!formData.license_number.trim()) {
-      newErrors.license_number = 'Driving licence number is required';
-    } else if (
-      formData.license_number.trim().length !== 16 ||
-      !/^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(formData.license_number.trim())
-    ) {
-      newErrors.license_number = 'Use a valid 16-character driving licence number';
+    if (formData.license_type !== '4') {
+      const licenceCheck = validateDrivingLicenceNumber(formData.license_number, { required: false });
+      if (!licenceCheck.valid && licenceCheck.message) {
+        newErrors.license_number = licenceCheck.message;
+      }
     }
 
     if (!formData.license_type.trim()) {
@@ -577,13 +576,19 @@ export default function RegisterPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="license_number">Driving Licence Number *</Label>
+                    <Label htmlFor="license_number">
+                      Driving Licence Number
+                      {formData.license_type !== '4' && (
+                        <span className="text-muted-foreground font-normal"> (optional if left blank)</span>
+                      )}
+                    </Label>
                     <Input
                       id="license_number"
                       value={formData.license_number}
                       onChange={(e) => handleChange('license_number', e.target.value.toUpperCase())}
                       className={errors.license_number ? 'border-red-500' : ''}
-                      required
+                      maxLength={24}
+                      disabled={formData.license_type === '4'}
                     />
                     {errors.license_number && <p className="text-red-500 text-sm mt-1">{errors.license_number}</p>}
                   </div>
