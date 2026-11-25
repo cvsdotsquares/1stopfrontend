@@ -1,0 +1,70 @@
+name: Build & Deploy to Staging
+
+on:
+  push:
+    branches:
+      - stage
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SEVER_PASSWORD }}
+          command_timeout: 20m
+          script: |
+            set -e
+
+            echo "📁 Navigating to project directory..."
+            cd /var/www/html/1stopstaging/1stopfrontendstaging
+
+            echo "🔄 Resetting and pulling latest code..."
+            git reset --hard
+            git clean -fd
+            git pull origin stage
+
+            echo "📝 Generating .env file..."
+            cat > .env << 'EOF'
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_FILES_URL=${{ secrets.NEXT_PUBLIC_FILES_URL }}
+            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+            NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${{ secrets.NEXT_PUBLIC_RECAPTCHA_SITE_KEY }}
+            RECAPTCHA_SECRET_KEY=${{ secrets.RECAPTCHA_SECRET_KEY }}
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_ENCRYPTION_KEY=${{ secrets.NEXT_PUBLIC_ENCRYPTION_KEY }}
+            MAILCHIMP_API_KEY=${{ secrets.MAILCHIMP_API_KEY }}
+            MAILCHIMP_SERVER_PREFIX=${{ secrets.MAILCHIMP_SERVER_PREFIX }}
+            MAILCHIMP_AUDIENCE_ID=${{ secrets.MAILCHIMP_AUDIENCE_ID }}
+            NEXT_PUBLIC_GA_ID=${{ secrets.NEXT_PUBLIC_GA_ID }}
+            NODE_ENV=production
+            NEXT_PUBLIC_INDEXABLE=${{ secrets.NEXT_PUBLIC_INDEXABLE }}
+            MAINTENANCE_MODE=${{ secrets.MAINTENANCE_MODE }}
+            MAINTENANCE_BYPASS_TOKEN=${{ secrets.MAINTENANCE_BYPASS_TOKEN }}
+            EOF
+
+            echo "📦 Installing dependencies..."
+            npm install
+
+            echo "🏗️ Building Next.js app..."
+            npm run build
+
+            echo "🛑 Restarting frontend with PM2 (npm start)..."
+            npx pm2 stop 1stopfrontend-stage || true
+            npx pm2 delete 1stopfrontend-stage || true
+
+            npx pm2 start npm --name "1stopfrontend-stage" -- start -- -p 3004
+            npx pm2 save
+
+            echo "✅ PM2 process list:" && npx pm2 list
+
+            echo "⏳ Waiting for application to start..."
+            sleep 15
+
+            echo "✅ PM2 status:"
+            npx pm2 list

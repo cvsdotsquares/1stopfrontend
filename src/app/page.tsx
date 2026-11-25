@@ -35,35 +35,36 @@ export const dynamic = 'force-dynamic';
 
 // SEO metadata (server side)
 export async function generateMetadata() {
-
-  const pageData = await cmsApi.getPage("home");
-
-  const pageContent = pageData?.data;
-  return {
-    title:
-      stripHtml(pageContent?.meta_title),
-
-    description:
-      stripHtml(pageContent?.meta_desc),
-
-    keywords:
-      stripHtml(pageContent?.meta_keyword),
-
-    alternates: {
-      canonical: "/",
-    },
-  };
+  try {
+    const pageData = await cmsApi.getPage("home");
+    const pageContent = pageData?.data;
+    return {
+      title: stripHtml(pageContent?.meta_title),
+      description: stripHtml(pageContent?.meta_desc),
+      keywords: stripHtml(pageContent?.meta_keyword),
+      alternates: {
+        canonical: "/",
+      },
+    };
+  } catch {
+    return {
+      title: '1 Stop Instruction',
+      description: '',
+      keywords: '',
+      alternates: {
+        canonical: "/",
+      },
+    };
+  }
 }
 
 
 
 export default async function Home() {
 
-  // fetch both APIs in parallel with caching
   const [apiData, pageData] = await Promise.all([
-    cmsApi.getHomepageData(),
-
-    cmsApi.getPage("home")
+    cmsApi.getHomepageData().catch(() => null),
+    cmsApi.getPage("home").catch(() => null),
   ]);
 
 

@@ -12,6 +12,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { getRetryAfterSeconds, formatRetryClock } from '@/hooks/useRetryTimer';
+import {
+  DRIVING_LICENCE_INVALID_MESSAGE,
+  DRIVING_LICENCE_PLACEHOLDER,
+  validateDrivingLicenceNumber,
+} from '@/lib/drivingLicenceNumber';
 
 const DOB_DIGIT_POSITIONS = [0, 1, 3, 4, 6, 7, 8, 9] as const;
 const DOB_MASK_CHARS = ['_', '_', '/', '_', '_', '/', '_', '_', '_', '_'] as const;
@@ -87,8 +93,8 @@ export default function RegisterPage() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const resendTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const startResendCooldown = () => {
-    setResendCooldown(60);
+  const startResendCooldown = (seconds = 60) => {
+    setResendCooldown(seconds);
     if (resendTimerRef.current) clearInterval(resendTimerRef.current);
     resendTimerRef.current = setInterval(() => {
       setResendCooldown(prev => {
@@ -149,7 +155,7 @@ export default function RegisterPage() {
       if (data?.requiresVerification) {
         setPendingEmail(formData.email);
         setOtpValue('');
-        startResendCooldown();
+        startResendCooldown(120);
         setStep('otp');
         toast.success('Account created! Check your email for the verification code.');
       } else {
@@ -170,7 +176,11 @@ export default function RegisterPage() {
             'license_number': 'license_number'
           };
           const frontendField = fieldMap[err.path] || err.path;
-          backendErrors[frontendField] = err.msg;
+          let msg = err.msg;
+          if (err.path === 'license_number' && msg && !msg.includes('required')) {
+            msg = DRIVING_LICENCE_INVALID_MESSAGE;
+          }
+          backendErrors[frontendField] = msg;
         });
         setErrors(backendErrors);
       } else {
@@ -200,9 +210,11 @@ export default function RegisterPage() {
     mutationFn: () => authApi.resendRegistrationOtp(pendingEmail),
     onSuccess: () => {
       toast.success('A new verification code has been sent to your email.');
-      startResendCooldown();
+      startResendCooldown(120);
     },
     onError: (error: any) => {
+      const wait = getRetryAfterSeconds(error, 120);
+      if (wait > 0) startResendCooldown(wait);
       toast.error(error.response?.data?.message || 'Failed to resend code');
     },
   });
@@ -338,13 +350,11 @@ export default function RegisterPage() {
     if (!formData.date_of_birth.trim()) newErrors.date_of_birth = 'Date of birth is required';
     else if (!isValidDob(formData.date_of_birth.trim())) newErrors.date_of_birth = 'Use a valid date of birth in dd/mm/yyyy format';
 
-    if (!formData.license_number.trim()) {
-      newErrors.license_number = 'Driving licence number is required';
-    } else if (
-      formData.license_number.trim().length !== 16 ||
-      !/^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(formData.license_number.trim())
-    ) {
-      newErrors.license_number = 'Use a valid 16-character driving licence number';
+    if (formData.license_type !== '4') {
+      const licenceCheck = validateDrivingLicenceNumber(formData.license_number, { required: true });
+      if (!licenceCheck.valid && licenceCheck.message) {
+        newErrors.license_number = licenceCheck.message;
+      }
     }
 
     if (!formData.license_type.trim()) {
@@ -428,7 +438,7 @@ export default function RegisterPage() {
                   <p className="text-sm text-gray-600">
                     Didn&apos;t receive the code?{' '}
                     {resendCooldown > 0 ? (
-                      <span className="text-gray-400">Resend in {resendCooldown}s</span>
+                      <span className="text-gray-400">Resend in {formatRetryClock(resendCooldown)}</span>
                     ) : (
                       <button
                         type="button"
@@ -574,19 +584,6 @@ export default function RegisterPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="license_number">Driving Licence Number *</Label>
-                    <Input
-                      id="license_number"
-                      value={formData.license_number}
-                      onChange={(e) => handleChange('license_number', e.target.value.toUpperCase())}
-                      className={errors.license_number ? 'border-red-500' : ''}
-                      required
-                    />
-                    {errors.license_number && <p className="text-red-500 text-sm mt-1">{errors.license_number}</p>}
-                  </div>
-                </div>
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                  <div className="space-y-2">
                     <Label htmlFor="license_type">Driving Licence Type *</Label>
                     <div className="relative">
                       <select
@@ -613,14 +610,24 @@ export default function RegisterPage() {
                     </div>
                     {errors.license_type && <p className="text-red-500 text-sm mt-1">{errors.license_type}</p>}
                   </div>
-                  {/* <div className="space-y-2">
-                    <Label htmlFor="theory_number">Theory Number (If Applicable)</Label>
-                    <Input
-                      id="theory_number"
-                      value={formData.theory_number}
-                      onChange={(e) => handleChange('theory_number', e.target.value)}
-                    />
-                  </div> */}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="license_number">
+                    Driving Licence Number{formData.license_type !== '4' ? ' *' : ''}
+                  </Label>
+                  <Input
+                    id="license_number"
+                    value={formData.license_number}
+                    onChange={(e) => handleChange('license_number', e.target.value.toUpperCase())}
+                    className={errors.license_number ? 'border-red-500' : ''}
+                    placeholder={
+                      formData.license_type === '4' ? undefined : DRIVING_LICENCE_PLACEHOLDER
+                    }
+                    maxLength={24}
+                    disabled={formData.license_type === '4'}
+                    required={formData.license_type !== '4'}
+                  />
+                  {errors.license_number && <p className="text-red-500 text-sm mt-1">{errors.license_number}</p>}
                 </div>
               </div>
             </div>

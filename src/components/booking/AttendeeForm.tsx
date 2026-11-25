@@ -1,4 +1,8 @@
 import React from 'react';
+import {
+  DRIVING_LICENCE_PLACEHOLDER,
+  validateDrivingLicenceNumber,
+} from '@/lib/drivingLicenceNumber';
 
 // ---------- DOB masked-input helpers ----------
 // Character positions in 'dd/mm/yyyy' (10 chars) that hold digits
@@ -331,6 +335,11 @@ export default function AttendeeForm({
     return entries;
   };
 
+  const drivingLicenceValidation =
+    attendee.licenseType !== '4'
+      ? validateDrivingLicenceNumber(attendee.licenseNumber, { required: true })
+      : { valid: true as const };
+
   const incompleteReasons: string[] = [];
 
   if (!attendee.firstName.trim()) incompleteReasons.push('Enter first name');
@@ -364,15 +373,8 @@ export default function AttendeeForm({
   }
   if (!attendee.vehicleType.trim()) incompleteReasons.push('Select vehicle type');
   if (!attendee.licenseType.trim()) incompleteReasons.push('Select driving licence type');
-  if (attendee.licenseType !== '4') {
-    if (!attendee.licenseNumber.trim()) {
-      incompleteReasons.push('Enter driving licence number');
-    } else if (
-      attendee.licenseNumber.trim().length !== 16 ||
-      !/^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber)
-    ) {
-      incompleteReasons.push('Use a valid 16-character driving licence number');
-    }
+  if (!drivingLicenceValidation.valid && drivingLicenceValidation.message) {
+    incompleteReasons.push(drivingLicenceValidation.message);
   }
   if (requiresRegistrationPassword) {
     if (attendee.password.length < 8) {
@@ -640,25 +642,33 @@ export default function AttendeeForm({
           className={`w-full rounded-sm border bg-white px-3 py-3 text-sm ${
             duplicateLicenseIndex !== null
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-              : attendee.licenseNumber.length === 16
-              ? /^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber)
-                ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
-                : 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+              : drivingLicenceValidation.valid && attendee.licenseNumber.trim()
+              ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
+              : attendee.licenseType !== '4' && !drivingLicenceValidation.valid
+              ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
               : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
           }`}
           value={attendee.licenseNumber || ''}
           onChange={(e) => onChange('licenseNumber', e.target.value.toUpperCase())}
-          placeholder={attendee.licenseType === '4' ? 'Not required for this license type' : 'Must be 16 characters long'}
-          maxLength={16}
+          placeholder={
+            attendee.licenseType === '4'
+              ? 'Not required for this license type'
+              : DRIVING_LICENCE_PLACEHOLDER
+          }
+          maxLength={24}
           disabled={attendee.licenseType === '4'}
         />
-        <p className="mt-1 text-xs text-slate-500">{attendee.licenseType === '4' ? 'Not required for Other/No Licence' : 'Must be 16 characters long'}</p>
+        <p className="mt-1 text-xs text-slate-500">
+          {attendee.licenseType === '4' ? 'Not required for Other/No Licence' : DRIVING_LICENCE_PLACEHOLDER}
+        </p>
         {duplicateLicenseIndex !== null && (
           <p className="mt-1 text-xs text-red-500">This driving licence number is already used by Attendee {duplicateLicenseIndex + 1}</p>
         )}
-        {attendee.licenseNumber.length === 16 && !/^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber) && (
-          <p className="mt-1 text-xs text-red-500">Invalid Licence Number.</p>
-        )}
+        {attendee.licenseType !== '4' &&
+          !drivingLicenceValidation.valid &&
+          drivingLicenceValidation.message && (
+            <p className="mt-1 text-xs text-red-500">{drivingLicenceValidation.message}</p>
+          )}
       </div>
 
       {/* Theory Number - full width */}

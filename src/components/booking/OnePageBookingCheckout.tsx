@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { bookingApi, type Course, type Location, type Settings, type VehicleType, type LicenseType, type CourseEvent } from "@/services/bookingApi";
 import { authApi } from '@/services/api';
 import { useAuthStore } from '@/store/auth';
@@ -9,7 +9,13 @@ import CryptoJS from 'crypto-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import StripePaymentForm from './StripePaymentForm';
-import { trackAddToCart, trackBeginCheckout } from '@/lib/gtm';
+import { trackAddToCart, trackBeginCheckout, trackCheckout } from '@/lib/gtm';
+import {
+  isValidDrivingLicenceNumber,
+  validateDrivingLicenceNumber,
+} from '@/lib/drivingLicenceNumber';
+import { getBookingElementsPaymentOptions } from '@/lib/stripeBookingPayment';
+import type { User } from '@/types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
@@ -31,7 +37,12 @@ interface CalendarCell {
   date: Date;
   available: boolean;
   spots: number;
+  /** First event's id (kept for back-compat — only auto-applied when there is exactly one event on the date). */
   courseEventId?: number;
+  /** All events scheduled on this date (>=1 means selectable; >1 means user must pick a timing). */
+  events: CourseEvent[];
+  /** True when this date has more than one timing/event the user can choose from. */
+  hasMultipleEvents: boolean;
 }
 
 interface AttendeeDetails {
@@ -50,6 +61,16 @@ interface AttendeeDetails {
   registerAsUser: boolean;
   password: string;
   confirmPassword: string;
+}
+
+function isFirstAttendeeBlank(attendee: AttendeeDetails): boolean {
+  return (
+    !String(attendee.firstName).trim() &&
+    !String(attendee.lastName).trim() &&
+    !String(attendee.email).trim() &&
+    !String(attendee.phone).trim() &&
+    !String(attendee.licenseNumber).trim()
+  );
 }
 
 function createAttendeeDetails(seed: Partial<AttendeeDetails> = {}): AttendeeDetails {
@@ -122,23 +143,63 @@ type PrefillSourceFields = {
   theoryNumber: string;
 };
 
+const EMPTY_PREFILL: PrefillSourceFields = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  dateOfBirth: '',
+  licenseNumber: '',
+  licenseType: '',
+  alternativePhone: '',
+  theoryNumber: '',
+};
+
+function mergePrefillSources(
+  primary: PrefillSourceFields,
+  secondary: PrefillSourceFields | null,
+): PrefillSourceFields {
+  if (!secondary) return primary;
+  const pick = (a: string, b: string) => (a.trim() ? a : b);
+  return {
+    firstName: pick(primary.firstName, secondary.firstName),
+    lastName: pick(primary.lastName, secondary.lastName),
+    email: pick(primary.email, secondary.email),
+    phone: pick(primary.phone, secondary.phone),
+    dateOfBirth: pick(primary.dateOfBirth, secondary.dateOfBirth),
+    licenseNumber: pick(primary.licenseNumber, secondary.licenseNumber),
+    licenseType: pick(primary.licenseType, secondary.licenseType),
+    alternativePhone: pick(primary.alternativePhone, secondary.alternativePhone),
+    theoryNumber: pick(primary.theoryNumber, secondary.theoryNumber),
+  };
+}
+
+/** Logged-in session user (auth store) — used when booking history prefill is not ready yet. */
+function getAttendeePrefillFromUser(user: User | null | undefined): PrefillSourceFields | null {
+  if (!user?.email) return null;
+  const profile = user as User & { sur_name?: string; contact1?: string };
+  return {
+    firstName: String(user.first_name ?? '').trim(),
+    lastName: String(user.last_name ?? profile.sur_name ?? '').trim(),
+    email: String(user.email ?? '').trim(),
+    phone: String(user.phone ?? profile.contact1 ?? '').trim(),
+    alternativePhone: String(user.contact2 ?? '').trim(),
+    dateOfBirth: formatPrefillDobToUk(user.date_of_birth),
+    licenseNumber: String(user.license_number ?? '').trim(),
+    licenseType:
+      user.license_type != null && String(user.license_type).trim() !== ''
+        ? String(user.license_type)
+        : '',
+    theoryNumber: String(user.theory_number ?? '').trim(),
+  };
+}
+
 /**
- * Attendee[0] prefill for logged-in users: only from booking_attendees_dropdown (via /auth/booking-prefill).
- * When there is no row, all strings are empty — never read from the users table.
+ * Attendee[0] prefill for logged-in users from /auth/booking-prefill (booking history, then profile).
  */
 function getAttendeePrefillFromDropdown(bookingPrefill: BookingPrefillPayload | null): PrefillSourceFields {
   if (!bookingPrefill) {
-    return {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      dateOfBirth: "",
-      licenseNumber: "",
-      licenseType: "",
-      alternativePhone: "",
-      theoryNumber: "",
-    };
+    return { ...EMPTY_PREFILL };
   }
   return {
     firstName: String(bookingPrefill.first_name ?? "").trim(),
@@ -162,6 +223,19 @@ function formatLocalDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+function parseLocalDate(dateValue: string | null | undefined): Date | null {
+  if (!dateValue) return null;
+  const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(dateValue);
+  if (match) {
+    const year = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    return new Date(year, month, day);
+  }
+  const parsed = new Date(dateValue);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function getMonthOffsetFromToday(targetDateInput: Date | string | null | undefined): number {
   if (!targetDateInput) return 0;
 
@@ -175,19 +249,17 @@ function getMonthOffsetFromToday(targetDateInput: Date | string | null | undefin
   return Math.max(0, Math.min(2, targetMonthIndex - currentMonthIndex));
 }
 
+/** First day of (reference month + offset). Avoids setMonth overflow on month-end dates (e.g. Aug 31 + 1 → Sep, not Oct). */
+function getCalendarMonthStart(referenceDate: Date, monthOffset: number): Date {
+  return new Date(referenceDate.getFullYear(), referenceDate.getMonth() + monthOffset, 1);
+}
+
 function generateCalendarWeeksFrom(startRefDate = new Date(), courseEvents: CourseEvent[] = [], monthOffset = 0) {
   const today = new Date(startRefDate);
   today.setHours(0, 0, 0, 0);
 
-  // Calculate the start date based on month offset
-  const baseDate = new Date(today);
-  baseDate.setMonth(baseDate.getMonth() + monthOffset);
-  baseDate.setDate(1); // Start from first day of the month
-
-  // Get the last day of the month
-  const lastDay = new Date(baseDate);
-  lastDay.setMonth(lastDay.getMonth() + 1);
-  lastDay.setDate(0);
+  const baseDate = getCalendarMonthStart(today, monthOffset);
+  const lastDay = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
 
   const start = new Date(baseDate);
   start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // Monday start
@@ -205,20 +277,30 @@ function generateCalendarWeeksFrom(startRefDate = new Date(), courseEvents: Cour
     const inPast = d < today;
     const inCurrentMonth = d.getMonth() === baseDate.getMonth() && d.getFullYear() === baseDate.getFullYear();
 
-    // Check if this date has a course event
+    // Collect ALL course events on this date (a single course/location can have several
+    // events on the same calendar day at different timings — e.g. 08:30-17:00 and 10:30-19:00).
     const dateStr = formatLocalDate(d);
-    const courseEvent = courseEvents.find(event => {
-      const eventDate = new Date(event.date);
-      return formatLocalDate(eventDate) === dateStr;
-    });
-    const available = !inPast && inCurrentMonth && courseEvent ? courseEvent.available && courseEvent.available_spaces > 0 : false;
-    const spots = courseEvent?.available_spaces || 0;
+    const eventsForDate = courseEvents
+      .filter(event => {
+        const eventDate = new Date(event.date);
+        return formatLocalDate(eventDate) === dateStr;
+      })
+      .slice()
+      .sort((a, b) => String(a.event_start_time || '').localeCompare(String(b.event_start_time || '')));
+
+    const hasAnyAvailable = eventsForDate.some(ev => ev.available && ev.available_spaces > 0);
+    const totalSpots = eventsForDate.reduce((sum, ev) => sum + (ev.available_spaces || 0), 0);
+    const available = !inPast && inCurrentMonth && hasAnyAvailable;
 
     return {
       date: d,
       available: inCurrentMonth ? available : false,
-      spots: inCurrentMonth ? spots : 0,
-      courseEventId: courseEvent?.course_event_id
+      spots: inCurrentMonth ? totalSpots : 0,
+      // Only expose courseEventId for direct auto-selection when there is exactly one event on the date.
+      // For multi-event dates the user must pick a slot explicitly.
+      courseEventId: eventsForDate.length === 1 ? eventsForDate[0].course_event_id : undefined,
+      events: inCurrentMonth ? eventsForDate : [],
+      hasMultipleEvents: inCurrentMonth && eventsForDate.length > 1,
     };
   });
 
@@ -286,29 +368,33 @@ function resolvePaymentType(
     return { paymentType: 'FULL', paymentMessage: null };
   }
 
-  const depositDays = Math.max(0, Number(pricing.deposit_days) || 0);
+  const balanceDueDays = Math.max(0, Number(pricing.deposit_days) || 0);
+  const depositCutoffDays = Math.max(
+    0,
+    Number(pricing.deposit_cutoff_days ?? pricing.deposit_days) || 0
+  );
   const isDepositPeriodCheckEnabled = pricing.deposit_period_check_enabled === true;
 
   if (isDepositPeriodCheckEnabled) {
     if (courseStartDate) {
       const days = daysUntilCourseStart(courseStartDate);
-      if (days <= depositDays) {
+      if (days <= depositCutoffDays) {
         return {
           paymentType: 'FULL',
-          paymentMessage: `This course requires full payment, as it is due to start within ${depositDays} days.`,
+          paymentMessage: `This course requires full payment, as it is due to start within ${depositCutoffDays} days.`,
         };
       }
     }
 
     return {
       paymentType: 'DEPOSIT',
-      paymentMessage: `This course only requires a deposit payment to secure your place. The balance will need to be paid no later than ${depositDays} days before the first day of your course.`,
+      paymentMessage: `This course only requires a deposit payment to secure your place. The balance will need to be paid no later than ${balanceDueDays} days before the first day of your course.`,
     };
   }
 
   return {
     paymentType: 'DEPOSIT',
-    paymentMessage: `This course only requires a deposit payment to secure your place. The balance will need to be paid no later than ${depositDays} days before the first day of your course. If the date you are booking is within ${depositDays} days, then we will be contact you shortly after you complete your booking to collect any outstanding balance, which will be due immediately.`,
+    paymentMessage: `This course only requires a deposit payment to secure your place. The balance will need to be paid no later than ${balanceDueDays} days before the first day of your course. If the date you are booking is within ${balanceDueDays} days, then we will be contact you shortly after you complete your booking to collect any outstanding balance, which will be due immediately.`,
   };
 }
 
@@ -489,9 +575,100 @@ export default function OnePageBookingCheckout() {
 
   // Auth state
   const { isAuthenticated, user, login } = useAuthStore();
-  // Server-only booking prefill (legacy users with no users.license_number) — not merged into /profile
   const [bookingPrefill, setBookingPrefill] = useState<BookingPrefillPayload | null>(null);
+  const bookingPrefillRef = useRef<BookingPrefillPayload | null>(null);
+  const lastPrefillKeyRef = useRef('');
+  const loadBookingPrefillRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const serverPrefillApplyRef = useRef<{ userId: number | null; applied: boolean }>({ userId: null, applied: false });
+
+  const applyFirstAttendeePrefill = useCallback(
+    (source: PrefillSourceFields, opts?: { force?: boolean }) => {
+      const hasData = Boolean(
+        source.firstName ||
+          source.lastName ||
+          source.email ||
+          source.phone ||
+          source.licenseNumber,
+      );
+      if (!hasData) return;
+
+      const key = `${source.email}|${source.licenseNumber}|${source.firstName}|${source.lastName}`;
+      setAttendeeDetails((prev) => {
+        if (!prev.length) return prev;
+        const first = prev[0];
+        const force = opts?.force === true;
+        const keyChanged = key !== lastPrefillKeyRef.current;
+        if (!force && !keyChanged && !isFirstAttendeeBlank(first)) {
+          return prev;
+        }
+
+        const next: AttendeeDetails = {
+          ...first,
+          firstName: source.firstName,
+          lastName: source.lastName,
+          email: source.email,
+          confirmEmail: source.email,
+          phone: source.phone,
+          alternativePhone: source.alternativePhone,
+          dateOfBirth: source.dateOfBirth,
+          licenseNumber: source.licenseNumber,
+          licenseType: source.licenseType,
+          theoryNumber: source.theoryNumber,
+        };
+        lastPrefillKeyRef.current = key;
+        serverPrefillApplyRef.current.applied = true;
+        serverPrefillApplyRef.current.userId = user?.id ?? null;
+        const copy = [...prev];
+        copy[0] = next;
+        return copy;
+      });
+    },
+    [user?.id],
+  );
+
+  const loadBookingPrefill = useCallback(async () => {
+    if (!isAuthenticated || !user?.id) {
+      setBookingPrefill(null);
+      bookingPrefillRef.current = null;
+      return;
+    }
+    try {
+      const data = await authApi.getBookingPrefill();
+      if (data?.has_fallback && data.prefill) {
+        const payload = data.prefill as BookingPrefillPayload;
+        setBookingPrefill(payload);
+        bookingPrefillRef.current = payload;
+        lastPrefillKeyRef.current = '';
+        serverPrefillApplyRef.current.applied = false;
+        const source = mergePrefillSources(
+          getAttendeePrefillFromDropdown(payload),
+          getAttendeePrefillFromUser(user),
+        );
+        applyFirstAttendeePrefill(source, { force: true });
+        return;
+      }
+      setBookingPrefill(null);
+      bookingPrefillRef.current = null;
+      const fromUser = getAttendeePrefillFromUser(user);
+      if (fromUser) {
+        lastPrefillKeyRef.current = '';
+        applyFirstAttendeePrefill(fromUser, { force: true });
+      }
+    } catch {
+      setBookingPrefill(null);
+      bookingPrefillRef.current = null;
+      const fromUser = getAttendeePrefillFromUser(user);
+      if (fromUser) {
+        applyFirstAttendeePrefill(fromUser, { force: true });
+      }
+    }
+  }, [isAuthenticated, user, applyFirstAttendeePrefill]);
+
+  loadBookingPrefillRef.current = loadBookingPrefill;
+
+  useEffect(() => {
+    bookingPrefillRef.current = bookingPrefill;
+  }, [bookingPrefill]);
   // API Data State
   const [courses, setCourses] = useState<Course[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -608,6 +785,7 @@ export default function OnePageBookingCheckout() {
   const step5FetchedRef = useRef<{ selectedCourseId?: number | null; locationId?: number | null; selectedCourseEventId?: number | null; selectedDateISO?: string | null; attendees?: number } | null>(null);
   const availabilityFetchedRef = useRef<{ courseId?: number | null; locationId?: number | null } | null>(null);
   const addToCartVehicleTrackedKeyRef = useRef<string>('');
+  const checkoutTrackedKeyRef = useRef<string>('');
 
   // Track previous course for change detection
   const prevCourseIdRef = useRef<number | null>(null);
@@ -635,23 +813,27 @@ export default function OnePageBookingCheckout() {
     setExpandedAttendeeIndex(0);
     // Reset date tracking ref so next date selection is treated as "first" (no auto-reset of attendees)
     prevDateStrRef.current = null;
-    setAttendeeDetails(() => {
-      const s = getAttendeePrefillFromDropdown(bookingPrefill);
-      return [
-        createAttendeeDetails({
-          firstName: s.firstName,
-          lastName: s.lastName,
-          email: s.email,
-          confirmEmail: s.email,
-          phone: s.phone,
-          alternativePhone: s.alternativePhone,
-          dateOfBirth: s.dateOfBirth,
-          licenseNumber: s.licenseNumber,
-          licenseType: s.licenseType,
-          theoryNumber: s.theoryNumber,
-        }),
-      ];
-    });
+    const s = mergePrefillSources(
+      getAttendeePrefillFromDropdown(bookingPrefillRef.current),
+      getAttendeePrefillFromUser(user),
+    );
+    setAttendeeDetails([
+      createAttendeeDetails({
+        firstName: s.firstName,
+        lastName: s.lastName,
+        email: s.email,
+        confirmEmail: s.email,
+        phone: s.phone,
+        alternativePhone: s.alternativePhone,
+        dateOfBirth: s.dateOfBirth,
+        licenseNumber: s.licenseNumber,
+        licenseType: s.licenseType,
+        theoryNumber: s.theoryNumber,
+      }),
+    ]);
+    lastPrefillKeyRef.current = '';
+    serverPrefillApplyRef.current.applied = false;
+    void loadBookingPrefillRef.current();
     setFirstAttendeeUserLookup({ email: '', status: 'idle' });
     // Keep section 3 expanded so user can pick a new date
     setExpandedSections(prev => ({ ...prev, 3: true, 4: false, 5: false }));
@@ -687,7 +869,6 @@ export default function OnePageBookingCheckout() {
   // Check if an attendee form is complete (all required fields filled)
   const isAttendeeComplete = (attendee: typeof attendeeDetails[0], index: number) => {
     const phoneRegex = /^\+?[0-9\s()-]+$/;
-    const licenseRegex = /^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const firstName = String(attendee.firstName ?? '').trim();
     const lastName = String(attendee.lastName ?? '').trim();
@@ -736,10 +917,8 @@ export default function OnePageBookingCheckout() {
       licenseType !== '';
 
     // License number validation - skip if license type is 4
-    const licenseComplete = isOtherLicense || (
-      licenseNumber.length === 16 &&
-      licenseRegex.test(licenseNumber)
-    );
+    const licenseComplete =
+      isOtherLicense || validateDrivingLicenceNumber(licenseNumber, { required: true }).valid;
 
     if (!basicFieldsComplete || !licenseComplete) return false;
 
@@ -765,7 +944,7 @@ export default function OnePageBookingCheckout() {
   const sectionComplete: Record<number, boolean> = {
     1: !!selectedCourse,
     2: !!locationId,
-    3: !!selectedDate && attendees > 0 && dateTimeConfirmed,
+    3: !!selectedDate && !!selectedCourseEventId && attendees > 0 && dateTimeConfirmed,
     4: attendeeDetails.slice(0, attendees).every((a, index) => isAttendeeComplete(a, index)) && photocardConfirmed.slice(0, attendees).every(c => c),
     5: false, // Final section never auto-completes
   };
@@ -775,8 +954,10 @@ export default function OnePageBookingCheckout() {
   const paymentBlockingMessages: string[] = [];
   if (!selectedDate) {
     paymentBlockingMessages.push('Please select a course date.');
+  } else if (!selectedCourseEventId) {
+    paymentBlockingMessages.push('Please choose a course timing for the selected date.');
   } else if (!dateTimeConfirmed) {
-    paymentBlockingMessages.push('You changed the course date or spaces. Please click "Confirm Date & Time" in Step 3 to continue.');
+    paymentBlockingMessages.push('You changed the course date, timing or spaces. Please click "Confirm Date & Time" in Step 3 to continue.');
   }
   if (!sectionComplete[4]) {
     paymentBlockingMessages.push('Please complete all attendee details and photocard confirmations in Step 4.');
@@ -968,86 +1149,18 @@ export default function OnePageBookingCheckout() {
     });
   }, [canOfferFastCheckoutRegistration]);
 
-  // Load first-attendee prefill: only from booking_attendees_dropdown (last booking, first card)
+  // Load prefill on sign-in / page load.
   useEffect(() => {
-    if (!isAuthenticated || !user?.id) {
-      setBookingPrefill(null);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await authApi.getBookingPrefill();
-        if (cancelled) return;
-        if (data?.has_fallback && data.prefill) {
-          setBookingPrefill(data.prefill as BookingPrefillPayload);
-        } else {
-          setBookingPrefill(null);
-        }
-      } catch {
-        if (!cancelled) setBookingPrefill(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, user?.id]);
+    void loadBookingPrefill();
+  }, [loadBookingPrefill]);
 
-  // Re-seed first attendee when /auth/booking-prefill returns; never merge from the users table.
+  // Re-apply when attendee details step opens (second+ booking in the same tab).
   useEffect(() => {
-    if (!user) return;
-
-    setAttendeeDetails((prev) => {
-      if (!prev.length) return prev;
-      const first = prev[0];
-
-      if (serverPrefillApplyRef.current.userId !== user.id) {
-        serverPrefillApplyRef.current = { userId: user.id, applied: false };
-      }
-
-      if (bookingPrefill) {
-        if (serverPrefillApplyRef.current.applied) {
-          return prev;
-        }
-        const source = getAttendeePrefillFromDropdown(bookingPrefill);
-        const next: AttendeeDetails = {
-          ...first,
-          firstName: source.firstName,
-          lastName: source.lastName,
-          email: source.email,
-          confirmEmail: source.email,
-          phone: source.phone,
-          alternativePhone: source.alternativePhone,
-          dateOfBirth: source.dateOfBirth,
-          licenseNumber: source.licenseNumber,
-          licenseType: source.licenseType,
-          theoryNumber: source.theoryNumber,
-        };
-        const unchanged =
-          next.firstName === first.firstName &&
-          next.lastName === first.lastName &&
-          next.email === first.email &&
-          next.confirmEmail === first.confirmEmail &&
-          next.phone === first.phone &&
-          next.alternativePhone === first.alternativePhone &&
-          next.dateOfBirth === first.dateOfBirth &&
-          next.licenseNumber === first.licenseNumber &&
-          next.licenseType === first.licenseType &&
-          next.theoryNumber === first.theoryNumber;
-        if (unchanged) {
-          serverPrefillApplyRef.current.applied = true;
-          return prev;
-        }
-        serverPrefillApplyRef.current.applied = true;
-        const copy = [...prev];
-        copy[0] = next;
-        return copy;
-      }
-
-      serverPrefillApplyRef.current.applied = false;
-      return prev;
-    });
-  }, [user, bookingPrefill]);
+    if (!expandedSections[4] || !isAuthenticated) return;
+    lastPrefillKeyRef.current = '';
+    serverPrefillApplyRef.current.applied = false;
+    void loadBookingPrefill();
+  }, [expandedSections[4], isAuthenticated, loadBookingPrefill]);
 
   // Scroll newly-expanded attendee cards into view after confirming the previous attendee.
   useEffect(() => {
@@ -1170,7 +1283,7 @@ export default function OnePageBookingCheckout() {
         selectedCourseId: selectedCourse?.id ?? null,
         selectedCourseName: selectedCourse?.course_name ?? null,
         locationId,
-        selectedDate: (selectedDate instanceof Date && !isNaN(selectedDate.getTime())) ? selectedDate.toISOString() : null,
+        selectedDate: (selectedDate instanceof Date && !isNaN(selectedDate.getTime())) ? formatLocalDate(selectedDate) : null,
         selectedCourseEventId,
         attendees,
         attendeeDetails: attendeeDetails.map(a => ({
@@ -1205,7 +1318,7 @@ export default function OnePageBookingCheckout() {
       selectedCourseId: selectedCourse?.id ?? null,
       locationId: locationId ?? null,
       selectedCourseEventId: selectedCourseEventId ?? null,
-      selectedDateISO: (selectedDate instanceof Date && !isNaN(selectedDate.getTime())) ? selectedDate.toISOString() : null,
+      selectedDateISO: (selectedDate instanceof Date && !isNaN(selectedDate.getTime())) ? formatLocalDate(selectedDate) : null,
       attendees,
     };
 
@@ -1239,7 +1352,7 @@ export default function OnePageBookingCheckout() {
     };
 
     loadStep5Data();
-  }, [selectedDate instanceof Date && !isNaN(selectedDate.getTime()) ? selectedDate.toISOString() : null, attendees, selectedCourse?.id, locationId, selectedCourseEventId]);
+  }, [selectedDate instanceof Date && !isNaN(selectedDate.getTime()) ? formatLocalDate(selectedDate) : null, attendees, selectedCourse?.id, locationId, selectedCourseEventId]);
 
   // Get user IP and check block status on load
   useEffect(() => {
@@ -1322,7 +1435,7 @@ export default function OnePageBookingCheckout() {
         }
 
         if (dateParam) {
-          setSelectedDate(new Date(dateParam));
+          setSelectedDate(parseLocalDate(dateParam));
         }
 
         if (courseEventId) {
@@ -1372,7 +1485,7 @@ export default function OnePageBookingCheckout() {
           }
 
           setLocationId(formData.locationId ?? null);
-          setSelectedDate(formData.selectedDate ? new Date(formData.selectedDate) : null);
+          setSelectedDate(parseLocalDate(formData.selectedDate));
           setSelectedCourseEventId(formData.selectedCourseEventId ?? null);
           setAttendees(formData.attendees ?? 1);
 
@@ -1578,7 +1691,13 @@ export default function OnePageBookingCheckout() {
         if (availability.length > 0 && !selectedDate && dateParam) {
           if (earliestAvailable) {
             setSelectedDate(new Date(earliestAvailable.date));
-            setSelectedCourseEventId(earliestAvailable.course_event_id);
+            // Only auto-pick the course_event_id when the earliest date has exactly one event.
+            // If multiple events share that date the user must explicitly choose a timing slot.
+            const earliestDateKey = String(earliestAvailable.date);
+            const earliestDateEvents = availability.filter(ev => String(ev.date) === earliestDateKey);
+            if (earliestDateEvents.length === 1) {
+              setSelectedCourseEventId(earliestAvailable.course_event_id);
+            }
           }
         }
       } catch (err) {
@@ -1692,6 +1811,44 @@ export default function OnePageBookingCheckout() {
     return courseEvents.find((event) => resolveEventDateKey(event.date) === selectedDateKey) || null;
   }, [selectedDate, selectedCourseEventId, courseEvents]);
 
+  // All events scheduled on the currently selected calendar date (sorted by start time).
+  // Used to decide whether to show the time-slot picker, and to compute max spaces for the
+  // selected slot. When a date has more than one event, the user must pick a slot explicitly
+  // before the rest of Step 3 unlocks.
+  const eventsOnSelectedDate = useMemo<CourseEvent[]>(() => {
+    if (!selectedDate || courseEvents.length === 0) return [];
+    const selectedDateKey = resolveEventDateKey(selectedDate);
+    return courseEvents
+      .filter((event) => resolveEventDateKey(event.date) === selectedDateKey)
+      .slice()
+      .sort((a, b) => String(a.event_start_time || '').localeCompare(String(b.event_start_time || '')));
+  }, [selectedDate, courseEvents]);
+
+  const selectedCourseEvent = useMemo<CourseEvent | null>(() => {
+    if (!selectedCourseEventId) return null;
+    return courseEvents.find((event) => event.course_event_id === selectedCourseEventId) || null;
+  }, [selectedCourseEventId, courseEvents]);
+
+  const selectedEventSpots = selectedCourseEvent
+    ? Math.max(0, selectedCourseEvent.available_spaces || 0)
+    : 0;
+
+  // Reset booking-flow confirmation whenever the chosen slot changes so the user
+  // re-confirms Step 3 explicitly. This mirrors the date-change reset above.
+  useEffect(() => {
+    setDateTimeConfirmed(false);
+  }, [selectedCourseEventId]);
+
+  // Clamp the requested attendees count to the chosen slot's remaining spaces.
+  // This handles the case where a user switches from a slot with many spaces to one with fewer.
+  useEffect(() => {
+    if (!selectedCourseEvent) return;
+    const maxSpots = Math.max(1, selectedCourseEvent.available_spaces || 1);
+    if (attendees > maxSpots) {
+      setAttendees(maxSpots);
+    }
+  }, [selectedCourseEventId]);
+
   const trackingFallbackValue = useMemo(() => {
     const eventPricing = selectedEventForTracking?.pricing;
     if (!eventPricing) return 0;
@@ -1733,6 +1890,34 @@ export default function OnePageBookingCheckout() {
   const trackingValue = total > 0 ? total : trackingFallbackValue;
   const trackingItemPrice = trackingValue > 0 ? Number(trackingValue.toFixed(2)) : 0;
 
+  // Full course price for GTM `add_to_cart` (always uses the FULL course price,
+  // never the deposit amount). Defaults to school_vehicle pricing when an
+  // attendee has not yet picked a vehicle type.
+  const trackingFullCoursePrice = useMemo(() => {
+    const eventPricing = selectedEventForTracking?.pricing;
+    if (!eventPricing) return 0;
+
+    const getVehicleUnitFullPrice = (vehicleType?: string) => {
+      const vehicleTypeNum = Number.parseInt(String(vehicleType || ''), 10);
+      const isOwnVehicle = vehicleTypeNum === 3;
+      const chosenPricing = isOwnVehicle ? eventPricing.own_vehicle : eventPricing.school_vehicle;
+
+      if (chosenPricing.pricing_type === 'deposit') {
+        return Number(chosenPricing.total || 0);
+      }
+
+      return Number(chosenPricing.price || 0);
+    };
+
+    const attendeeSlice = attendeeDetails.slice(0, Math.max(1, attendees));
+    const baseAmount = attendeeSlice.reduce(
+      (sum, attendee) => sum + getVehicleUnitFullPrice(attendee.vehicleType),
+      0
+    );
+
+    return Math.max(0, Number(baseAmount.toFixed(2)));
+  }, [selectedEventForTracking, attendeeDetails, attendees]);
+
   const attendeeVehicleSelectionKey = useMemo(
     () => attendeeDetails.slice(0, attendees).map((attendee, index) => `${index}:${attendee.vehicleType || ''}`).join('|'),
     [attendeeDetails, attendees]
@@ -1744,10 +1929,14 @@ export default function OnePageBookingCheckout() {
     [attendeeDetails, attendees]
   );
 
+  // GTM: add_to_cart — fires once every attendee has selected a vehicle type.
+  // The value sent is the FULL course price (not the deposit). Re-fires if the
+  // selected vehicle types or attendee count change because the cart total
+  // changes too.
   useEffect(() => {
     if (!selectedDate || !selectedCourse || !selectedCourseEventId) return;
     if (!areAllAttendeeVehiclesSelected) return;
-    if (trackingItemPrice <= 0) return;
+    if (trackingFullCoursePrice <= 0) return;
 
     const variant = selectedDate.toLocaleDateString('en-GB');
     const eventKey = [
@@ -1755,7 +1944,7 @@ export default function OnePageBookingCheckout() {
       variant,
       attendees,
       attendeeVehicleSelectionKey,
-      trackingItemPrice.toFixed(2),
+      trackingFullCoursePrice.toFixed(2),
     ].join('|');
 
     if (addToCartVehicleTrackedKeyRef.current === eventKey) {
@@ -1771,9 +1960,9 @@ export default function OnePageBookingCheckout() {
         item_category: 'Booking',
         item_variant: variant,
         quantity: attendees,
-        price: trackingItemPrice,
+        price: trackingFullCoursePrice,
       },
-      trackingItemPrice,
+      trackingFullCoursePrice,
     );
   }, [
     selectedDate,
@@ -1782,7 +1971,52 @@ export default function OnePageBookingCheckout() {
     attendees,
     attendeeVehicleSelectionKey,
     areAllAttendeeVehiclesSelected,
-    trackingItemPrice,
+    trackingFullCoursePrice,
+  ]);
+
+  // GTM: checkout — fires once the user has ticked the
+  // "I have read Course Description and agree to the Terms & Conditions"
+  // checkbox. The value sent is the Total Payable (matches the order summary).
+  useEffect(() => {
+    if (!acceptTerms) return;
+    if (!selectedDate || !selectedCourse || !selectedCourseEventId) return;
+    if (total <= 0) return;
+
+    const variant = selectedDate.toLocaleDateString('en-GB');
+    const totalPayable = Number(total.toFixed(2));
+    const eventKey = [
+      selectedCourseEventId,
+      variant,
+      attendees,
+      attendeeVehicleSelectionKey,
+      totalPayable.toFixed(2),
+    ].join('|');
+
+    if (checkoutTrackedKeyRef.current === eventKey) {
+      return;
+    }
+
+    checkoutTrackedKeyRef.current = eventKey;
+
+    trackCheckout(
+      {
+        item_id: selectedCourseEventId,
+        item_name: selectedCourse.course_name ?? 'Course',
+        item_category: 'Booking',
+        item_variant: variant,
+        quantity: attendees,
+        price: totalPayable,
+      },
+      totalPayable,
+    );
+  }, [
+    acceptTerms,
+    selectedDate,
+    selectedCourse,
+    selectedCourseEventId,
+    attendees,
+    attendeeVehicleSelectionKey,
+    total,
   ]);
 
   const handleLogin = async () => {
@@ -1959,10 +2193,9 @@ export default function OnePageBookingCheckout() {
       // License number validation - skip if license type is 4 (Other/No Licence)
       const isOtherLicense = attendee.licenseType === '4';
       if (!isOtherLicense) {
-        if (!attendee.licenseNumber || attendee.licenseNumber.length !== 16) {
-          missing.push(`Attendee ${idx + 1}: Driving licence number (16 characters)`);
-        } else if (!/^[A-Za-z9]{5}\d{6}[A-Za-z9]{2}[A-Za-z0-9]{1}[A-Za-z]{2}$/.test(attendee.licenseNumber)) {
-          toast.error(`Attendee ${idx + 1}: Invalid Licence Number.`);
+        const licenceCheck = validateDrivingLicenceNumber(attendee.licenseNumber, { required: true });
+        if (!licenceCheck.valid) {
+          toast.error(`Attendee ${idx + 1}: ${licenceCheck.message || 'Driving licence number is required'}`);
           return;
         }
       }
@@ -1991,10 +2224,10 @@ export default function OnePageBookingCheckout() {
       }
 
       // Check if license is blacklisted (skip if license type is 4)
-      if (!isOtherLicense && attendee.licenseNumber && attendee.licenseNumber.length === 16) {
-        const isBlacklisted = await checkBlacklisted(attendee.licenseNumber);
+      if (!isOtherLicense && attendee.licenseNumber && isValidDrivingLicenceNumber(attendee.licenseNumber)) {
+        const isBlacklisted = await checkBlacklisted(attendee.licenseNumber.trim());
         if (isBlacklisted) {
-          const msg = `Attendee ${idx + 1}: This driving licence number is not allowed to book`;
+          const msg = `Attendee ${idx + 1}: Please contact our office regarding this booking quoting Error Code “BL”`;
           // Show server-side error modal instead of only a toast
           setCourseLocationError(msg);
           return;
@@ -2052,7 +2285,7 @@ export default function OnePageBookingCheckout() {
         course_id: selectedCourse!.id,
         course_event_id: selectedCourseEventId,
         location_id: locationId,
-        selected_date: selectedDate!.toISOString().split('T')[0],
+        selected_date: formatLocalDate(selectedDate!),
         promo_code: promoData?.valid ? promoCode.trim() : undefined,
         attendees: attendeeDetails.slice(0, attendees).map((attendee, index) => ({
           first_name: toProperCase(attendee.firstName),
@@ -2077,6 +2310,9 @@ export default function OnePageBookingCheckout() {
       const response = await bookingApi.createBookingWithAttendeesNew(bookingData);
 
       localStorage.removeItem('booking_form_data');
+      if (isAuthenticated) {
+        void loadBookingPrefill();
+      }
 
       const allRefs: string[] = response.booking_refs || [response.booking_ref];
       setBookingRef(response.booking_ref);
@@ -2282,18 +2518,10 @@ export default function OnePageBookingCheckout() {
                     disabled={calendarMonthOffset === 0}
                     className="px-1.5 md:px-3 py-1.5 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    ← {(() => {
-                      const prevMonth = new Date();
-                      prevMonth.setMonth(prevMonth.getMonth() + calendarMonthOffset - 1);
-                      return prevMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-                    })()}
+                    ← {getCalendarMonthStart(new Date(), calendarMonthOffset - 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
                   </button>
                   <span className="text-sm font-semibold text-slate-900 text-center">
-                    {(() => {
-                      const currentMonth = new Date();
-                      currentMonth.setMonth(currentMonth.getMonth() + calendarMonthOffset);
-                      return currentMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-                    })()}
+                    {getCalendarMonthStart(new Date(), calendarMonthOffset).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
                   </span>
                   <button
                     type="button"
@@ -2301,12 +2529,7 @@ export default function OnePageBookingCheckout() {
                     disabled={calendarMonthOffset >= 2}
                     className="px-1.5 md:px-3 py-1.5 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {(() => {
-                      const nextMonth = new Date();
-                      // add 1 month to the current month
-                      nextMonth.setMonth(nextMonth.getMonth() + calendarMonthOffset + 1);
-                      return nextMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-                    })()} →
+                    {getCalendarMonthStart(new Date(), calendarMonthOffset + 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })} →
                   </button>
                 </div>
 
@@ -2326,33 +2549,24 @@ export default function OnePageBookingCheckout() {
                     <div className="mt-1 grid grid-cols-7 gap-1">
                       {weeks.flat().map((cell, idx) => {
                         const isSelected = selectedDate && new Date(selectedDate).toDateString() === cell.date.toDateString();
-                        const currentMonth = new Date();
-                        currentMonth.setMonth(currentMonth.getMonth() + calendarMonthOffset);
+                        const currentMonth = getCalendarMonthStart(new Date(), calendarMonthOffset);
                         const inCurrentMonth = cell.date.getMonth() === currentMonth.getMonth() && cell.date.getFullYear() === currentMonth.getFullYear();
                         return (
                           <button
                             key={idx}
                             type="button"
-                            disabled={!cell.available || !inCurrentMonth}
+                            disabled={!cell.available || !inCurrentMonth || cell.events.length === 0}
                             onClick={() => {
                               setSelectedDate(cell.date);
                               setSelectedCourseEventId(cell.courseEventId || null);
-                              // GTM: add_to_cart
-                              trackAddToCart(
-                                {
-                                  item_id: cell.courseEventId ?? 'unknown',
-                                  item_name: selectedCourse?.course_name ?? 'Course',
-                                  item_category: 'Booking',
-                                  item_variant: cell.date.toLocaleDateString('en-GB'),
-                                  quantity: attendees,
-                                  price: trackingItemPrice,
-                                },
-                                trackingItemPrice,
-                              );
+                              // GTM `add_to_cart` is fired by the effect that
+                              // watches selectedDate / selectedCourseEventId so
+                              // the value reflects the freshly-resolved course
+                              // pricing rather than stale state.
                             }}
-                            title={cell.available && inCurrentMonth ? `${cell.spots} spots left` : "Not available"}
+                            title={cell.available && inCurrentMonth ? (cell.hasMultipleEvents ? `${cell.events.length} sessions · ${cell.spots} spots total` : `${cell.spots} spots left`) : "Not available"}
                             className={`aspect-square rounded-lg border text-sm tabular-nums transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
-                              !inCurrentMonth || cell.courseEventId === undefined
+                              !inCurrentMonth || cell.events.length === 0
                                 ? "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed"
                                 : cell.available
                                 ? isSelected
@@ -2362,7 +2576,7 @@ export default function OnePageBookingCheckout() {
                               }`}
                           >
                             <div>{cell.date.getDate()}</div>
-                            <div className="text-[10px]">{inCurrentMonth && cell.available ? `x${cell.spots}` : inCurrentMonth && cell.courseEventId !== undefined ? "FULL" : ""}</div>
+                            <div className="text-[10px]">{inCurrentMonth && cell.available ? `x${cell.spots}` : inCurrentMonth && cell.events.length > 0 ? "FULL" : ""}</div>
                           </button>
                         );
                       })}
@@ -2371,33 +2585,80 @@ export default function OnePageBookingCheckout() {
                 )}
               </div>
 
+              {/* Time Slot Picker - shown when the selected calendar date has more than one event/timing */}
+              {selectedDate && eventsOnSelectedDate.length > 1 && (
+                <div className="mt-4 rounded-xl border border-slate-200 bg-gray-50 p-4">
+                  <h4 className="mb-1 text-sm font-semibold text-slate-900">Select Course Timing</h4>
+                  <p className="mb-3 text-xs text-slate-500">This date has more than one course timing. Please choose the slot you'd like to book.</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {eventsOnSelectedDate.map((slotEvent) => {
+                      const slotAvailable = slotEvent.available && (slotEvent.available_spaces || 0) > 0;
+                      const isSlotSelected = selectedCourseEventId === slotEvent.course_event_id;
+                      const formatSlotTime = (time?: string | null) => {
+                        if (!time) return '';
+                        const [hStr, mStr] = String(time).split(':');
+                        const h = parseInt(hStr, 10);
+                        if (Number.isNaN(h)) return time;
+                        const ampm = h >= 12 ? 'pm' : 'am';
+                        const displayHour = h > 12 ? h - 12 : h === 0 ? 12 : h;
+                        return `${displayHour}:${mStr ?? '00'} ${ampm}`;
+                      };
+                      return (
+                        <button
+                          key={slotEvent.course_event_id}
+                          type="button"
+                          disabled={!slotAvailable}
+                          onClick={() => {
+                            setSelectedCourseEventId(slotEvent.course_event_id);
+                            // GTM `add_to_cart` is fired by the effect that
+                            // watches vehicle selection — not here — so it only
+                            // fires once every attendee has picked a vehicle.
+                          }}
+                          className={`rounded-lg border p-3 text-left text-sm transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
+                            !slotAvailable
+                              ? 'border-red-200 bg-red-50 text-red-500 cursor-not-allowed'
+                              : isSlotSelected
+                              ? 'border-emerald-600 bg-emerald-600 text-white font-semibold'
+                              : 'border-emerald-500 bg-white text-slate-900 hover:border-emerald-600'
+                          }`}
+                          aria-pressed={isSlotSelected}
+                        >
+                          <div className="font-medium">
+                            {formatSlotTime(slotEvent.event_start_time)}
+                            {slotEvent.event_end_time ? ` – ${formatSlotTime(slotEvent.event_end_time)}` : ''}
+                          </div>
+                          <div className={`text-xs mt-0.5 ${isSlotSelected ? 'text-emerald-50' : slotAvailable ? 'text-slate-500' : 'text-red-500'}`}>
+                            {slotAvailable ? `${slotEvent.available_spaces} space${slotEvent.available_spaces === 1 ? '' : 's'} available` : 'Fully booked'}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Attendees Selector - moved from sidebar */}
-              {selectedDate && (
+              {selectedDate && selectedCourseEvent && (
                 <div className="mt-4 rounded-xl border border-slate-200 bg-gray-50 p-4">
                   <h4 className="mb-3 text-sm font-semibold text-slate-900">Select Number of Spaces</h4>
                   <div className="flex items-center justify-center gap-3">
                     <button type="button" disabled={attendees <= 1} className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => setAttendees((n) => Math.max(1, n - 1))}>−</button>
-                    <input type="number" min={1} max={selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1} className="w-16 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm" value={attendees} onChange={(e) => {
-                      const maxSpots = selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1;
+                    <input type="number" min={1} max={Math.max(1, selectedEventSpots)} className="w-16 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm" value={attendees} onChange={(e) => {
+                      const maxSpots = Math.max(1, selectedEventSpots);
                       setAttendees(Math.max(1, Math.min(maxSpots, parseInt(e.target.value || "1", 10))));
                     }} />
-                    <button type="button" disabled={attendees >= (selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1)} className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => {
-                      const maxSpots = selectedDate ? (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? 1) : 1;
+                    <button type="button" disabled={attendees >= Math.max(1, selectedEventSpots)} className="h-9 w-9 cursor-pointer rounded-lg border border-slate-300 text-lg font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => {
+                      const maxSpots = Math.max(1, selectedEventSpots);
                       setAttendees((n) => Math.min(maxSpots, n + 1));
                     }}>+</button>
                   </div>
-                  <p className="mt-2 text-xs text-slate-500 text-center">{selectedDate ? "Spaces Available: " + (weeks.flat().find(c => c.date.toDateString() === new Date(selectedDate).toDateString())?.spots ?? "—") : ""}</p>
+                  <p className="mt-2 text-xs text-slate-500 text-center">{`Spaces Available: ${selectedEventSpots}`}</p>
                 </div>
               )}
 
               {/* Course Details Summary */}
-              {selectedDate && (() => {
-                const selectedEvent = courseEvents.find(event => {
-                  const eventDate = new Date(event.date);
-                  return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
-                });
-
-                if (!selectedEvent) return null;
+              {selectedDate && selectedCourseEvent && (() => {
+                const selectedEvent = selectedCourseEvent;
 
                 const formatTime = (time: string | null) => {
                   if (!time) return '';
@@ -2550,7 +2811,7 @@ export default function OnePageBookingCheckout() {
               })()}
 
               {/* Confirm Button */}
-              {selectedDate && attendees > 0 && !dateTimeConfirmed && (
+              {selectedDate && selectedCourseEvent && attendees > 0 && !dateTimeConfirmed && (
                 <div className="mt-4">
                   <button
                     type="button"
@@ -2743,7 +3004,7 @@ export default function OnePageBookingCheckout() {
             <Section
               index={5}
               title="Review & proceed to payment"
-              subtitle="You'll be redirected to the secure payment page."
+              subtitle="Review your booking details and confirm you have read the course description, and terms and conditions."
               complete={sectionComplete[5]}
               open={expandedSections[5]}
               onToggle={() => {
@@ -2761,13 +3022,7 @@ export default function OnePageBookingCheckout() {
                     <li><span className="text-slate-500">Course:</span> {selectedCourse?.course_name}</li>
                     <li><span className="text-slate-500">Location:</span> {currentLocation?.location_name}</li>
                     <li><span className="text-slate-500">Date:</span> {selectedDate ? selectedDate.toLocaleDateString('en-GB') : "—"}</li>
-                    <li><span className="text-slate-500">Start Time:</span> {selectedDate ? (() => {
-                      const selectedEvent = courseEvents.find(event => {
-                        const eventDate = new Date(event.date);
-                        return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
-                      });
-                      return selectedEvent ? selectedEvent.event_start_time : '07:00';
-                    })() : "—"}</li>
+                    <li><span className="text-slate-500">Start Time:</span> {selectedCourseEvent ? selectedCourseEvent.event_start_time : "—"}</li>
                     <li><span className="text-slate-500">Spaces:</span> {attendees}</li>
                   </ul>
                 </div>
@@ -2869,24 +3124,17 @@ export default function OnePageBookingCheckout() {
                     <Elements
                       key={paymentKey}
                       stripe={stripePromise}
-                      options={{
-                        // Deferred-intent mode: lets PaymentElement render Apple Pay /
-                        // Google Pay / card before we've created the PaymentIntent on
-                        // the backend. The actual PI is still created at submit time
-                        // via handleCreateBooking and confirmed with confirmPayment.
-                        // amount must be at least the currency minimum (30p for GBP),
-                        // so we floor at 50p when the live total is 0 (e.g. fully
-                        // discounted) — those bookings short-circuit via paymentRequired.
-                        mode: 'payment',
-                        amount: Math.max(50, Math.round(total * 100)),
-                        currency: 'gbp',
-                        appearance: { theme: 'stripe' },
-                      }}
+                      options={getBookingElementsPaymentOptions(Math.round(total * 100))}
                     >
                       <StripePaymentForm
                         onCreatePaymentIntent={handleCreateBooking}
-                        onSuccess={(refs) => {
-                          window.location.href = `/bookings/payment-success?refs=${refs.join(',')}`;
+                        onSuccess={(refs, extra) => {
+                          const params = new URLSearchParams();
+                          params.set('refs', refs.join(','));
+                          if (extra?.paymentIntentId) {
+                            params.set('payment_intent', extra.paymentIntentId);
+                          }
+                          window.location.href = `/bookings/payment-success?${params.toString()}`;
                         }}
                         onCancel={(ref) => {
                           if (ref) {
@@ -2930,13 +3178,7 @@ export default function OnePageBookingCheckout() {
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Course</dt><dd className="text-right text-slate-900">{selectedCourse?.course_name}</dd></div>
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Location</dt><dd className="text-right text-slate-900">{currentLocation?.location_name || "—"}</dd></div>
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Date</dt><dd className="text-right text-slate-900">{selectedDate ? selectedDate.toLocaleDateString('en-GB') : "—"}</dd></div>
-                  <div className="flex items-center justify-between"><dt className="text-slate-500">Start Time</dt><dd className="text-right text-slate-900">{selectedDate ? (() => {
-                    const selectedEvent = courseEvents.find(event => {
-                      const eventDate = new Date(event.date);
-                      return formatLocalDate(eventDate) === formatLocalDate(selectedDate);
-                    });
-                    return selectedEvent ? selectedEvent.event_start_time : '07:00';
-                  })() : "—"}</dd></div>
+                  <div className="flex items-center justify-between"><dt className="text-slate-500">Start Time</dt><dd className="text-right text-slate-900">{selectedCourseEvent ? selectedCourseEvent.event_start_time : "—"}</dd></div>
                   <div className="flex items-center justify-between"><dt className="text-slate-500">Spaces</dt><dd className="text-right text-slate-900">{attendees}</dd></div>
                 </dl>
                 <div className="my-3 border-t" />
@@ -3164,6 +3406,12 @@ export function __runDevTests() {
     const w = generateCalendarWeeksFrom(new Date("2025-10-01"), []);
     const pass1 = Array.isArray(w) && w.length === 6 && w.flat().length === 42;
     results.push({ name: "calendar weeks shape", pass: pass1 });
+
+    // Test 1b: month-end dates must not skip a month (Aug 31 + 1 offset = September, not October)
+    const aug31Weeks = generateCalendarWeeksFrom(new Date(2026, 7, 31), [], 1);
+    const septCells = aug31Weeks.flat().filter((cell) => cell.date.getMonth() === 8 && cell.date.getFullYear() === 2026);
+    const pass1b = septCells.length > 0;
+    results.push({ name: "calendar month offset on Aug 31", pass: pass1b });
 
     // Test 2: pricing math with VAT
     const { subtotal: s2, vat: v2, total: t2 } = computeTotals(129, 2, 0.2);
