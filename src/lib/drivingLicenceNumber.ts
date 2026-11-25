@@ -4,10 +4,13 @@
  * 1stopAdmin/1stopadminfe/lib/driving-licence-validation.ts (admin source of truth).
  */
 
-export const DRIVING_LICENCE_INVALID_MESSAGE =
-  'Driving licence number is not valid. Enter a 16-character UK photocard licence or an 8-digit Northern Ireland licence.';
+/** Shown on public register + booking only (no format hints). */
+export const DRIVING_LICENCE_INVALID_MESSAGE = 'Driving licence number is not valid.';
 
 export const DRIVING_LICENCE_REQUIRED_MESSAGE = 'Driving licence number is required';
+
+export const DRIVING_LICENCE_PLACEHOLDER =
+  'Found on Number 5 on your Full/Provisional Photocard Driving Licence';
 
 export function normalizeDrivingLicence(value: string | null | undefined): string {
   return String(value ?? '')

@@ -13,7 +13,11 @@ import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { getRetryAfterSeconds, formatRetryClock } from '@/hooks/useRetryTimer';
-import { validateDrivingLicenceNumber } from '@/lib/drivingLicenceNumber';
+import {
+  DRIVING_LICENCE_INVALID_MESSAGE,
+  DRIVING_LICENCE_PLACEHOLDER,
+  validateDrivingLicenceNumber,
+} from '@/lib/drivingLicenceNumber';
 
 const DOB_DIGIT_POSITIONS = [0, 1, 3, 4, 6, 7, 8, 9] as const;
 const DOB_MASK_CHARS = ['_', '_', '/', '_', '_', '/', '_', '_', '_', '_'] as const;
@@ -172,7 +176,11 @@ export default function RegisterPage() {
             'license_number': 'license_number'
           };
           const frontendField = fieldMap[err.path] || err.path;
-          backendErrors[frontendField] = err.msg;
+          let msg = err.msg;
+          if (err.path === 'license_number' && msg && !msg.includes('required')) {
+            msg = DRIVING_LICENCE_INVALID_MESSAGE;
+          }
+          backendErrors[frontendField] = msg;
         });
         setErrors(backendErrors);
       } else {
@@ -343,7 +351,7 @@ export default function RegisterPage() {
     else if (!isValidDob(formData.date_of_birth.trim())) newErrors.date_of_birth = 'Use a valid date of birth in dd/mm/yyyy format';
 
     if (formData.license_type !== '4') {
-      const licenceCheck = validateDrivingLicenceNumber(formData.license_number, { required: false });
+      const licenceCheck = validateDrivingLicenceNumber(formData.license_number, { required: true });
       if (!licenceCheck.valid && licenceCheck.message) {
         newErrors.license_number = licenceCheck.message;
       }
@@ -576,25 +584,6 @@ export default function RegisterPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="license_number">
-                      Driving Licence Number
-                      {formData.license_type !== '4' && (
-                        <span className="text-muted-foreground font-normal"> (optional if left blank)</span>
-                      )}
-                    </Label>
-                    <Input
-                      id="license_number"
-                      value={formData.license_number}
-                      onChange={(e) => handleChange('license_number', e.target.value.toUpperCase())}
-                      className={errors.license_number ? 'border-red-500' : ''}
-                      maxLength={24}
-                      disabled={formData.license_type === '4'}
-                    />
-                    {errors.license_number && <p className="text-red-500 text-sm mt-1">{errors.license_number}</p>}
-                  </div>
-                </div>
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                  <div className="space-y-2">
                     <Label htmlFor="license_type">Driving Licence Type *</Label>
                     <div className="relative">
                       <select
@@ -621,14 +610,24 @@ export default function RegisterPage() {
                     </div>
                     {errors.license_type && <p className="text-red-500 text-sm mt-1">{errors.license_type}</p>}
                   </div>
-                  {/* <div className="space-y-2">
-                    <Label htmlFor="theory_number">Theory Number (If Applicable)</Label>
-                    <Input
-                      id="theory_number"
-                      value={formData.theory_number}
-                      onChange={(e) => handleChange('theory_number', e.target.value)}
-                    />
-                  </div> */}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="license_number">
+                    Driving Licence Number{formData.license_type !== '4' ? ' *' : ''}
+                  </Label>
+                  <Input
+                    id="license_number"
+                    value={formData.license_number}
+                    onChange={(e) => handleChange('license_number', e.target.value.toUpperCase())}
+                    className={errors.license_number ? 'border-red-500' : ''}
+                    placeholder={
+                      formData.license_type === '4' ? undefined : DRIVING_LICENCE_PLACEHOLDER
+                    }
+                    maxLength={24}
+                    disabled={formData.license_type === '4'}
+                    required={formData.license_type !== '4'}
+                  />
+                  {errors.license_number && <p className="text-red-500 text-sm mt-1">{errors.license_number}</p>}
                 </div>
               </div>
             </div>

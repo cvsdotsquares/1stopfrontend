@@ -1,5 +1,8 @@
 import React from 'react';
-import { validateDrivingLicenceNumber } from '@/lib/drivingLicenceNumber';
+import {
+  DRIVING_LICENCE_PLACEHOLDER,
+  validateDrivingLicenceNumber,
+} from '@/lib/drivingLicenceNumber';
 
 // ---------- DOB masked-input helpers ----------
 // Character positions in 'dd/mm/yyyy' (10 chars) that hold digits
@@ -650,12 +653,14 @@ export default function AttendeeForm({
           placeholder={
             attendee.licenseType === '4'
               ? 'Not required for this license type'
-              : 'UK photocard (16) or NI licence (8 digits)'
+              : DRIVING_LICENCE_PLACEHOLDER
           }
           maxLength={24}
           disabled={attendee.licenseType === '4'}
         />
-        <p className="mt-1 text-xs text-slate-500">{attendee.licenseType === '4' ? 'Not required for Other/No Licence' : '16-character UK photocard licence or 8-digit Northern Ireland licence'}</p>
+        <p className="mt-1 text-xs text-slate-500">
+          {attendee.licenseType === '4' ? 'Not required for Other/No Licence' : DRIVING_LICENCE_PLACEHOLDER}
+        </p>
         {duplicateLicenseIndex !== null && (
           <p className="mt-1 text-xs text-red-500">This driving licence number is already used by Attendee {duplicateLicenseIndex + 1}</p>
         )}
