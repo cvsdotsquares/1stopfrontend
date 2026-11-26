@@ -9,6 +9,9 @@ export const DRIVING_LICENCE_INVALID_MESSAGE = 'Driving licence number is not va
 
 export const DRIVING_LICENCE_REQUIRED_MESSAGE = 'Driving licence number is required';
 
+export const DRIVING_LICENCE_IN_USE_MESSAGE =
+  'This driving licence number is already registered to another account.';
+
 export const DRIVING_LICENCE_PLACEHOLDER =
   'Found on Number 5 on your Full/Provisional Photocard Driving Licence';
 

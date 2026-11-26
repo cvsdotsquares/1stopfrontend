@@ -14,10 +14,19 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { getRetryAfterSeconds, formatRetryClock } from '@/hooks/useRetryTimer';
 import {
+  DRIVING_LICENCE_IN_USE_MESSAGE,
   DRIVING_LICENCE_INVALID_MESSAGE,
   DRIVING_LICENCE_PLACEHOLDER,
   validateDrivingLicenceNumber,
 } from '@/lib/drivingLicenceNumber';
+import {
+  UK_DOB_INVALID_MESSAGE,
+  UK_DOB_MIN_AGE_MESSAGE,
+  UK_DOB_REQUIRED_MESSAGE,
+  formatDobInputFromDigits,
+  isAtLeastUkDobAge,
+  isValidUkDob,
+} from '@/lib/ukDateOfBirth';
 
 const DOB_DIGIT_POSITIONS = [0, 1, 3, 4, 6, 7, 8, 9] as const;
 const DOB_MASK_CHARS = ['_', '_', '/', '_', '_', '/', '_', '_', '_', '_'] as const;
@@ -32,29 +41,6 @@ function charPosToDigitIdx(charPos: number): number {
     if (DOB_DIGIT_POSITIONS[i] >= charPos) return i;
   }
   return DOB_DIGIT_POSITIONS.length;
-}
-
-function formatDobInput(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 8);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
-}
-
-function isValidDob(dob: string) {
-  const match = dob.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (!match) return false;
-  const [, dayStr, monthStr, yearStr] = match;
-  const day = Number(dayStr);
-  const month = Number(monthStr);
-  const year = Number(yearStr);
-  const date = new Date(year, month - 1, day);
-
-  return (
-    date.getFullYear() === year &&
-    date.getMonth() === month - 1 &&
-    date.getDate() === day
-  );
 }
 
 export default function RegisterPage() {
@@ -86,6 +72,7 @@ export default function RegisterPage() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [dobWarning, setDobWarning] = useState<string | null>(null);
   const [licenseTypes, setLicenseTypes] = useState<LicenseType[]>([]);
   const [step, setStep] = useState<'form' | 'otp'>('form');
   const [pendingEmail, setPendingEmail] = useState('');
@@ -177,8 +164,22 @@ export default function RegisterPage() {
           };
           const frontendField = fieldMap[err.path] || err.path;
           let msg = err.msg;
-          if (err.path === 'license_number' && msg && !msg.includes('required')) {
-            msg = DRIVING_LICENCE_INVALID_MESSAGE;
+          if (err.path === 'license_number' && msg) {
+            if (/already in use/i.test(msg)) {
+              msg = DRIVING_LICENCE_IN_USE_MESSAGE;
+            } else if (
+              !msg.includes('required') &&
+              (msg.includes('16-character') || msg.includes('8-digit Northern Ireland'))
+            ) {
+              msg = DRIVING_LICENCE_INVALID_MESSAGE;
+            }
+          }
+          if (err.path === 'date_of_birth' && msg) {
+            if (msg.toLowerCase().includes('at least 16')) {
+              msg = UK_DOB_MIN_AGE_MESSAGE;
+            } else if (!msg.toLowerCase().includes('required')) {
+              msg = UK_DOB_INVALID_MESSAGE;
+            }
           }
           backendErrors[frontendField] = msg;
         });
@@ -228,6 +229,22 @@ export default function RegisterPage() {
 
   const handleDobChange = (value: string) => {
     handleChange('date_of_birth', value);
+    if (!value) {
+      setDobWarning(null);
+      return;
+    }
+    const digitCount = value.replace(/\D/g, '').length;
+    if (digitCount === 8) {
+      if (!isValidUkDob(value)) {
+        setDobWarning(UK_DOB_INVALID_MESSAGE);
+      } else if (!isAtLeastUkDobAge(value, 16)) {
+        setDobWarning(UK_DOB_MIN_AGE_MESSAGE);
+      } else {
+        setDobWarning(null);
+      }
+    } else {
+      setDobWarning(null);
+    }
   };
 
   const snapDobCursor = (input: HTMLInputElement, afterDigitIdx: number, immediate = false) => {
@@ -271,7 +288,7 @@ export default function RegisterPage() {
       const deleteIdx = Math.min(digitIdx, dobDigits.length) - 1;
       if (deleteIdx < 0) return;
       const newDigits = dobDigits.slice(0, deleteIdx) + dobDigits.slice(deleteIdx + 1);
-      handleDobChange(formatDobInput(newDigits));
+      handleDobChange(formatDobInputFromDigits(newDigits));
       snapDobCursor(input, deleteIdx);
       return;
     }
@@ -279,7 +296,7 @@ export default function RegisterPage() {
       if (dobDigits.length === 0) return;
       const deleteIdx = Math.min(digitIdx, dobDigits.length - 1);
       const newDigits = dobDigits.slice(0, deleteIdx) + dobDigits.slice(deleteIdx + 1);
-      handleDobChange(formatDobInput(newDigits));
+      handleDobChange(formatDobInputFromDigits(newDigits));
       snapDobCursor(input, deleteIdx);
       return;
     }
@@ -289,7 +306,7 @@ export default function RegisterPage() {
     const insertAt = Math.min(digitIdx, dobDigits.length);
     if (insertAt > 7) return;
     const newDigits = (dobDigits.slice(0, insertAt) + e.key + dobDigits.slice(insertAt + 1)).slice(0, 8);
-    handleDobChange(formatDobInput(newDigits));
+    handleDobChange(formatDobInputFromDigits(newDigits));
     snapDobCursor(input, insertAt + 1);
   };
 
@@ -297,7 +314,7 @@ export default function RegisterPage() {
     e.preventDefault();
     const digits = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 8);
     if (!digits) return;
-    handleDobChange(formatDobInput(digits));
+    handleDobChange(formatDobInputFromDigits(digits));
     snapDobCursor(e.currentTarget, digits.length);
   };
 
@@ -347,8 +364,13 @@ export default function RegisterPage() {
       }
     }
 
-    if (!formData.date_of_birth.trim()) newErrors.date_of_birth = 'Date of birth is required';
-    else if (!isValidDob(formData.date_of_birth.trim())) newErrors.date_of_birth = 'Use a valid date of birth in dd/mm/yyyy format';
+    if (!formData.date_of_birth.trim()) {
+      newErrors.date_of_birth = UK_DOB_REQUIRED_MESSAGE;
+    } else if (!isValidUkDob(formData.date_of_birth.trim())) {
+      newErrors.date_of_birth = UK_DOB_INVALID_MESSAGE;
+    } else if (!isAtLeastUkDobAge(formData.date_of_birth.trim(), 16)) {
+      newErrors.date_of_birth = UK_DOB_MIN_AGE_MESSAGE;
+    }
 
     if (formData.license_type !== '4') {
       const licenceCheck = validateDrivingLicenceNumber(formData.license_number, { required: true });
@@ -555,10 +577,14 @@ export default function RegisterPage() {
                       onClick={handleDobClick}
                       onChange={() => { /* controlled by keydown/paste handlers */ }}
                       inputMode="numeric"
-                      className={errors.date_of_birth ? 'border-red-500' : ''}
+                      className={`font-mono tracking-wider ${
+                        errors.date_of_birth || dobWarning ? 'border-red-500' : ''
+                      }`}
                       required
                     />
-                    {errors.date_of_birth && <p className="text-red-500 text-sm mt-1">{errors.date_of_birth}</p>}
+                    {(errors.date_of_birth || dobWarning) && (
+                      <p className="text-red-500 text-sm mt-1">{errors.date_of_birth || dobWarning}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="contactNumber1">Phone *</Label>
