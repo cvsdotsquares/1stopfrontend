@@ -1,6 +1,8 @@
 import React from 'react';
 import {
+  DRIVING_LICENCE_INVALID_MESSAGE,
   DRIVING_LICENCE_PLACEHOLDER,
+  shouldShowDrivingLicenceFormatError,
   validateDrivingLicenceNumber,
 } from '@/lib/drivingLicenceNumber';
 
@@ -335,10 +337,13 @@ export default function AttendeeForm({
     return entries;
   };
 
-  const drivingLicenceValidation =
-    attendee.licenseType !== '4'
-      ? validateDrivingLicenceNumber(attendee.licenseNumber, { required: true })
-      : { valid: true as const };
+  const licenceNumberRequired =
+    Boolean(attendee.licenseType) && attendee.licenseType !== '4';
+  const drivingLicenceValidation = licenceNumberRequired
+    ? validateDrivingLicenceNumber(attendee.licenseNumber, { required: true })
+    : { valid: true as const };
+  const showDrivingLicenceFormatError =
+    licenceNumberRequired && shouldShowDrivingLicenceFormatError(attendee.licenseNumber);
 
   const incompleteReasons: string[] = [];
 
@@ -635,7 +640,7 @@ export default function AttendeeForm({
       {/* Driving Licence Number - full width */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-slate-700 mb-1">
-          Driving Licence Number {attendee.licenseType !== '4' && <span className="text-rose-500">*</span>}
+          Driving Licence Number {licenceNumberRequired && <span className="text-rose-500">*</span>}
         </label>
         <input
           type="text"
@@ -644,7 +649,7 @@ export default function AttendeeForm({
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
               : drivingLicenceValidation.valid && attendee.licenseNumber.trim()
               ? 'border-green-500 focus:border-green-500 focus:ring-green-500/30'
-              : attendee.licenseType !== '4' && !drivingLicenceValidation.valid
+              : showDrivingLicenceFormatError
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
               : 'border-slate-300 focus:border-teal-500 focus:ring-teal-500/30'
           }`}
@@ -664,11 +669,9 @@ export default function AttendeeForm({
         {duplicateLicenseIndex !== null && (
           <p className="mt-1 text-xs text-red-500">This driving licence number is already used by Attendee {duplicateLicenseIndex + 1}</p>
         )}
-        {attendee.licenseType !== '4' &&
-          !drivingLicenceValidation.valid &&
-          drivingLicenceValidation.message && (
-            <p className="mt-1 text-xs text-red-500">{drivingLicenceValidation.message}</p>
-          )}
+        {showDrivingLicenceFormatError && (
+          <p className="mt-1 text-xs text-red-500">{DRIVING_LICENCE_INVALID_MESSAGE}</p>
+        )}
       </div>
 
       {/* Theory Number - full width */}
